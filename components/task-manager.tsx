@@ -4,6 +4,9 @@ import { TaskInput } from "@/components/task-input"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { useState, useEffect } from "react"
 import { useToast } from "@/components/ui/use-toast"
+import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
+import { exportTasksToCSV } from "@/lib/export-utils"
 
 interface Task {
   id: string
@@ -103,10 +106,30 @@ export function TaskManager() {
   }
 
   return (
-    <>
-      <TaskInput onAddTask={addTask} />
+    <div className="space-y-4">
+      <div className="flex justify-between items-center gap-4">
+        <div className="flex-1">
+          <TaskInput onAddTask={addTask} />
+        </div>
+        {tasks.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              exportTasksToCSV()
+              toast({
+                title: "Tasks Exported",
+                description: "Your tasks have been exported to CSV",
+              })
+            }}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export Tasks
+          </Button>
+        )}
+      </div>
       <EisenhowerMatrix tasks={tasks} onToggleTask={toggleTask} onDeleteTask={deleteTask} />
-    </>
+    </div>
   )
 }
 

@@ -4,13 +4,15 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
-import { Target, Flag, Calendar, Pencil, CheckCircle2, ArrowRight } from "lucide-react"
+import { Target, Flag, Calendar, Pencil, CheckCircle2, ArrowRight, Download } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { exportGoalsToCSV } from "@/lib/export-utils"
 
 interface SavedData {
   goal: string
   priority: string
-  priorityDate: string
+  completed: boolean
+  lastModified: string
 }
 
 export function GoalSetter() {
@@ -20,6 +22,7 @@ export function GoalSetter() {
   const [tempPriority, setTempPriority] = useState("")
   const [isEditingGoal, setIsEditingGoal] = useState(false)
   const [isEditingPriority, setIsEditingPriority] = useState(false)
+  const [isCompleted, setIsCompleted] = useState(false)
   const { toast } = useToast()
 
   // Load saved data on mount
@@ -27,31 +30,37 @@ export function GoalSetter() {
     try {
       const savedData = localStorage.getItem("goalData")
       if (savedData) {
-        const { goal, priority, priorityDate } = JSON.parse(savedData) as SavedData
-
+        const { goal, priority, completed } = JSON.parse(savedData) as SavedData
+        
         if (goal) {
           setSavedGoal(goal)
           setTempGoal(goal)
         }
-
-        const today = new Date().toDateString()
-        if (priority && priorityDate === today) {
+        
+        if (priority) {
           setSavedPriority(priority)
           setTempPriority(priority)
         }
+
+        setIsCompleted(completed || false)
       }
     } catch (error) {
       console.error("Error loading saved data:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load saved data",
+        variant: "destructive",
+      })
     }
-  }, [])
+  }, [toast])
 
   // Save all data to localStorage
-  const saveData = (newGoal?: string, newPriority?: string) => {
-    const today = new Date().toDateString()
+  const saveData = (newGoal?: string, newPriority?: string, completed?: boolean) => {
     const data: SavedData = {
       goal: newGoal ?? savedGoal,
       priority: newPriority ?? savedPriority,
-      priorityDate: today,
+      completed: completed ?? isCompleted,
+      lastModified: new Date().toISOString(),
     }
     localStorage.setItem("goalData", JSON.stringify(data))
   }
@@ -114,12 +123,53 @@ export function GoalSetter() {
     })
   }
 
+  const toggleCompletion = () => {
+    const newCompleted = !isCompleted
+    setIsCompleted(newCompleted)
+    saveData(undefined, undefined, newCompleted)
+    toast({
+      title: newCompleted ? "Goal Completed" : "Goal Reopened",
+      description: newCompleted ? "Congratulations!" : "Keep working towards your goal!",
+    })
+  }
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center space-x-2">
-          <Target className="h-5 w-5" />
-          <h2 className="text-xl font-semibold">Focus & Priority</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Target className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Focus & Priority</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            {savedGoal && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`flex items-center gap-1 ${isCompleted ? 'text-green-600' : ''}`}
+                  onClick={toggleCompletion}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {isCompleted ? 'Completed' : 'Mark Complete'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    exportGoalsToCSV()
+                    toast({
+                      title: "Goals Exported",
+                      description: "Your goals have been exported to CSV",
+                    })
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -166,7 +216,9 @@ export function GoalSetter() {
               </div>
             ) : (
               <div className="rounded-lg bg-primary/5 p-4 border border-primary/10">
-                <p className="text-lg font-medium">{savedGoal}</p>
+                <p className={`text-lg font-medium ${isCompleted ? 'text-muted-foreground line-through' : ''}`}>
+                  {savedGoal}
+                </p>
               </div>
             )}
           </div>
