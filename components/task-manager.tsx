@@ -2,21 +2,19 @@
 
 import { TaskInput } from "@/components/task-input"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 import { exportTasksToCSV } from "@/lib/export-utils"
-
-interface Task {
-  id: string
-  text: string
-  quadrant: "q1" | "q2" | "q3" | "q4"
-  completed: boolean
-}
+import { Task } from "@/types/task"
+import { ReflectionCard } from "@/components/ui/reflection-card"
+import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
+import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 
 export function TaskManager() {
-  const [tasks, setTasks] = useState<Task[]>([])
+  const { tasks, addTask, updateTask, deleteTask, toggleTask } = useTaskManagement()
+  const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem()
   const { toast } = useToast()
 
   // Load tasks from localStorage on mount
@@ -24,7 +22,12 @@ export function TaskManager() {
     const savedTasks = localStorage.getItem("tasks")
     if (savedTasks) {
       try {
-        setTasks(JSON.parse(savedTasks))
+        const parsedTasks = JSON.parse(savedTasks)
+        parsedTasks.forEach((task: Task) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { id, createdAt, updatedAt, ...taskData } = task;
+          addTask(taskData);
+        })
       } catch (error) {
         console.error("Error loading tasks:", error)
       }
@@ -36,17 +39,13 @@ export function TaskManager() {
     localStorage.setItem("tasks", JSON.stringify(tasks))
   }, [tasks])
 
-  const addTask = async (text: string) => {
-    // Default to q4 initially
-    const newTask: Task = {
-      id: Date.now().toString(),
+  const handleAddTask = async (text: string) => {
+    const newTask = addTask({
       text,
       quadrant: "q4",
       completed: false,
-    }
-
-    // Add the task immediately for better UX
-    setTasks((prev) => [...prev, newTask])
+      needsReflection: true
+    })
 
     try {
       const response = await fetch("/api/categorize", {
@@ -69,7 +68,15 @@ export function TaskManager() {
 
       // Update the task's quadrant based on AI categorization
       if (data.category) {
-        setTasks((prev) => prev.map((t) => (t.id === newTask.id ? { ...t, quadrant: data.category } : t)))
+        const needsReflection = data.category === "q3" || data.category === "q4"
+        updateTask(newTask.id, {
+          quadrant: data.category,
+          needsReflection
+        })
+
+        if (needsReflection) {
+          startReflection(newTask)
+        }
 
         if (data.category !== "q4") {
           toast({
@@ -78,7 +85,7 @@ export function TaskManager() {
           })
         }
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Task Added",
         description: "Could not auto-categorize task. Placed in Not Urgent & Not Important.",
@@ -87,13 +94,7 @@ export function TaskManager() {
     }
   }
 
-  const toggleTask = (id: string) => {
-    setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)))
-  }
 
-  const deleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id))
-  }
 
   const getQuadrantTitle = (quadrant: Task["quadrant"]): string => {
     const titles = {
@@ -105,11 +106,45 @@ export function TaskManager() {
     return titles[quadrant]
   }
 
+  const handleReflection = async (taskId: string, justification: string) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return
+
+    try {
+      const result = await submitReflection(justification)
+      if (!result) return
+
+      const { reflection: taskReflection } = result
+
+      updateTask(taskId, {
+        needsReflection: false,
+        quadrant: taskReflection.suggestedQuadrant || task.quadrant,
+        reflection: {
+          content: justification,
+          ...taskReflection,
+        },
+        updatedAt: new Date().toISOString()
+      })
+
+      toast({
+        title: "Task Updated",
+        description: taskReflection.feedback || "Task has been recategorized based on your reflection",
+      })
+    } catch (error) {
+      console.error("Error handling reflection:", error)
+      toast({
+        title: "Error",
+        description: "Failed to process reflection",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center gap-4">
         <div className="flex-1">
-          <TaskInput onAddTask={addTask} />
+          <TaskInput onAddTask={handleAddTask} />
         </div>
         {tasks.length > 0 && (
           <Button
@@ -128,8 +163,21 @@ export function TaskManager() {
           </Button>
         )}
       </div>
-      <EisenhowerMatrix tasks={tasks} onToggleTask={toggleTask} onDeleteTask={deleteTask} />
+      <EisenhowerMatrix 
+        tasks={tasks} 
+        onToggleTask={toggleTask} 
+        onDeleteTask={deleteTask} 
+        onReflectionRequested={startReflection}
+      />
+      {reflectingTask && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <ReflectionCard
+            task={reflectingTask}
+            onClose={cancelReflection}
+            onReflectionComplete={handleReflection}
+          />
+        </div>
+      )}
     </div>
   )
 }
-

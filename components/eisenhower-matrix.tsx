@@ -2,23 +2,22 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { ReflectionBadge } from "@/components/ui/reflection-badge"
+import { Task } from "@/types/task"
 
-interface Task {
-  id: string
-  text: string
-  quadrant: "q1" | "q2" | "q3" | "q4"
-  completed: boolean
-}
+
 
 interface QuadrantProps {
   title: string
   tasks: Task[]
   onToggleTask: (id: string) => void
   onDeleteTask: (id: string) => void
+  onReflectionRequested?: (task: Task) => void
   className?: string
 }
 
-function Quadrant({ title, tasks, onToggleTask, onDeleteTask, className }: QuadrantProps) {
+function Quadrant({ title, tasks, onToggleTask, onDeleteTask, onReflectionRequested, className }: QuadrantProps) {
+  console.log('[Quadrant] Rendering with tasks:', tasks.length, 'needsReflection:', tasks.filter(t => t.needsReflection).length);
   return (
     <Card className={cn("h-[300px] overflow-y-auto transition-colors", className)}>
       <CardHeader>
@@ -34,7 +33,12 @@ function Quadrant({ title, tasks, onToggleTask, onDeleteTask, className }: Quadr
                 onChange={() => onToggleTask(task.id)}
                 className="h-4 w-4 rounded border-gray-300"
               />
-              <span className={task.completed ? "line-through text-muted-foreground" : ""}>{task.text}</span>
+              <div className="flex-1 flex items-center gap-2">
+                <span className={task.completed ? "line-through text-muted-foreground" : ""}>{task.text}</span>
+                {task.needsReflection && onReflectionRequested && (
+                  <ReflectionBadge onClick={() => onReflectionRequested(task)} />
+                )}
+              </div>
               <Button variant="ghost" size="sm" onClick={() => onDeleteTask(task.id)} className="ml-auto h-6 w-6 p-0">
                 ×
               </Button>
@@ -50,9 +54,10 @@ interface EisenhowerMatrixProps {
   tasks: Task[]
   onToggleTask: (id: string) => void
   onDeleteTask: (id: string) => void
+  onReflectionRequested?: (task: Task) => void
 }
 
-export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask }: EisenhowerMatrixProps) {
+export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask, onReflectionRequested }: EisenhowerMatrixProps) {
   const getQuadrantTasks = (quadrant: Task["quadrant"]) => tasks.filter((task) => task.quadrant === quadrant)
 
   return (
@@ -62,6 +67,7 @@ export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask }: Eisenhow
         tasks={getQuadrantTasks("q1")}
         onToggleTask={onToggleTask}
         onDeleteTask={onDeleteTask}
+        onReflectionRequested={onReflectionRequested}
         className="bg-red-50 hover:bg-red-100/80 border-red-100"
       />
       <Quadrant
@@ -69,6 +75,7 @@ export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask }: Eisenhow
         tasks={getQuadrantTasks("q2")}
         onToggleTask={onToggleTask}
         onDeleteTask={onDeleteTask}
+        onReflectionRequested={onReflectionRequested}
         className="bg-green-50 hover:bg-green-100/80 border-green-100"
       />
       <Quadrant
@@ -76,6 +83,7 @@ export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask }: Eisenhow
         tasks={getQuadrantTasks("q3")}
         onToggleTask={onToggleTask}
         onDeleteTask={onDeleteTask}
+        onReflectionRequested={onReflectionRequested}
         className="bg-yellow-50 hover:bg-yellow-100/80 border-yellow-100"
       />
       <Quadrant
@@ -83,6 +91,7 @@ export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask }: Eisenhow
         tasks={getQuadrantTasks("q4")}
         onToggleTask={onToggleTask}
         onDeleteTask={onDeleteTask}
+        onReflectionRequested={onReflectionRequested}
         className="bg-gray-50 hover:bg-gray-100/80 border-gray-100"
       />
     </div>
