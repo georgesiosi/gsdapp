@@ -44,7 +44,7 @@ export function TaskManager() {
       text,
       quadrant: "q4",
       completed: false,
-      needsReflection: true
+      needsReflection: false
     })
 
     try {
@@ -75,7 +75,8 @@ export function TaskManager() {
         })
 
         if (needsReflection) {
-          startReflection(newTask)
+          const updatedTask = tasks.find(t => t.id === newTask.id);
+          if (updatedTask) startReflection(updatedTask);
         }
 
         if (data.category !== "q4") {
@@ -168,6 +169,26 @@ export function TaskManager() {
         onToggleTask={toggleTask} 
         onDeleteTask={deleteTask} 
         onReflectionRequested={startReflection}
+        onMoveTask={(taskId, newQuadrant) => {
+          const task = tasks.find(t => t.id === taskId);
+          if (!task) return;
+
+          const needsReflection = (newQuadrant === "q3" || newQuadrant === "q4");
+          updateTask(taskId, { 
+            quadrant: newQuadrant,
+            needsReflection
+          });
+
+          if (needsReflection) {
+            const updatedTask = tasks.find(t => t.id === taskId);
+            if (updatedTask) startReflection(updatedTask);
+          }
+
+          toast({
+            title: "Task Moved",
+            description: `Task moved to ${getQuadrantTitle(newQuadrant)}`,
+          });
+        }}
       />
       {reflectingTask && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">

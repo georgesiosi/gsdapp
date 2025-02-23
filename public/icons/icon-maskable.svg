@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#000000"/>
+  
+  <!-- Grid lines - with more padding -->
+  <line x1="256" y1="100" x2="256" y2="412" stroke="white" stroke-width="8"/>
+  <line x1="100" y1="256" x2="412" y2="256" stroke="white" stroke-width="8"/>
+  
+  <!-- Quadrant labels - scaled down and moved inward -->
+  <circle cx="178" cy="178" r="35" fill="#FF4444" fill-opacity="0.9"/>
+  <circle cx="334" cy="178" r="35" fill="#44FF44" fill-opacity="0.9"/>
+  <circle cx="178" cy="334" r="35" fill="#FFFF44" fill-opacity="0.9"/>
+  <circle cx="334" cy="334" r="35" fill="#888888" fill-opacity="0.9"/>
+</svg>
