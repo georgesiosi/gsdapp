@@ -56,13 +56,22 @@ export function GoalSetter() {
 
   // Save all data to localStorage
   const saveData = (newGoal?: string, newPriority?: string, completed?: boolean) => {
+    const goal = newGoal ?? savedGoal;
+    const priority = newPriority ?? savedPriority;
+    
     const data: SavedData = {
-      goal: newGoal ?? savedGoal,
-      priority: newPriority ?? savedPriority,
+      goal,
+      priority,
       completed: completed ?? isCompleted,
       lastModified: new Date().toISOString(),
     }
+    
+    // Save the combined data
     localStorage.setItem("goalData", JSON.stringify(data))
+    
+    // Also save individual items for API access
+    localStorage.setItem("savedGoal", goal)
+    localStorage.setItem("savedPriority", priority)
   }
 
   const handleStartEditingGoal = () => {
