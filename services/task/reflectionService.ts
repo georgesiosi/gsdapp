@@ -15,14 +15,13 @@ export class ReflectionService {
   }
 
   async analyzeReflection(task: Task, reflection: string): Promise<TaskReflection> {
-    const analysis = await this.aiProvider.analyzeReflection(task.description, reflection);
+    const analysis = await this.aiProvider.analyzeReflection(task.text, reflection);
     
     return {
       content: reflection,
-      isAligned: analysis.isAligned,
       feedback: analysis.feedback,
       suggestedQuadrant: analysis.suggestedQuadrant,
-      createdAt: new Date().toISOString(),
+      reflectedAt: new Date().toISOString(),
     };
   }
 }

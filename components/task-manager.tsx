@@ -32,7 +32,7 @@ export function TaskManager() {
         console.error("Error loading tasks:", error)
       }
     }
-  }, [])
+  }, [addTask])
 
   // Save tasks to localStorage whenever they change
   useEffect(() => {
@@ -53,11 +53,7 @@ export function TaskManager() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          task: text,
-          goal: localStorage.getItem("mainGoal") || "",
-          priority: localStorage.getItem("dailyPriority") || "",
-        }),
+        body: JSON.stringify({ text }),
       })
 
       if (!response.ok) {
@@ -65,139 +61,64 @@ export function TaskManager() {
       }
 
       const data = await response.json()
-
-      // Update the task's quadrant based on AI categorization
-      if (data.category) {
-        const needsReflection = data.category === "q3" || data.category === "q4"
+      
+      // Update the task with the AI-suggested quadrant
+      if (data.quadrant && newTask) {
         updateTask(newTask.id, {
-          quadrant: data.category,
-          needsReflection
+          quadrant: data.quadrant
         })
-
-        if (needsReflection) {
-          const updatedTask = tasks.find(t => t.id === newTask.id);
-          if (updatedTask) startReflection(updatedTask);
-        }
-
-        if (data.category !== "q4") {
-          toast({
-            title: "Task Categorized",
-            description: `Task placed in ${getQuadrantTitle(data.category)} based on your goal and priority`,
-          })
-        }
       }
-    } catch {
-      toast({
-        title: "Task Added",
-        description: "Could not auto-categorize task. Placed in Not Urgent & Not Important.",
-        variant: "destructive",
-      })
-    }
-  }
-
-
-
-  const getQuadrantTitle = (quadrant: Task["quadrant"]): string => {
-    const titles = {
-      q1: "Urgent & Important",
-      q2: "Important, Not Urgent",
-      q3: "Urgent, Not Important",
-      q4: "Not Urgent & Not Important",
-    }
-    return titles[quadrant]
-  }
-
-  const handleReflection = async (taskId: string, justification: string) => {
-    const task = tasks.find(t => t.id === taskId)
-    if (!task) return
-
-    try {
-      const result = await submitReflection(justification)
-      if (!result) return
-
-      const { reflection: taskReflection } = result
-
-      updateTask(taskId, {
-        needsReflection: false,
-        quadrant: taskReflection.suggestedQuadrant || task.quadrant,
-        reflection: {
-          content: justification,
-          ...taskReflection,
-        },
-        updatedAt: new Date().toISOString()
-      })
-
-      toast({
-        title: "Task Updated",
-        description: taskReflection.feedback || "Task has been recategorized based on your reflection",
-      })
     } catch (error) {
-      console.error("Error handling reflection:", error)
-      toast({
-        title: "Error",
-        description: "Failed to process reflection",
-        variant: "destructive",
-      })
+      console.error("Error categorizing task:", error)
+      // Task is already added with default quadrant, so we don't need to handle this error
     }
+  }
+
+  const handleMoveTask = (taskId: string, newQuadrant: string) => {
+    updateTask(taskId, { quadrant: newQuadrant })
+  }
+
+  const handleExportTasks = () => {
+    exportTasksToCSV(tasks)
+    toast({
+      title: "Tasks Exported",
+      description: "Your tasks have been exported to CSV",
+    })
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center gap-4">
+    <div>
+      <div className="flex justify-between items-center gap-3 mb-3">
         <div className="flex-1">
           <TaskInput onAddTask={handleAddTask} />
         </div>
-        {tasks.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              exportTasksToCSV()
-              toast({
-                title: "Tasks Exported",
-                description: "Your tasks have been exported to CSV",
-              })
-            }}
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export Tasks
-          </Button>
-        )}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleExportTasks}
+          className="h-9 text-xs"
+        >
+          <Download className="h-3.5 w-3.5 mr-1" />
+          Export
+        </Button>
       </div>
-      <EisenhowerMatrix 
-        tasks={tasks} 
-        onToggleTask={toggleTask} 
-        onDeleteTask={deleteTask} 
-        onReflectionRequested={startReflection}
-        onMoveTask={(taskId, newQuadrant) => {
-          const task = tasks.find(t => t.id === taskId);
-          if (!task) return;
 
-          const needsReflection = (newQuadrant === "q3" || newQuadrant === "q4");
-          updateTask(taskId, { 
-            quadrant: newQuadrant,
-            needsReflection
-          });
+      <div className="mt-4">
+        <EisenhowerMatrix
+          tasks={tasks}
+          onToggleTask={toggleTask}
+          onDeleteTask={deleteTask}
+          onReflectionRequested={startReflection}
+          onMoveTask={handleMoveTask}
+        />
+      </div>
 
-          if (needsReflection) {
-            const updatedTask = tasks.find(t => t.id === taskId);
-            if (updatedTask) startReflection(updatedTask);
-          }
-
-          toast({
-            title: "Task Moved",
-            description: `Task moved to ${getQuadrantTitle(newQuadrant)}`,
-          });
-        }}
-      />
       {reflectingTask && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <ReflectionCard
-            task={reflectingTask}
-            onClose={cancelReflection}
-            onReflectionComplete={handleReflection}
-          />
-        </div>
+        <ReflectionCard
+          task={reflectingTask}
+          onSubmit={submitReflection}
+          onCancel={cancelReflection}
+        />
       )}
     </div>
   )

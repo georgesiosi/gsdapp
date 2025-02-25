@@ -12,7 +12,7 @@ interface ExportableTask {
   completed: boolean
 }
 
-export function convertToCSV(data: any[], headers: string[]): string {
+export function convertToCSV<T extends Record<string, unknown>>(data: T[], headers: string[]): string {
   const csvRows = []
   
   // Add headers
@@ -67,13 +67,9 @@ function downloadCSV(csvContent: string, filename: string): void {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
   
-  if (navigator.msSaveBlob) { // IE 10+
-    navigator.msSaveBlob(blob, filename)
-  } else {
-    link.href = URL.createObjectURL(blob)
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+  link.href = URL.createObjectURL(blob)
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }

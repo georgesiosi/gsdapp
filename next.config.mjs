@@ -5,6 +5,9 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
   },
+  env: {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  },
   headers: async () => {
     return [
       {

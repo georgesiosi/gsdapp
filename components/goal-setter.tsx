@@ -133,57 +133,59 @@ export function GoalSetter() {
     })
   }
 
+  const handleExportGoals = () => {
+    exportGoalsToCSV()
+    toast({
+      title: "Goals Exported",
+      description: "Your goals have been exported to CSV",
+    })
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Target className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Focus & Priority</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {savedGoal && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`flex items-center gap-1 ${isCompleted ? 'text-green-600' : ''}`}
-                  onClick={toggleCompletion}
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  {isCompleted ? 'Completed' : 'Mark Complete'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    exportGoalsToCSV()
-                    toast({
-                      title: "Goals Exported",
-                      description: "Your goals have been exported to CSV",
-                    })
-                  }}
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  Export
-                </Button>
-              </>
-            )}
-          </div>
+    <div className="goal-setter-container">
+      <div className="goal-setter-header">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-gray-500" />
+          <h3 className="text-sm font-medium text-gray-900">Focus & Priority</h3>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 md:grid-cols-[1fr,auto,1fr] md:gap-2 md:items-start">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={toggleCompletion}
+            className="text-xs text-gray-500 hover:text-gray-900"
+          >
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+            Mark Complete
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleExportGoals} 
+            className="text-xs text-gray-500 hover:text-gray-900"
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </Button>
+        </div>
+      </div>
+      <div className="goal-setter-content">
+        <div className="grid grid-cols-2 gap-4">
           {/* Main Goal Section */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Flag className="h-4 w-4 text-primary" />
-                <h3 className="font-medium">I want to...</h3>
+              <div className="flex items-center gap-2">
+                <Flag className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-500">I want to...</span>
               </div>
               {savedGoal && !isEditingGoal && (
-                <Button variant="ghost" size="sm" onClick={handleStartEditingGoal}>
-                  <Pencil className="h-4 w-4 mr-2" />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleStartEditingGoal} 
+                  className="text-xs text-gray-500 hover:text-gray-900"
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
                   Edit Goal
                 </Button>
               )}
@@ -200,55 +202,50 @@ export function GoalSetter() {
                       saveGoal()
                     }
                   }}
-                  className="text-lg"
+                  className="text-sm bg-gray-50"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={saveGoal} className="flex-1" size="lg">
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Set This Goal
+                  <Button 
+                    onClick={saveGoal} 
+                    className="flex-1 text-xs bg-gray-900 hover:bg-gray-800"
+                  >
+                    Set Goal
                   </Button>
                   {savedGoal && (
-                    <Button variant="outline" onClick={handleCancelEditingGoal}>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleCancelEditingGoal} 
+                      className="text-xs"
+                    >
                       Cancel
                     </Button>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="rounded-lg bg-primary/5 p-4 border border-primary/10">
-                <p className={`text-lg font-medium ${isCompleted ? 'text-muted-foreground line-through' : ''}`}>
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className={`text-sm ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
                   {savedGoal}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Visual Connection for Mobile */}
-          <div className="flex justify-center md:hidden">
-            <div className="flex flex-col items-center space-y-2 text-muted-foreground">
-              <ArrowRight className="h-6 w-6 rotate-90 animate-bounce" />
-              <span className="text-sm">Today's Priority</span>
-            </div>
-          </div>
-
-          {/* Visual Connection for Desktop */}
-          <div className="hidden md:flex md:items-center md:justify-center md:px-4 md:self-center">
-            <div className="flex items-center space-x-2 text-muted-foreground">
-              <ArrowRight className="h-6 w-6 animate-bounce" />
-              <span className="text-sm whitespace-nowrap">Today's Priority</span>
-            </div>
-          </div>
-
-          {/* Daily Priority Section */}
-          <div className="space-y-4">
+          {/* Today's Priority Section */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-primary" />
-                <h3 className="font-medium">To achieve this, today I will...</h3>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-500">To achieve this, today I will...</span>
               </div>
               {savedPriority && !isEditingPriority && (
-                <Button variant="ghost" size="sm" onClick={handleStartEditingPriority}>
-                  <Pencil className="h-4 w-4 mr-2" />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleStartEditingPriority} 
+                  className="text-xs text-gray-500 hover:text-gray-900"
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
                   Edit Priority
                 </Button>
               )}
@@ -257,41 +254,42 @@ export function GoalSetter() {
             {!savedPriority || isEditingPriority ? (
               <div className="space-y-2">
                 <Input
-                  placeholder="e.g., Complete the user authentication system"
+                  placeholder="e.g., Complete the landing page design"
                   value={tempPriority}
                   onChange={(e) => setTempPriority(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && savedGoal) {
+                    if (e.key === "Enter") {
                       savePriority()
                     }
                   }}
-                  disabled={!savedGoal}
-                  className="text-lg"
+                  className="text-sm bg-gray-50"
                 />
-                <p className="text-sm text-muted-foreground italic">
-                  Focus on one key task that moves you closer to your goal
-                </p>
                 <div className="flex gap-2">
-                  <Button onClick={savePriority} className="flex-1" disabled={!savedGoal} size="lg">
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Set Today's Priority
+                  <Button 
+                    onClick={savePriority} 
+                    className="flex-1 text-xs bg-gray-900 hover:bg-gray-800"
+                  >
+                    Set Priority
                   </Button>
                   {savedPriority && (
-                    <Button variant="outline" onClick={handleCancelEditingPriority}>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleCancelEditingPriority} 
+                      className="text-xs"
+                    >
                       Cancel
                     </Button>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="rounded-lg bg-primary/10 p-4 border border-primary/20">
-                <p className="text-lg font-medium">{savedPriority}</p>
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-700">{savedPriority}</p>
               </div>
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
-

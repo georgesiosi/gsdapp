@@ -1,12 +1,9 @@
 "use client"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { ReflectionBadge } from "@/components/ui/reflection-badge"
 import { Task, QuadrantType } from "@/types/task"
 import { DragEvent } from "react"
-
-
 
 interface QuadrantProps {
   title: string
@@ -22,8 +19,8 @@ interface QuadrantProps {
 function Quadrant({ title, quadrantId, tasks, onToggleTask, onDeleteTask, onReflectionRequested, onMoveTask, className }: QuadrantProps) {
   console.log('[Quadrant] Rendering with tasks:', tasks.length, 'needsReflection:', tasks.filter(t => t.needsReflection).length);
   return (
-    <Card 
-      className={cn("h-[300px] overflow-y-auto transition-colors", className)}
+    <div 
+      className={cn("quadrant", className)}
       onDragOver={(e: DragEvent) => {
         e.preventDefault();
         e.currentTarget.classList.add('border-2', 'border-primary');
@@ -40,40 +37,63 @@ function Quadrant({ title, quadrantId, tasks, onToggleTask, onDeleteTask, onRefl
         }
       }}
     >
-      <CardHeader>
-        <h3 className="font-semibold">{title}</h3>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-2">
-          {tasks.map((task) => (
-            <li 
-              key={task.id} 
-              className="flex items-center gap-2 cursor-move"
-              draggable
-              onDragStart={(e: DragEvent) => {
-                e.dataTransfer.setData('text/plain', task.id);
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={task.completed}
-                onChange={() => onToggleTask(task.id)}
-                className="h-4 w-4 rounded border-gray-300"
-              />
-              <div className="flex-1 flex items-center gap-2">
-                <span className={task.completed ? "line-through text-muted-foreground" : ""}>{task.text}</span>
-                {task.needsReflection && onReflectionRequested && (
-                  <ReflectionBadge onClick={() => onReflectionRequested(task)} />
-                )}
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => onDeleteTask(task.id)} className="ml-auto h-6 w-6 p-0">
-                ×
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+      <div className="flex items-center justify-between p-3 border-b border-gray-200">
+        <h3 className="text-sm font-medium text-gray-900">{title}</h3>
+        <span className="text-xs text-gray-500">{tasks.length} tasks</span>
+      </div>
+      <div className="quadrant-content">
+        {tasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center py-6">
+            <p className="text-xs text-muted-foreground">No tasks yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Drag tasks here or add new ones</p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {tasks.map((task) => (
+              <li 
+                key={task.id} 
+                className="task-item"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/plain', task.id);
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={task.completed}
+                  onChange={() => onToggleTask(task.id)}
+                  className="task-checkbox"
+                />
+                <span className={cn("task-text", task.completed && "completed")}>
+                  {task.text}
+                  {task.needsReflection && onReflectionRequested && (
+                    <ReflectionBadge 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReflectionRequested(task);
+                      }}
+                    />
+                  )}
+                </span>
+                <div className="task-actions">
+                  <button
+                    onClick={() => onDeleteTask(task.id)}
+                    className="task-action-button delete-button"
+                    aria-label="Delete task"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -89,7 +109,7 @@ export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask, onReflecti
   const getQuadrantTasks = (quadrant: Task["quadrant"]) => tasks.filter((task) => task.quadrant === quadrant)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 gap-4">
       <Quadrant
         title="Urgent & Important"
         quadrantId="q1"
@@ -98,7 +118,7 @@ export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask, onReflecti
         onDeleteTask={onDeleteTask}
         onReflectionRequested={onReflectionRequested}
         onMoveTask={onMoveTask}
-        className="bg-red-50 hover:bg-red-100/80 border-red-100"
+        className="quadrant-urgent-important"
       />
       <Quadrant
         title="Important, Not Urgent"
@@ -108,7 +128,7 @@ export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask, onReflecti
         onDeleteTask={onDeleteTask}
         onReflectionRequested={onReflectionRequested}
         onMoveTask={onMoveTask}
-        className="bg-green-50 hover:bg-green-100/80 border-green-100"
+        className="quadrant-not-urgent-important"
       />
       <Quadrant
         title="Urgent, Not Important"
@@ -118,7 +138,7 @@ export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask, onReflecti
         onDeleteTask={onDeleteTask}
         onReflectionRequested={onReflectionRequested}
         onMoveTask={onMoveTask}
-        className="bg-yellow-50 hover:bg-yellow-100/80 border-yellow-100"
+        className="quadrant-urgent-not-important"
       />
       <Quadrant
         title="Not Urgent & Not Important"
@@ -128,7 +148,7 @@ export function EisenhowerMatrix({ tasks, onToggleTask, onDeleteTask, onReflecti
         onDeleteTask={onDeleteTask}
         onReflectionRequested={onReflectionRequested}
         onMoveTask={onMoveTask}
-        className="bg-gray-50 hover:bg-gray-100/80 border-gray-100"
+        className="quadrant-not-urgent-not-important"
       />
     </div>
   )

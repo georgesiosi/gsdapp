@@ -10,7 +10,7 @@ export function useTaskManagement() {
     const newTask = taskService.createTask(taskData);
     setTasks(prev => [...prev, newTask]);
     return newTask;
-  }, []);
+  }, [taskService]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
     setTasks(prev => {
@@ -22,11 +22,11 @@ export function useTaskManagement() {
       newTasks[taskIndex] = updatedTask;
       return newTasks;
     });
-  }, []);
+  }, [taskService]);
 
   const deleteTask = useCallback((id: string) => {
     setTasks(prev => prev.filter(task => task.id !== id));
-  }, []);
+  }, [taskService]);
 
   const toggleTask = useCallback((id: string) => {
     setTasks(prev => {
@@ -39,7 +39,7 @@ export function useTaskManagement() {
       newTasks[taskIndex] = updatedTask;
       return newTasks;
     });
-  }, []);
+  }, [taskService]);
 
   return {
     tasks,

@@ -1,21 +1,25 @@
-import { Configuration, OpenAIApi } from "openai-edge"
+import OpenAI from 'openai'
 import { NextResponse } from "next/server"
 
-// Create an OpenAI API client (that's edge friendly!)
-const config = new Configuration({
+// Initialize OpenAI client
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
-const openai = new OpenAIApi(config)
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OpenAI API key is missing');
+      return NextResponse.json({ error: 'OpenAI API key is not configured' }, { status: 500 });
+    }
+    
     const { task, goal, priority } = await req.json()
 
     if (!task) {
       return NextResponse.json({ error: "Task is required" }, { status: 400 })
     }
 
-    const response = await openai.createChatCompletion({
+    const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
@@ -42,8 +46,7 @@ export async function POST(req: Request) {
       max_tokens: 10,
     })
 
-    const data = await response.json()
-    const category = data.choices[0]?.message?.content?.trim().toLowerCase()
+    const category = response.choices[0]?.message?.content?.trim().toLowerCase();
 
     if (!category || !["q1", "q2", "q3", "q4"].includes(category)) {
       return NextResponse.json({ category: "q4" })
@@ -55,4 +58,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to categorize task", category: "q4" }, { status: 500 })
   }
 }
-

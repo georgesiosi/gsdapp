@@ -1,16 +1,27 @@
 import * as React from "react"
 
-import { cn } from "@/lib/utils"
+const inputStyles = {
+  height: '2.25rem',
+  width: '100%',
+  borderRadius: '0.375rem',
+  border: '1px solid #e2e8f0',
+  backgroundColor: 'transparent',
+  paddingLeft: '0.75rem',
+  paddingRight: '0.75rem',
+  paddingTop: '0.25rem',
+  paddingBottom: '0.25rem',
+  fontSize: '1rem',
+  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+  transition: 'border-color 150ms ease, box-shadow 150ms ease',
+  outline: 'none',
+}
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
+  ({ style, type, ...props }, ref) => {
     return (
       <input
         type={type}
-        className={cn(
-          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-          className
-        )}
+        style={{ ...inputStyles, ...style }}
         ref={ref}
         {...props}
       />

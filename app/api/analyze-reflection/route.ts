@@ -9,6 +9,11 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OpenAI API key is missing');
+      return NextResponse.json({ error: 'OpenAI API key is not configured' }, { status: 500 });
+    }
+    
     const { task, justification, goal, priority, currentQuadrant } = await req.json()
 
     const response = await openai.chat.completions.create({
@@ -55,6 +60,7 @@ export async function POST(req: Request) {
       suggestion: result.suggestion
     })
   } catch (error) {
+    console.error('Error in analyze-reflection route:', error);
     console.error("Error analyzing reflection:", error)
     return NextResponse.json(
       { error: "Failed to analyze reflection" },

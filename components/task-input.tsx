@@ -1,11 +1,7 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Plus } from "lucide-react"
 
 interface TaskInputProps {
@@ -27,26 +23,47 @@ export function TaskInput({ onAddTask }: TaskInputProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <h3 className="font-semibold">Add New Task</h3>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
+    <div className="task-input-container">
+      <div className="task-input-header">Add New Task</div>
+      <div className="task-input-content">
+        <form onSubmit={handleSubmit} className="task-input-form">
+          <input
+            type="text"
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
             placeholder="What needs to be done?"
-            className="flex-1"
+            className="task-input"
             disabled={isSubmitting}
           />
-          <Button type="submit" disabled={isSubmitting}>
-            <Plus className="h-4 w-4 mr-2" />
+          <button 
+            type="submit" 
+            className="add-task-button" 
+            disabled={isSubmitting}
+          >
+            <Plus size={14} className="mr-1" />
             Add Task
-          </Button>
+          </button>
         </form>
-      </CardContent>
-    </Card>
+        <button className="export-button">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="mr-1"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          Export Tasks
+        </button>
+      </div>
+    </div>
   )
 }
-

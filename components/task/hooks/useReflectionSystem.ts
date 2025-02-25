@@ -10,7 +10,7 @@ export function useReflectionSystem() {
     if (reflectionService.needsReflection(task)) {
       setReflectingTask(task);
     }
-  }, []);
+  }, [reflectionService]);
 
   const submitReflection = useCallback(async (reflection: string) => {
     if (!reflectingTask) return null;
@@ -25,7 +25,7 @@ export function useReflectionSystem() {
       task: reflectingTask,
       reflection: taskReflection,
     };
-  }, [reflectingTask]);
+  }, [reflectingTask, reflectionService]);
 
   const cancelReflection = useCallback(() => {
     setReflectingTask(null);

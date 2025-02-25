@@ -29,8 +29,11 @@ export class OpenAIProvider implements AIProvider {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          taskDescription,
-          reflection,
+          task: taskDescription,
+          justification: reflection,
+          goal: localStorage.getItem('userGoal') || '',
+          priority: localStorage.getItem('userPriority') || '',
+          currentQuadrant: 'q4' // Default to q4 since this is for tasks needing reflection
         }),
       });
 
