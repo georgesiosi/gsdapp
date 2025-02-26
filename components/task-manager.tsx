@@ -1,21 +1,32 @@
 "use client"
 
-import { TaskInput } from "@/components/task-input"
-import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { useEffect, useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
+import { 
+  Download, 
+  Plus, 
+  Settings
+} from "lucide-react"
 import { exportTasksToCSV } from "@/lib/export-utils"
 import { Task, QuadrantType } from "@/types/task"
 import { ReflectionCard } from "@/components/ui/reflection-card"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
+import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
+import { TaskModal } from "@/components/task-modal"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function TaskManager() {
   const { tasks, addTask, updateTask, deleteTask, toggleTask } = useTaskManagement()
   const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem()
   const { toast } = useToast()
+  const [taskModalOpen, setTaskModalOpen] = useState(false)
 
   // Flag to track if tasks are being loaded from localStorage
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
@@ -152,17 +163,33 @@ export function TaskManager() {
   return (
     <div>
       <div className="flex justify-between items-center gap-3 mb-3">
-        <div className="flex-1">
-          <TaskInput onAddTask={handleAddTask} />
+        <h1 className="text-2xl font-bold">Task Manager</h1>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setTaskModalOpen(true)}
+            className="h-9"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Task
+          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                <Settings className="h-4 w-4" />
+                <span className="sr-only">Settings</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportTasks}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Tasks
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={handleExportTasks}
-          className="h-9 text-xs"
-        >
-          <Download className="h-3.5 w-3.5 mr-1" />
-          Export
-        </Button>
       </div>
 
       <div className="mt-4">
@@ -182,6 +209,12 @@ export function TaskManager() {
           onCancel={cancelReflection}
         />
       )}
+
+      <TaskModal 
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        onAddTask={handleAddTask}
+      />
     </div>
   )
 }
