@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 interface TaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddTask: (text: string) => Promise<void>
+  onAddTask: (text: string, quadrant: string) => void
 }
 
 export function TaskModal({ open, onOpenChange, onAddTask }: TaskModalProps) {
@@ -33,7 +33,7 @@ export function TaskModal({ open, onOpenChange, onAddTask }: TaskModalProps) {
     e.preventDefault()
     if (newTask.trim() && !isSubmitting) {
       setIsSubmitting(true)
-      await onAddTask(newTask.trim())
+      onAddTask(newTask.trim(), "q4") // Default to quadrant 4 (not urgent, not important)
       setNewTask("")
       setIsSubmitting(false)
       onOpenChange(false)

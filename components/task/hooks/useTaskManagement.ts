@@ -1,45 +1,144 @@
-import { useState, useCallback } from 'react';
-import { Task } from '@/types/task';
-import { TaskService } from '@/services/task/taskService';
+import { useState, useCallback } from "react"
+import { v4 as uuidv4 } from "uuid"
+import { Task as TaskType } from "@/types/task"
+
+export type QuadrantType = "q1" | "q2" | "q3" | "q4"
+
+export interface Task {
+  id: string
+  text: string
+  quadrant: QuadrantType
+  completed: boolean
+  needsReflection: boolean
+  createdAt: number
+  completedAt?: number
+  updatedAt: number
+}
+
+export type NewTask = Omit<Task, "id" | "createdAt" | "updatedAt">
 
 export function useTaskManagement() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const taskService = new TaskService();
+  const [tasks, setTasks] = useState<Task[]>([])
 
-  const addTask = useCallback((taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTask = taskService.createTask(taskData);
-    setTasks(prev => [...prev, newTask]);
-    return newTask;
-  }, [taskService]);
+  // Set initial tasks from localStorage
+  const setInitialTasks = useCallback((loadedTasks: Task[]) => {
+    try {
+      // Ensure all tasks have required properties
+      const validatedTasks = loadedTasks.filter(task => {
+        if (!task) return false;
+        
+        // Check that task has all required properties
+        const hasRequiredProps = 
+          typeof task.id === 'string' && 
+          typeof task.text === 'string' && 
+          typeof task.quadrant === 'string' && 
+          typeof task.completed === 'boolean' && 
+          typeof task.needsReflection === 'boolean' &&
+          typeof task.createdAt === 'number' &&
+          typeof task.updatedAt === 'number';
+        
+        // Check that quadrant is valid
+        const hasValidQuadrant = ['q1', 'q2', 'q3', 'q4'].includes(task.quadrant);
+        
+        return hasRequiredProps && hasValidQuadrant;
+      });
 
-  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    setTasks(prev => {
-      const taskIndex = prev.findIndex(task => task.id === id);
-      if (taskIndex === -1) return prev;
+      // Set tasks, preserving original IDs and timestamps
+      setTasks(validatedTasks);
+    } catch (error) {
+      console.error("Error setting initial tasks:", error);
+      // Fallback to empty array if there's an error
+      setTasks([]);
+    }
+  }, []);
 
-      const updatedTask = taskService.enrichTaskUpdate(prev[taskIndex], updates);
-      const newTasks = [...prev];
-      newTasks[taskIndex] = updatedTask;
-      return newTasks;
-    });
-  }, [taskService]);
+  // Add a new task
+  const addTask = useCallback((newTask: NewTask): Task | null => {
+    try {
+      const task: Task = {
+        id: uuidv4(),
+        ...newTask,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
 
-  const deleteTask = useCallback((id: string) => {
-    setTasks(prev => prev.filter(task => task.id !== id));
-  }, [taskService]);
+      setTasks(prevTasks => [...prevTasks, task])
+      return task
+    } catch (error) {
+      console.error("Error adding task:", error);
+      return null;
+    }
+  }, [])
 
-  const toggleTask = useCallback((id: string) => {
-    setTasks(prev => {
-      const taskIndex = prev.findIndex(task => task.id === id);
-      if (taskIndex === -1) return prev;
+  // Update a task
+  const updateTask = useCallback((id: string, updates: Partial<Task>): boolean => {
+    try {
+      let taskExists = false;
+      
+      // First check if the task exists
+      taskExists = tasks.some(task => task.id === id);
+      
+      if (taskExists) {
+        setTasks(prevTasks => 
+          prevTasks.map(task => 
+            task.id === id ? { ...task, ...updates, updatedAt: Date.now() } : task
+          )
+        );
+      }
+      
+      return taskExists;
+    } catch (error) {
+      console.error("Error updating task:", error);
+      return false;
+    }
+  }, [tasks])
 
-      const task = prev[taskIndex];
-      const updatedTask = taskService.enrichTaskUpdate(task, { completed: !task.completed });
-      const newTasks = [...prev];
-      newTasks[taskIndex] = updatedTask;
-      return newTasks;
-    });
-  }, [taskService]);
+  // Delete a task
+  const deleteTask = useCallback((id: string): boolean => {
+    try {
+      // First check if the task exists
+      const taskExists = tasks.some(task => task.id === id);
+      
+      if (taskExists) {
+        setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
+      }
+      
+      return taskExists;
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      return false;
+    }
+  }, [tasks])
+
+  // Toggle a task's completed status
+  const toggleTask = useCallback((id: string): boolean => {
+    try {
+      // First check if the task exists
+      const taskExists = tasks.some(task => task.id === id);
+      
+      if (taskExists) {
+        setTasks(prevTasks => 
+          prevTasks.map(task => {
+            if (task.id === id) {
+              const completed = !task.completed;
+              return {
+                ...task,
+                completed,
+                completedAt: completed ? Date.now() : undefined,
+                updatedAt: Date.now(),
+              };
+            }
+            return task;
+          })
+        );
+      }
+      
+      return taskExists;
+    } catch (error) {
+      console.error("Error toggling task:", error);
+      return false;
+    }
+  }, [tasks])
 
   return {
     tasks,
@@ -47,5 +146,6 @@ export function useTaskManagement() {
     updateTask,
     deleteTask,
     toggleTask,
-  };
+    setInitialTasks,
+  }
 }

@@ -9,12 +9,11 @@ import {
   Settings
 } from "lucide-react"
 import { exportTasksToCSV } from "@/lib/export-utils"
-import { Task, QuadrantType } from "@/types/task"
-import { ReflectionCard } from "@/components/ui/reflection-card"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { TaskModal } from "@/components/task-modal"
+import { ReflectionCard } from "@/components/ui/reflection-card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function TaskManager() {
-  const { tasks, addTask, updateTask, deleteTask, toggleTask } = useTaskManagement()
+  const { tasks, addTask, updateTask, deleteTask, toggleTask, setInitialTasks } = useTaskManagement()
   const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem()
   const { toast } = useToast()
   const [taskModalOpen, setTaskModalOpen] = useState(false)
@@ -31,124 +30,109 @@ export function TaskManager() {
   // Flag to track if tasks are being loaded from localStorage
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
 
-  // Load tasks from localStorage on mount - only once
+  // Load tasks from localStorage on mount
   useEffect(() => {
     const loadTasks = () => {
-      const savedTasks = localStorage.getItem("tasks")
-      if (savedTasks) {
-        try {
-          // Set loading flag to prevent saving during initial load
-          setIsLoadingTasks(true);
-          
-          // Parse saved tasks
-          const parsedTasks = JSON.parse(savedTasks) as Task[];
-          
-          // Create a new array of tasks with the same IDs to avoid regenerating them
-          const loadedTasks: Task[] = [];
-          
-          parsedTasks.forEach((task: Task) => {
-            loadedTasks.push({
-              ...task,
-              // Keep the original ID and timestamps
+      try {
+        const savedTasks = localStorage.getItem("tasks");
+        
+        if (savedTasks) {
+          try {
+            // Parse the saved tasks
+            const parsedTasks = JSON.parse(savedTasks);
+            
+            // Convert string dates to numbers and ensure task structure matches the current Task interface
+            const formattedTasks = parsedTasks.map((task: any) => ({
               id: task.id,
-              createdAt: task.createdAt,
-              updatedAt: task.updatedAt
-            });
-          });
-          
-          // Use the useTaskManagement hook's internal setTasks function
-          // This is a workaround since we can't directly access setTasks
-          // We'll clear the tasks first by setting an empty array
-          // Then add each task individually
-          
-          // First, clear any existing tasks by setting an empty array
-          // We do this by calling updateTask on a non-existent ID
-          updateTask("clear-all-tasks", { quadrant: "q4" });
-          
-          // Then add each task individually
-          loadedTasks.forEach(task => {
-            addTask({
               text: task.text,
               quadrant: task.quadrant,
               completed: task.completed,
               needsReflection: task.needsReflection,
-              reflection: task.reflection
+              // Convert string dates to numbers or use current timestamp as fallback
+              createdAt: typeof task.createdAt === 'string' ? new Date(task.createdAt).getTime() : Date.now(),
+              completedAt: task.completedAt ? (typeof task.completedAt === 'string' ? new Date(task.completedAt).getTime() : task.completedAt) : undefined,
+              updatedAt: typeof task.updatedAt === 'string' ? new Date(task.updatedAt).getTime() : Date.now()
+            }));
+            
+            setInitialTasks(formattedTasks);
+          } catch (error) {
+            console.error("Error parsing saved tasks:", error);
+            toast({
+              title: "Error Loading Tasks",
+              description: "There was a problem loading your tasks. Some data may be lost.",
+              variant: "destructive",
             });
-          });
-        } catch (error) {
-          console.error("Error loading tasks:", error)
-        } finally {
-          // Small delay to ensure all tasks are added before enabling saving
-          setTimeout(() => {
-            setIsLoadingTasks(false);
-          }, 500);
+          }
         }
-      } else {
+      } catch (storageError) {
+        console.error("Error accessing localStorage:", storageError);
+        toast({
+          title: "Storage Access Error",
+          description: "Could not access local storage. Your tasks may not be saved.",
+          variant: "destructive",
+        });
+      } finally {
         setIsLoadingTasks(false);
       }
     };
-    
-    // Load tasks only once on mount
+
     loadTasks();
-    
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Empty dependency array to ensure it only runs once
+  }, [setInitialTasks, toast]); // Add toast to dependencies
 
   // Save tasks to localStorage whenever they change
   useEffect(() => {
-    // Only save tasks if we're not in the loading phase
     if (!isLoadingTasks) {
-      localStorage.setItem("tasks", JSON.stringify(tasks))
-    }
-  }, [tasks, isLoadingTasks])
-
-  const handleAddTask = async (text: string) => {
-    const newTask = addTask({
-      text,
-      quadrant: "q4",
-      completed: false,
-      needsReflection: false
-    })
-
-    try {
-      // Get goal and priority from localStorage
-      const goal = localStorage.getItem("savedGoal") || ""
-      const priority = localStorage.getItem("savedPriority") || ""
-
-      const response = await fetch("/api/categorize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ task: text, goal, priority }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to categorize task")
+      try {
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+      } catch (error) {
+        console.error("Error saving tasks to localStorage:", error);
+        toast({
+          title: "Error Saving Tasks",
+          description: "There was a problem saving your tasks. Changes may not persist.",
+          variant: "destructive",
+        });
       }
+    }
+  }, [tasks, isLoadingTasks, toast]); // Add toast to dependencies
 
-      const data = await response.json()
+  const handleAddTask = (text: string, quadrant: string) => {
+    if (!text.trim()) return;
+    
+    try {
+      const newTask = addTask({
+        text,
+        quadrant: quadrant as "q1" | "q2" | "q3" | "q4",
+        completed: false,
+        needsReflection: false,
+      });
       
-      // Update the task with the AI-suggested quadrant
-      if (data.category && newTask) {
-        // Ensure the category is a valid QuadrantType
-        const category = data.category as string;
-        if (["q1", "q2", "q3", "q4"].includes(category)) {
-          updateTask(newTask.id, {
-            quadrant: category as "q1" | "q2" | "q3" | "q4"
-          });
-        }
+      if (newTask) {
+        setTaskModalOpen(false);
+        toast({
+          title: "Task Added",
+          description: "Your new task has been added successfully.",
+        });
+      } else {
+        toast({
+          title: "Error Adding Task",
+          description: "There was a problem adding your task. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error("Error categorizing task:", error)
-      // Task is already added with default quadrant, so we don't need to handle this error
+      console.error("Error in handleAddTask:", error);
+      toast({
+        title: "Error Adding Task",
+        description: "There was a problem adding your task. Please try again.",
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   const handleMoveTask = (taskId: string, newQuadrant: string) => {
     // Ensure the quadrant is a valid QuadrantType
     if (["q1", "q2", "q3", "q4"].includes(newQuadrant)) {
-      updateTask(taskId, { quadrant: newQuadrant as QuadrantType })
+      updateTask(taskId, { quadrant: newQuadrant as "q1" | "q2" | "q3" | "q4" })
     }
   }
 
@@ -167,9 +151,10 @@ export function TaskManager() {
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
-            size="sm"
-            onClick={() => setTaskModalOpen(true)}
-            className="h-9"
+            onClick={() => {
+              setTaskModalOpen(true);
+            }}
+            className="h-9 text-sm px-3 py-2"
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Task
@@ -177,7 +162,11 @@ export function TaskManager() {
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
+              <Button 
+                variant="outline" 
+                className="h-9 text-sm px-3 py-2"
+                type="button"
+              >
                 <Settings className="h-4 w-4" />
                 <span className="sr-only">Settings</span>
               </Button>
@@ -194,7 +183,12 @@ export function TaskManager() {
 
       <div className="mt-4">
         <EisenhowerMatrix
-          tasks={tasks}
+          tasks={tasks.map(task => ({
+            ...task,
+            createdAt: String(task.createdAt),
+            updatedAt: String(task.updatedAt),
+            completedAt: task.completedAt ? String(task.completedAt) : undefined
+          }))}
           onToggleTask={toggleTask}
           onDeleteTask={deleteTask}
           onReflectionRequested={startReflection}

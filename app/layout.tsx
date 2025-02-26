@@ -45,6 +45,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased bg-background text-foreground`}
       >
+        {/* ServiceWorkerRegistration is now only used to unregister service workers */}
         <ServiceWorkerRegistration />
         {children}
       </body>

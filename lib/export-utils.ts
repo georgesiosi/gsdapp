@@ -1,11 +1,11 @@
-interface ExportableGoal {
+interface ExportableGoal extends Record<string, unknown> {
   goal: string
   priority: string
   completed: boolean
   lastModified: string
 }
 
-interface ExportableTask {
+interface ExportableTask extends Record<string, unknown> {
   id: string
   text: string
   quadrant: string
