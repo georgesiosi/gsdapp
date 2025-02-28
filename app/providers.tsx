@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode } from "react"
+import { ReactNode, useEffect } from "react"
 import { Toaster } from "@/components/ui/toaster"
 
 interface ProvidersProps {
@@ -8,6 +8,11 @@ interface ProvidersProps {
 }
 
 export function Providers({ children }: ProvidersProps) {
+  // Ensure light theme by removing 'dark' class if present
+  useEffect(() => {
+    document.documentElement.classList.remove('dark')
+  }, [])
+
   return (
     <>
       {children}
