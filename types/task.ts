@@ -1,5 +1,5 @@
 export type QuadrantType = "q1" | "q2" | "q3" | "q4"
-export type TaskType = "personal" | "work" | undefined
+export type TaskType = "personal" | "work" | "business" | "idea" | undefined
 
 export interface TaskReflection {
   justification: string
