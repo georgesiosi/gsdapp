@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
+import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { 
   Download, 
   Plus, 
-  Settings
+  Settings,
+  LightBulb
 } from "lucide-react"
 import { exportTasksToCSV } from "@/lib/export-utils"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
@@ -16,6 +18,9 @@ import { TaskModal } from "@/components/task-modal"
 import { ReflectionCard } from "@/components/ui/reflection-card"
 import { TaskCompletionConfetti } from "@/components/ui/task-completion-confetti"
 import { VelocityMeters } from "@/components/velocity-meters"
+import ToastNotification from "@/components/ui/toast-notification"
+import IdeaPriorityDialog from "@/components/ideas/idea-priority-dialog"
+import { useRouter } from "next/navigation"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,68 +41,122 @@ export function TaskManager() {
     showConfetti,
     hideConfetti
   } = useTaskManagement()
+  const { addIdea, ideas, setInitialIdeas } = useIdeasManagement()
   const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem()
   const { toast } = useToast()
+  const router = useRouter()
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [isAIThinking, setIsAIThinking] = useState(false)
+  const [ideaDialogOpen, setIdeaDialogOpen] = useState(false)
+  const [currentIdea, setCurrentIdea] = useState({ text: "", taskType: "idea" as const, connectedToPriority: false })
 
   // Flag to track if tasks are being loaded from localStorage
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+  const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
 
   // Load tasks from localStorage on mount
   useEffect(() => {
     const loadTasks = () => {
       try {
         const savedTasks = localStorage.getItem("tasks");
-        
         if (savedTasks) {
-          try {
-            // Parse the saved tasks
-            const parsedTasks = JSON.parse(savedTasks);
-            
-            // Convert string dates to numbers and ensure task structure matches the current Task interface
-            const formattedTasks = parsedTasks.map((task: any) => ({
-              id: task.id,
-              text: task.text,
-              quadrant: task.quadrant,
-              completed: task.completed,
-              needsReflection: task.needsReflection,
-              // Convert string dates to numbers or use current timestamp as fallback
-              createdAt: typeof task.createdAt === 'string' ? new Date(task.createdAt).getTime() : Date.now(),
-              completedAt: task.completedAt ? (typeof task.completedAt === 'string' ? new Date(task.completedAt).getTime() : task.completedAt) : undefined,
-              updatedAt: typeof task.updatedAt === 'string' ? new Date(task.updatedAt).getTime() : Date.now()
-            }));
-            
-            setInitialTasks(formattedTasks);
-          } catch (error) {
-            console.error("Error parsing saved tasks:", error);
-            toast({
-              title: "Error Loading Tasks",
-              description: "There was a problem loading your tasks. Some data may be lost.",
-              variant: "destructive",
-            });
-          }
+          const parsedTasks = JSON.parse(savedTasks);
+          
+          // Debug logging for loaded tasks
+          console.log("[DEBUG] Loading tasks from localStorage:", parsedTasks);
+          console.log("[DEBUG] Task types from localStorage:", parsedTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          
+          // Check if any tasks have work or business type
+          const workTasks = parsedTasks.filter(t => t.taskType === "work" || t.taskType === "business");
+          console.log("[DEBUG] Work/Business tasks in localStorage:", workTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          
+          // Convert string dates to numbers
+          const formattedTasks = parsedTasks.map((task: any) => ({
+            ...task,
+            createdAt: typeof task.createdAt === 'string' ? 
+              (isNaN(Number(task.createdAt)) ? new Date(task.createdAt).getTime() : Number(task.createdAt)) : 
+              task.createdAt,
+            updatedAt: typeof task.updatedAt === 'string' ? 
+              (isNaN(Number(task.updatedAt)) ? new Date(task.updatedAt).getTime() : Number(task.updatedAt)) : 
+              task.updatedAt,
+            completedAt: task.completedAt ? 
+              (typeof task.completedAt === 'string' ? 
+                (isNaN(Number(task.completedAt)) ? new Date(task.completedAt).getTime() : Number(task.completedAt)) : 
+                task.completedAt) : 
+              undefined
+          }));
+          
+          // Debug logging for formatted tasks
+          console.log("[DEBUG] Formatted tasks after loading:", formattedTasks);
+          console.log("[DEBUG] Task types after formatting:", formattedTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          
+          // Check if any tasks have work or business type after formatting
+          const formattedWorkTasks = formattedTasks.filter(t => t.taskType === "work" || t.taskType === "business");
+          console.log("[DEBUG] Work/Business tasks after formatting:", formattedWorkTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          
+          setInitialTasks(formattedTasks);
         }
-      } catch (storageError) {
-        console.error("Error accessing localStorage:", storageError);
-        toast({
-          title: "Storage Access Error",
-          description: "Could not access local storage. Your tasks may not be saved.",
-          variant: "destructive",
-        });
-      } finally {
+        setIsLoadingTasks(false);
+      } catch (error) {
+        console.error("Error loading tasks from localStorage:", error);
         setIsLoadingTasks(false);
       }
     };
-
+    
     loadTasks();
-  }, [setInitialTasks, toast]); // Add toast to dependencies
+  }, [setInitialTasks]);
+
+  // Load ideas from localStorage on mount
+  useEffect(() => {
+    const loadIdeas = () => {
+      try {
+        const savedIdeas = localStorage.getItem("ideas");
+        if (savedIdeas) {
+          const parsedIdeas = JSON.parse(savedIdeas);
+          
+          // Debug logging for loaded ideas
+          console.log("[DEBUG] Loading ideas from localStorage:", parsedIdeas);
+          
+          // Convert string dates to numbers if needed
+          const formattedIdeas = parsedIdeas.map((idea: any) => ({
+            ...idea,
+            createdAt: typeof idea.createdAt === 'string' ? 
+              (isNaN(Number(idea.createdAt)) ? new Date(idea.createdAt).getTime() : Number(idea.createdAt)) : 
+              idea.createdAt,
+            updatedAt: typeof idea.updatedAt === 'string' ? 
+              (isNaN(Number(idea.updatedAt)) ? new Date(idea.updatedAt).getTime() : Number(idea.updatedAt)) : 
+              idea.updatedAt
+          }));
+          
+          setInitialIdeas(formattedIdeas);
+        }
+        setIsLoadingIdeas(false);
+      } catch (error) {
+        console.error("Error loading ideas from localStorage:", error);
+        setIsLoadingIdeas(false);
+      }
+    };
+    
+    loadIdeas();
+  }, [setInitialIdeas]);
 
   // Save tasks to localStorage whenever they change
   useEffect(() => {
-    if (!isLoadingTasks) {
+    if (tasks.length > 0) {
       try {
+        // Debug logging for tasks before saving
+        console.log("[DEBUG] Saving tasks to localStorage:", tasks);
+        console.log("[DEBUG] Task types before saving:", tasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+        
         localStorage.setItem("tasks", JSON.stringify(tasks));
+        
+        // Verify what was saved
+        const savedTasks = localStorage.getItem("tasks");
+        if (savedTasks) {
+          const parsedTasks = JSON.parse(savedTasks);
+          console.log("[DEBUG] Verified saved tasks:", parsedTasks.length);
+          console.log("[DEBUG] Verified task types:", parsedTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+        }
       } catch (error) {
         console.error("Error saving tasks to localStorage:", error);
         toast({
@@ -107,7 +166,24 @@ export function TaskManager() {
         });
       }
     }
-  }, [tasks, isLoadingTasks, toast]); // Add toast to dependencies
+  }, [tasks, toast]);
+
+  // Save ideas to localStorage whenever they change
+  useEffect(() => {
+    if (!isLoadingIdeas && ideas.length > 0) {
+      try {
+        localStorage.setItem("ideas", JSON.stringify(ideas));
+        console.log("[DEBUG] Saved ideas to localStorage:", ideas.length);
+      } catch (error) {
+        console.error("Error saving ideas to localStorage:", error);
+        toast({
+          title: "Error Saving Ideas",
+          description: "There was a problem saving your ideas. Changes may not persist.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [ideas, isLoadingIdeas, toast]);
 
   const handleAddTask = async (text: string, quadrant: string) => {
     if (!text.trim()) return;
@@ -124,20 +200,78 @@ export function TaskManager() {
       });
       
       // Use the new AI analysis method
-      const { task, isAnalyzing } = await addTaskWithAIAnalysis(text, quadrant as "q1" | "q2" | "q3" | "q4");
+      const response = await fetch('/api/analyze-reflection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task: text,
+          justification: '',
+          goal: '',
+          priority: '',
+          currentQuadrant: quadrant
+        }),
+      });
       
-      if (task) {
-        setTaskModalOpen(false);
-        toast({
-          title: "Task Added",
-          description: "Your new task has been added and categorized by AI.",
-        });
+      if (!response.ok) {
+        throw new Error('Failed to analyze task');
+      }
+      
+      const result = await response.json();
+      
+      // Check if this is an idea
+      if (result.isIdea) {
+        console.log("[DEBUG] AI detected an idea:", text);
+        
+        // If it's connected to a priority, show the dialog
+        if (result.connectedToPriority) {
+          setCurrentIdea({
+            text,
+            taskType: result.taskType || "idea",
+            connectedToPriority: true
+          });
+          setIdeaDialogOpen(true);
+        } else {
+          // Otherwise, add it directly to the ideas bank
+          const idea = addIdea({
+            text,
+            taskType: result.taskType || "idea",
+            connectedToPriority: false
+          });
+          
+          if (idea) {
+            setTaskModalOpen(false);
+            
+            // Show a toast notification with a link to the Ideas Bank
+            const event = new CustomEvent('showToast', {
+              detail: {
+                message: 'Idea added to Ideas Bank',
+                type: 'success',
+                link: '/ideas-bank',
+                linkText: 'View Ideas Bank'
+              }
+            });
+            window.dispatchEvent(event);
+          }
+        }
       } else {
-        toast({
-          title: "Error Adding Task",
-          description: "There was a problem adding your task. Please try again.",
-          variant: "destructive",
-        });
+        // It's a regular task, add it normally
+        const { task, isAnalyzing } = await addTaskWithAIAnalysis(text, quadrant as "q1" | "q2" | "q3" | "q4");
+        
+        if (task) {
+          setTaskModalOpen(false);
+          toast({
+            title: "Task Added",
+            description: "Your new task has been added and categorized by AI.",
+          });
+        } else {
+          toast({
+            title: "Error Adding Task",
+            description: "There was a problem adding your task. Please try again.",
+            variant: "destructive",
+          });
+        }
       }
       
       // Set AI thinking state back to false
@@ -168,10 +302,61 @@ export function TaskManager() {
     })
   }
 
+  const handleSendToIdeasBank = () => {
+    // Add the idea to the Ideas Bank
+    const idea = addIdea({
+      text: currentIdea.text,
+      taskType: currentIdea.taskType,
+      connectedToPriority: currentIdea.connectedToPriority
+    });
+    
+    if (idea) {
+      setIdeaDialogOpen(false);
+      setTaskModalOpen(false);
+      
+      // Show a toast notification with a link to the Ideas Bank
+      const event = new CustomEvent('showToast', {
+        detail: {
+          message: 'Idea added to Ideas Bank',
+          type: 'success',
+          link: '/ideas-bank',
+          linkText: 'View Ideas Bank'
+        }
+      });
+      window.dispatchEvent(event);
+    }
+  };
+
+  const handleConvertToTask = async () => {
+    // Convert the idea to a task
+    const { task, isAnalyzing } = await addTaskWithAIAnalysis(currentIdea.text);
+    
+    if (task) {
+      setIdeaDialogOpen(false);
+      setTaskModalOpen(false);
+      toast({
+        title: "Task Added",
+        description: "Your idea has been converted to a task and categorized by AI.",
+      });
+    }
+  };
+
   return (
     <div>
       {/* Confetti animation for completing urgent & important tasks */}
       <TaskCompletionConfetti show={showConfetti} onComplete={hideConfetti} />
+      
+      {/* Toast notification component */}
+      <ToastNotification />
+      
+      {/* Idea priority dialog */}
+      <IdeaPriorityDialog
+        isOpen={ideaDialogOpen}
+        ideaText={currentIdea.text}
+        onClose={() => setIdeaDialogOpen(false)}
+        onSendToIdeasBank={handleSendToIdeasBank}
+        onConvertToTask={handleConvertToTask}
+      />
       
       <div className="flex justify-between items-center gap-3 mb-3">
         <h1 className="text-2xl font-bold">Task Manager</h1>
@@ -199,6 +384,10 @@ export function TaskManager() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => router.push('/ideas-bank')}>
+                <LightBulb className="h-4 w-4 mr-2" />
+                Ideas Bank {ideas.length > 0 && `(${ideas.length})`}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportTasks}>
                 <Download className="h-4 w-4 mr-2" />
                 Export Tasks
@@ -249,12 +438,17 @@ export function TaskManager() {
       
       {/* Velocity Meters for personal and work tasks */}
       <VelocityMeters 
-        tasks={tasks.map(task => ({
-          ...task,
-          createdAt: String(task.createdAt),
-          updatedAt: String(task.updatedAt),
-          completedAt: task.completedAt ? String(task.completedAt) : undefined
-        }))} 
+        tasks={tasks.map(task => {
+          // Debug logging for task types
+          console.log(`[TaskManager] Task ${task.id} type:`, task.taskType);
+          
+          return {
+            ...task,
+            createdAt: String(task.createdAt),
+            updatedAt: String(task.updatedAt),
+            completedAt: task.completedAt ? String(task.completedAt) : undefined
+          };
+        })} 
       />
     </div>
   )

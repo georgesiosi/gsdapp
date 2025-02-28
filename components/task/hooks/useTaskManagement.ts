@@ -28,9 +28,22 @@ export function useTaskManagement() {
   const internalFunctions = useRef({
     updateTaskInternal: (id: string, updates: Partial<Task>): boolean => {
       try {
+        // Debug logging for task updates
+        console.log(`[DEBUG] updateTaskInternal - Updating task ${id} with:`, updates);
+        
         setTasks(prevTasks => {
           const taskIndex = prevTasks.findIndex(task => task.id === id)
-          if (taskIndex === -1) return prevTasks
+          if (taskIndex === -1) {
+            console.log(`[DEBUG] updateTaskInternal - Task ${id} not found`);
+            return prevTasks;
+          }
+
+          // Debug logging for the task before update
+          console.log(`[DEBUG] updateTaskInternal - Task ${id} before update:`, {
+            id: prevTasks[taskIndex].id,
+            text: prevTasks[taskIndex].text.substring(0, 20),
+            taskType: prevTasks[taskIndex].taskType
+          });
 
           const updatedTasks = [...prevTasks]
           updatedTasks[taskIndex] = {
@@ -38,6 +51,13 @@ export function useTaskManagement() {
             ...updates,
             updatedAt: Date.now(),
           }
+          
+          // Debug logging for the task after update
+          console.log(`[DEBUG] updateTaskInternal - Task ${id} after update:`, {
+            id: updatedTasks[taskIndex].id,
+            text: updatedTasks[taskIndex].text.substring(0, 20),
+            taskType: updatedTasks[taskIndex].taskType
+          });
 
           return updatedTasks
         })
