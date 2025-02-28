@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
+import { Providers } from "./providers";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -47,7 +48,7 @@ export default function RootLayout({
       >
         {/* ServiceWorkerRegistration is now only used to unregister service workers */}
         <ServiceWorkerRegistration />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
