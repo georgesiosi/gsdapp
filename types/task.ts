@@ -21,4 +21,5 @@ export interface Task {
   reflection?: TaskReflection
   createdAt: string
   updatedAt: string
+  order?: number // Order within the quadrant, used for manual sorting
 }

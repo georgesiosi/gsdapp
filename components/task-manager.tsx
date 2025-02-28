@@ -30,6 +30,7 @@ export function TaskManager() {
     updateTask, 
     deleteTask, 
     toggleTask, 
+    reorderTasks,
     setInitialTasks,
     showConfetti,
     hideConfetti
@@ -225,6 +226,7 @@ export function TaskManager() {
               description: "Your task has been updated successfully.",
             });
           }}
+          onReorderTasks={reorderTasks}
           isAIThinking={isAIThinking}
         />
       </div>

@@ -9,7 +9,7 @@ import { TaskTypeIndicator } from "@/components/ui/task-type-indicator"
 import { InlineTaskEditor } from "@/components/ui/inline-task-editor"
 import { Task, QuadrantType } from "@/types/task"
 import { DragEvent } from "react"
-import { Edit2 } from "lucide-react"
+import { Edit2, MoveVertical } from "lucide-react"
 
 interface QuadrantProps {
   title: string
@@ -20,12 +20,77 @@ interface QuadrantProps {
   onReflectionRequested?: (task: Task) => void
   onMoveTask: (taskId: string, newQuadrant: QuadrantType) => void
   onEditTask: (taskId: string, newText: string) => void
+  onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
   className?: string
   isAIThinking?: boolean
 }
 
-function Quadrant({ title, quadrantId, tasks, onToggleTask, onDeleteTask, onReflectionRequested, onMoveTask, onEditTask, className, isAIThinking }: QuadrantProps) {
+function Quadrant({ 
+  title, 
+  quadrantId, 
+  tasks, 
+  onToggleTask, 
+  onDeleteTask, 
+  onReflectionRequested, 
+  onMoveTask, 
+  onEditTask, 
+  onReorderTasks,
+  className, 
+  isAIThinking 
+}: QuadrantProps) {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
+  const [isDraggingForReorder, setIsDraggingForReorder] = useState(false)
+  
+  // Sort tasks by order
+  const sortedTasks = [...tasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+  
+  // Handle start of drag for reordering within quadrant
+  const handleReorderDragStart = (e: DragEvent, taskId: string) => {
+    e.stopPropagation();
+    setDraggedTaskId(taskId);
+    setIsDraggingForReorder(true);
+    e.dataTransfer.setData('application/reorder', taskId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  
+  // Handle drag over for reordering
+  const handleReorderDragOver = (e: DragEvent, taskId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (draggedTaskId === taskId || !isDraggingForReorder) return;
+    
+    setDragOverTaskId(taskId);
+    e.dataTransfer.dropEffect = 'move';
+  };
+  
+  // Handle drop for reordering
+  const handleReorderDrop = (e: DragEvent, targetTaskId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isDraggingForReorder || !draggedTaskId) return;
+    
+    const sourceIndex = sortedTasks.findIndex(t => t.id === draggedTaskId);
+    const targetIndex = sortedTasks.findIndex(t => t.id === targetTaskId);
+    
+    if (sourceIndex !== -1 && targetIndex !== -1 && sourceIndex !== targetIndex) {
+      onReorderTasks(quadrantId, sourceIndex, targetIndex);
+    }
+    
+    setDraggedTaskId(null);
+    setDragOverTaskId(null);
+    setIsDraggingForReorder(false);
+  };
+  
+  // Handle drag end
+  const handleDragEnd = () => {
+    setDraggedTaskId(null);
+    setDragOverTaskId(null);
+    setIsDraggingForReorder(false);
+  };
   
   console.log('[Quadrant] Rendering with tasks:', tasks.length, 'needsReflection:', tasks.filter(t => t.needsReflection).length);
   return (
@@ -36,18 +101,26 @@ function Quadrant({ title, quadrantId, tasks, onToggleTask, onDeleteTask, onRefl
         isAIThinking && "border-primary/40 shadow-sm transition-all duration-300"
       )}
       onDragOver={(e: DragEvent) => {
-        e.preventDefault();
-        e.currentTarget.classList.add('border-2', 'border-primary');
+        // Only handle quadrant-level drag if not reordering
+        if (!isDraggingForReorder) {
+          e.preventDefault();
+          e.currentTarget.classList.add('border-2', 'border-primary');
+        }
       }}
       onDragLeave={(e: DragEvent) => {
-        e.currentTarget.classList.remove('border-2', 'border-primary');
+        if (!isDraggingForReorder) {
+          e.currentTarget.classList.remove('border-2', 'border-primary');
+        }
       }}
       onDrop={(e: DragEvent) => {
-        e.preventDefault();
-        e.currentTarget.classList.remove('border-2', 'border-primary');
-        const taskId = e.dataTransfer.getData('text/plain');
-        if (taskId) {
-          onMoveTask(taskId, quadrantId);
+        // Only handle quadrant-level drop if not reordering
+        if (!isDraggingForReorder) {
+          e.preventDefault();
+          e.currentTarget.classList.remove('border-2', 'border-primary');
+          const taskId = e.dataTransfer.getData('text/plain');
+          if (taskId) {
+            onMoveTask(taskId, quadrantId);
+          }
         }
       }}
     >
@@ -61,23 +134,29 @@ function Quadrant({ title, quadrantId, tasks, onToggleTask, onDeleteTask, onRefl
         </div>
       </div>
       <div className="quadrant-content">
-        {tasks.length === 0 ? (
+        {sortedTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-6">
             <p className="text-xs text-muted-foreground">No tasks yet</p>
             <p className="text-xs text-muted-foreground mt-1">Drag tasks here or add new ones</p>
           </div>
         ) : (
           <ul className="space-y-2">
-            {tasks.map((task) => (
+            {sortedTasks.map((task) => (
               <li 
                 key={task.id} 
-                className="task-item"
+                className={cn(
+                  "task-item",
+                  dragOverTaskId === task.id && "border-2 border-primary bg-primary/5"
+                )}
                 draggable={editingTaskId !== task.id}
                 onDragStart={(e) => {
                   if (editingTaskId !== task.id) {
                     e.dataTransfer.setData('text/plain', task.id);
                   }
                 }}
+                onDragOver={(e) => handleReorderDragOver(e, task.id)}
+                onDrop={(e) => handleReorderDrop(e, task.id)}
+                onDragEnd={handleDragEnd}
               >
                 {editingTaskId === task.id ? (
                   <InlineTaskEditor 
@@ -90,6 +169,11 @@ function Quadrant({ title, quadrantId, tasks, onToggleTask, onDeleteTask, onRefl
                   />
                 ) : (
                   <>
+                    <div className="task-reorder-handle" 
+                         draggable 
+                         onDragStart={(e) => handleReorderDragStart(e, task.id)}>
+                      <MoveVertical size={14} className="text-gray-400 cursor-move" />
+                    </div>
                     <input
                       type="checkbox"
                       checked={task.completed}
@@ -149,6 +233,7 @@ interface EisenhowerMatrixProps {
   onReflectionRequested?: (task: Task) => void
   onMoveTask: (taskId: string, newQuadrant: QuadrantType) => void
   onEditTask: (taskId: string, newText: string) => void
+  onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
   isAIThinking?: boolean
 }
 
@@ -159,60 +244,70 @@ export function EisenhowerMatrix({
   onReflectionRequested, 
   onMoveTask, 
   onEditTask,
+  onReorderTasks,
   isAIThinking = false 
 }: EisenhowerMatrixProps) {
-  const getQuadrantTasks = (quadrant: Task["quadrant"]) => tasks.filter((task) => task.quadrant === quadrant)
+  const q1Tasks = tasks.filter(task => task.quadrant === "q1");
+  const q2Tasks = tasks.filter(task => task.quadrant === "q2");
+  const q3Tasks = tasks.filter(task => task.quadrant === "q3");
+  const q4Tasks = tasks.filter(task => task.quadrant === "q4");
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <Quadrant
-        title="Urgent & Important"
-        quadrantId="q1"
-        tasks={getQuadrantTasks("q1")}
-        onToggleTask={onToggleTask}
-        onDeleteTask={onDeleteTask}
-        onReflectionRequested={onReflectionRequested}
-        onMoveTask={onMoveTask}
-        onEditTask={onEditTask}
-        className="quadrant-urgent-important"
-        isAIThinking={isAIThinking}
-      />
-      <Quadrant
-        title="Important, Not Urgent"
-        quadrantId="q2"
-        tasks={getQuadrantTasks("q2")}
-        onToggleTask={onToggleTask}
-        onDeleteTask={onDeleteTask}
-        onReflectionRequested={onReflectionRequested}
-        onMoveTask={onMoveTask}
-        onEditTask={onEditTask}
-        className="quadrant-not-urgent-important"
-        isAIThinking={isAIThinking}
-      />
-      <Quadrant
-        title="Urgent, Not Important"
-        quadrantId="q3"
-        tasks={getQuadrantTasks("q3")}
-        onToggleTask={onToggleTask}
-        onDeleteTask={onDeleteTask}
-        onReflectionRequested={onReflectionRequested}
-        onMoveTask={onMoveTask}
-        onEditTask={onEditTask}
-        className="quadrant-urgent-not-important"
-        isAIThinking={isAIThinking}
-      />
-      <Quadrant
-        title="Not Urgent & Not Important"
-        quadrantId="q4"
-        tasks={getQuadrantTasks("q4")}
-        onToggleTask={onToggleTask}
-        onDeleteTask={onDeleteTask}
-        onReflectionRequested={onReflectionRequested}
-        onMoveTask={onMoveTask}
-        onEditTask={onEditTask}
-        className="quadrant-not-urgent-not-important"
-        isAIThinking={isAIThinking}
-      />
+    <div className="eisenhower-matrix">
+      <div className="grid grid-cols-2 gap-4">
+        <Quadrant
+          title="Urgent & Important"
+          quadrantId="q1"
+          tasks={q1Tasks}
+          onToggleTask={onToggleTask}
+          onDeleteTask={onDeleteTask}
+          onReflectionRequested={onReflectionRequested}
+          onMoveTask={onMoveTask}
+          onEditTask={onEditTask}
+          onReorderTasks={onReorderTasks}
+          className="bg-red-50 border-red-200"
+          isAIThinking={isAIThinking}
+        />
+        <Quadrant
+          title="Not Urgent but Important"
+          quadrantId="q2"
+          tasks={q2Tasks}
+          onToggleTask={onToggleTask}
+          onDeleteTask={onDeleteTask}
+          onReflectionRequested={onReflectionRequested}
+          onMoveTask={onMoveTask}
+          onEditTask={onEditTask}
+          onReorderTasks={onReorderTasks}
+          className="bg-blue-50 border-blue-200"
+          isAIThinking={isAIThinking}
+        />
+        <Quadrant
+          title="Urgent but Not Important"
+          quadrantId="q3"
+          tasks={q3Tasks}
+          onToggleTask={onToggleTask}
+          onDeleteTask={onDeleteTask}
+          onReflectionRequested={onReflectionRequested}
+          onMoveTask={onMoveTask}
+          onEditTask={onEditTask}
+          onReorderTasks={onReorderTasks}
+          className="bg-yellow-50 border-yellow-200"
+          isAIThinking={isAIThinking}
+        />
+        <Quadrant
+          title="Not Urgent & Not Important"
+          quadrantId="q4"
+          tasks={q4Tasks}
+          onToggleTask={onToggleTask}
+          onDeleteTask={onDeleteTask}
+          onReflectionRequested={onReflectionRequested}
+          onMoveTask={onMoveTask}
+          onEditTask={onEditTask}
+          onReorderTasks={onReorderTasks}
+          className="bg-gray-50 border-gray-200"
+          isAIThinking={isAIThinking}
+        />
+      </div>
     </div>
   )
 }
