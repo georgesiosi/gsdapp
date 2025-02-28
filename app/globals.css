@@ -447,3 +447,31 @@ body {
   border-radius: 0.25rem;
   margin-left: 0.5rem;
 }
+
+/* Velocity Meters */
+.velocity-meter {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
+  transition: width 0.3s ease, opacity 0.3s ease;
+}
+
+.velocity-meter:hover {
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Animation for velocity meter when a task is completed */
+@keyframes pulse-meter {
+  0% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.8;
+  }
+}
+
+.velocity-meter.pulse {
+  animation: pulse-meter 1s ease-in-out;
+}

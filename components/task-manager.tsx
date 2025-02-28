@@ -15,6 +15,7 @@ import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { TaskModal } from "@/components/task-modal"
 import { ReflectionCard } from "@/components/ui/reflection-card"
 import { TaskCompletionConfetti } from "@/components/ui/task-completion-confetti"
+import { VelocityMeters } from "@/components/velocity-meters"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -245,6 +246,9 @@ export function TaskManager() {
         onAddTask={handleAddTask}
         isAIThinking={isAIThinking}
       />
+      
+      {/* Velocity Meters for personal and work tasks */}
+      <VelocityMeters tasks={tasks} />
     </div>
   )
 }
