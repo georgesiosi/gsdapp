@@ -28,14 +28,52 @@ export function VelocityMeter({
   const [isPulsing, setIsPulsing] = useState(false)
   const [prevCompletedCount, setPrevCompletedCount] = useState(0)
   
+  // Debug all tasks
+  console.log(`[DEBUG] VelocityMeter ${type} - All tasks:`, tasks.length);
+  console.log(`[DEBUG] VelocityMeter ${type} - All task types:`, tasks.map(t => ({ 
+    id: t.id, 
+    text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''),
+    taskType: t.taskType,
+    completed: t.completed
+  })));
+  
   // Filter tasks by type and get counts
-  // Handle both undefined taskType (treat as personal) and explicit type
   const typeTasks = tasks.filter(task => {
+    // Debug each task type
+    console.log(`[DEBUG] VelocityMeter ${type} - Checking task ${task.id} with type:`, task.taskType);
+    
+    let isIncluded = false;
+    
     if (type === "personal") {
-      return task.taskType === "personal" || task.taskType === undefined;
+      // For personal meter, include tasks with taskType="personal" or undefined
+      isIncluded = task.taskType === "personal" || task.taskType === undefined;
+    } else if (type === "work") {
+      // For work meter, include tasks with taskType="work" or "business"
+      isIncluded = task.taskType === "work" || task.taskType === "business";
+      
+      // Additional debug logging for work/business tasks
+      if (isIncluded) {
+        console.log(`[DEBUG] VelocityMeter ${type} - Including work/business task:`, {
+          id: task.id,
+          text: task.text.substring(0, 20),
+          taskType: task.taskType,
+          included: isIncluded
+        });
+      }
     }
-    return task.taskType === type;
+    
+    console.log(`[DEBUG] VelocityMeter ${type} - Task ${task.id} included:`, isIncluded);
+    return isIncluded;
   });
+  
+  // Debug filtered tasks
+  console.log(`[DEBUG] VelocityMeter ${type} - Filtered tasks:`, typeTasks.length);
+  console.log(`[DEBUG] VelocityMeter ${type} - Filtered task details:`, typeTasks.map(t => ({ 
+    id: t.id, 
+    text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''), 
+    taskType: t.taskType,
+    completed: t.completed
+  })));
   
   const totalTasks = typeTasks.length
   const completedTasks = typeTasks.filter(task => task.completed).length
@@ -87,32 +125,32 @@ export function VelocityMeter({
       
       // Check if date is valid
       if (isNaN(taskDate.getTime())) {
-        console.log(`[VelocityMeter] Invalid date for task ${task.id}:`, taskCreatedAt);
+        console.log(`[DEBUG] VelocityMeter ${type} - Invalid date for task ${task.id}:`, taskCreatedAt);
         return false;
       }
       
       taskDate.setHours(0, 0, 0, 0);
       
       // Safe logging without toISOString which can throw errors
-      console.log(`[VelocityMeter] Task ${task.id} created at:`, taskCreatedAt);
-      console.log(`[VelocityMeter] Task date timestamp:`, taskDate.getTime());
-      console.log(`[VelocityMeter] Today timestamp:`, today.getTime());
-      console.log(`[VelocityMeter] Is today's task:`, taskDate.getTime() === today.getTime());
+      console.log(`[DEBUG] VelocityMeter ${type} - Task ${task.id} created at:`, taskCreatedAt);
+      console.log(`[DEBUG] VelocityMeter ${type} - Task date timestamp:`, taskDate.getTime());
+      console.log(`[DEBUG] VelocityMeter ${type} - Today timestamp:`, today.getTime());
+      console.log(`[DEBUG] VelocityMeter ${type} - Is today's task:`, taskDate.getTime() === today.getTime());
       
       return taskDate.getTime() === today.getTime();
     } catch (error) {
-      console.error(`[VelocityMeter] Error processing date for task ${task.id}:`, error);
+      console.error(`[DEBUG] VelocityMeter ${type} - Error processing date for task ${task.id}:`, error);
       return false;
     }
   });
   
   // Debug logging
-  console.log(`[VelocityMeter] Type: ${type}, Total tasks: ${totalTasks}, Completed: ${completedTasks}`);
-  console.log(`[VelocityMeter] Today's tasks: ${todayTasks.length}`);
+  console.log(`[DEBUG] VelocityMeter ${type} - Total tasks: ${totalTasks}, Completed: ${completedTasks}`);
+  console.log(`[DEBUG] VelocityMeter ${type} - Today's tasks: ${todayTasks.length}`);
   
   const todayCompleted = todayTasks.filter(task => task.completed).length
   
-  console.log(`[VelocityMeter] Today's completed: ${todayCompleted}`);
+  console.log(`[DEBUG] VelocityMeter ${type} - Today's completed: ${todayCompleted}`);
   
   // Determine color scheme based on task type
   const colorScheme = type === "personal" 
