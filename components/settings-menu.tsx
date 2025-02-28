@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, Brain, HelpCircle, Github } from "lucide-react"
+import { Settings, Brain, HelpCircle, Github, Menu, Lightbulb } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
@@ -17,13 +17,20 @@ export function SettingsMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-9 w-9">
-          <Settings className="h-[1.2rem] w-[1.2rem]" />
-          <span className="sr-only">Settings</span>
+          <Menu className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Menu</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Settings</DropdownMenuLabel>
+        <DropdownMenuLabel>Menu</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        
+        <DropdownMenuItem asChild>
+          <Link href="/ideas-bank" className="flex w-full cursor-pointer items-center">
+            <Lightbulb className="mr-2 h-4 w-4" />
+            <span>Ideas Bank</span>
+          </Link>
+        </DropdownMenuItem>
         
         <DropdownMenuItem asChild>
           <Link href="/ai-logs" className="flex w-full cursor-pointer items-center">
