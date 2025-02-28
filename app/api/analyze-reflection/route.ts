@@ -21,43 +21,72 @@ export async function POST(req: Request) {
       messages: [
         {
           role: "system",
-          content: `You are an AI task analyzer helping users align their tasks with their goals.
-          The user's main goal is: "${goal || 'Not set'}"
-          Their #1 priority for today is: "${priority || 'Not set'}"
-          
-          A task was categorized as ${currentQuadrant} (not directly aligned with their goal).
-          The user has provided a justification for why they still want to do this task.
-          
-          Analyze their justification and:
-          1. Determine if the justification shows good alignment with their goal/priority
-          2. If yes, suggest moving to a more important quadrant (q1 or q2)
-          3. If no, provide a constructive suggestion for better goal alignment
-          
-          Respond in JSON format:
-          {
-            "analysis": "brief analysis of the justification",
-            "suggestedQuadrant": "q1|q2|q3|q4",
-            "suggestion": "constructive suggestion if needed"
-          }`
+          content: `You are an AI task analyzer helping users categorize tasks using the Eisenhower Matrix (Urgent vs Important).
+
+DEFINITIONS:
+- Urgent & Important (Q1): Tasks that require immediate attention and are crucial to the user's goals
+- Important, Not Urgent (Q2): Tasks that are aligned with goals but can be scheduled for later
+- Urgent, Not Important (Q3): Tasks with deadlines but less aligned with goals
+- Not Urgent & Not Important (Q4): Tasks with minimal impact on goals and no time pressure
+
+USER CONTEXT:
+- User's main goal: "${goal || 'Not set'}"
+- User's #1 priority for today: "${priority || 'Not set'}"
+
+INSTRUCTIONS:
+1. Analyze the task in relation to the user's goal and daily priority
+2. Tasks directly related to the daily priority should be considered Important
+3. Tasks that block progress on the daily priority should be considered Urgent
+4. Development and coding tasks related to the user's priority should be at least Q2 (Important)
+5. Provide clear reasoning for your categorization decision
+
+EXAMPLES:
+- "Fix critical bug in production" → Q1 (Urgent & Important) - Directly impacts product quality
+- "Plan next sprint" → Q2 (Important, Not Urgent) - Important for progress but can be scheduled
+- "Respond to non-critical email" → Q3 (Urgent, Not Important) - Has time pressure but low impact
+- "Browse social media" → Q4 (Not Urgent & Not Important) - Not aligned with goals
+
+Respond in JSON format:
+{
+  "suggestedQuadrant": "q1|q2|q3|q4",
+  "reasoning": "Detailed explanation of why this task belongs in the suggested quadrant",
+  "alignmentScore": 1-10,
+  "urgencyScore": 1-10,
+  "importanceScore": 1-10
+}`
         },
         {
           role: "user",
-          content: `Task: "${task}"\nJustification: "${justification}"`
+          content: `Task: "${task}"
+Current quadrant: ${currentQuadrant}
+${justification ? `User justification: "${justification}"` : ''}`
         }
       ],
-      temperature: 0.3,
+      temperature: 0.4,
     })
 
     const content = response.choices[0].message.content;
     if (!content) {
       throw new Error('No content in response');
     }
+    
+    // Parse the AI response
     const result = JSON.parse(content);
+    
+    // Log the AI reasoning to console (in production this could go to a file or database)
+    console.log(`[AI Reasoning] Task: "${task}" → ${result.suggestedQuadrant}`);
+    console.log(`[AI Reasoning] Reasoning: ${result.reasoning}`);
+    console.log(`[AI Reasoning] Scores: Alignment=${result.alignmentScore}, Urgency=${result.urgencyScore}, Importance=${result.importanceScore}`);
+    
+    // Store the reasoning in localStorage via client-side code
+    // We'll return this data to be stored by the client
 
     return NextResponse.json({
-      analysis: result.analysis,
       suggestedQuadrant: result.suggestedQuadrant as QuadrantType,
-      suggestion: result.suggestion
+      reasoning: result.reasoning,
+      alignmentScore: result.alignmentScore,
+      urgencyScore: result.urgencyScore,
+      importanceScore: result.importanceScore
     })
   } catch (error) {
     console.error('Error in analyze-reflection route:', error);
