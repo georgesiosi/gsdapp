@@ -73,22 +73,38 @@ export function VelocityMeter({
   today.setHours(0, 0, 0, 0)
   
   const todayTasks = typeTasks.filter(task => {
-    // Handle both string and number date formats
-    const taskDate = new Date(
-      typeof task.createdAt === 'string' 
-        ? task.createdAt 
-        : Number(task.createdAt)
-    )
-    taskDate.setHours(0, 0, 0, 0)
-    
-    // Debug logging
-    console.log(`[VelocityMeter] Task ${task.id} created at:`, task.createdAt);
-    console.log(`[VelocityMeter] Task date:`, taskDate.toISOString());
-    console.log(`[VelocityMeter] Today:`, today.toISOString());
-    console.log(`[VelocityMeter] Is today's task:`, taskDate.getTime() === today.getTime());
-    
-    return taskDate.getTime() === today.getTime()
-  })
+    try {
+      // Handle both string and number date formats
+      let taskCreatedAt = task.createdAt;
+      
+      // Convert to number if it's a string that looks like a number
+      if (typeof taskCreatedAt === 'string' && !isNaN(Number(taskCreatedAt))) {
+        taskCreatedAt = Number(taskCreatedAt);
+      }
+      
+      // Create date object
+      const taskDate = new Date(taskCreatedAt);
+      
+      // Check if date is valid
+      if (isNaN(taskDate.getTime())) {
+        console.log(`[VelocityMeter] Invalid date for task ${task.id}:`, taskCreatedAt);
+        return false;
+      }
+      
+      taskDate.setHours(0, 0, 0, 0);
+      
+      // Safe logging without toISOString which can throw errors
+      console.log(`[VelocityMeter] Task ${task.id} created at:`, taskCreatedAt);
+      console.log(`[VelocityMeter] Task date timestamp:`, taskDate.getTime());
+      console.log(`[VelocityMeter] Today timestamp:`, today.getTime());
+      console.log(`[VelocityMeter] Is today's task:`, taskDate.getTime() === today.getTime());
+      
+      return taskDate.getTime() === today.getTime();
+    } catch (error) {
+      console.error(`[VelocityMeter] Error processing date for task ${task.id}:`, error);
+      return false;
+    }
+  });
   
   // Debug logging
   console.log(`[VelocityMeter] Type: ${type}, Total tasks: ${totalTasks}, Completed: ${completedTasks}`);
