@@ -10,14 +10,16 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AIThinkingIndicator } from "@/components/ui/ai-thinking-indicator"
 
 interface TaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAddTask: (text: string, quadrant: string) => void
+  isAIThinking?: boolean
 }
 
-export function TaskModal({ open, onOpenChange, onAddTask }: TaskModalProps) {
+export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false }: TaskModalProps) {
   const [newTask, setNewTask] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -58,7 +60,10 @@ export function TaskModal({ open, onOpenChange, onAddTask }: TaskModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Task</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Add New Task
+            {isAIThinking && <AIThinkingIndicator isThinking={isAIThinking} className="ml-2" />}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -86,7 +91,7 @@ export function TaskModal({ open, onOpenChange, onAddTask }: TaskModalProps) {
               type="submit" 
               disabled={!newTask.trim() || isSubmitting}
             >
-              Add Task
+              {isAIThinking ? "Adding..." : "Add Task"}
             </Button>
           </DialogFooter>
         </form>

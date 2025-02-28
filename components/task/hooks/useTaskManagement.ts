@@ -1,6 +1,7 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { v4 as uuidv4 } from "uuid"
 import { Task as TaskType } from "@/types/task"
+import { ReasoningLogService, AIReasoningLog } from "@/services/ai/reasoningLogService"
 
 export type QuadrantType = "q1" | "q2" | "q3" | "q4"
 
@@ -19,38 +20,36 @@ export type NewTask = Omit<Task, "id" | "createdAt" | "updatedAt">
 
 export function useTaskManagement() {
   const [tasks, setTasks] = useState<Task[]>([])
+  
+  // Use a ref to store the internal update function
+  const internalFunctions = useRef({
+    updateTaskInternal: (id: string, updates: Partial<Task>): boolean => {
+      try {
+        setTasks(prevTasks => {
+          const taskIndex = prevTasks.findIndex(task => task.id === id)
+          if (taskIndex === -1) return prevTasks
 
-  // Set initial tasks from localStorage
-  const setInitialTasks = useCallback((loadedTasks: Task[]) => {
-    try {
-      // Ensure all tasks have required properties
-      const validatedTasks = loadedTasks.filter(task => {
-        if (!task) return false;
-        
-        // Check that task has all required properties
-        const hasRequiredProps = 
-          typeof task.id === 'string' && 
-          typeof task.text === 'string' && 
-          typeof task.quadrant === 'string' && 
-          typeof task.completed === 'boolean' && 
-          typeof task.needsReflection === 'boolean' &&
-          typeof task.createdAt === 'number' &&
-          typeof task.updatedAt === 'number';
-        
-        // Check that quadrant is valid
-        const hasValidQuadrant = ['q1', 'q2', 'q3', 'q4'].includes(task.quadrant);
-        
-        return hasRequiredProps && hasValidQuadrant;
-      });
+          const updatedTasks = [...prevTasks]
+          updatedTasks[taskIndex] = {
+            ...updatedTasks[taskIndex],
+            ...updates,
+            updatedAt: Date.now(),
+          }
 
-      // Set tasks, preserving original IDs and timestamps
-      setTasks(validatedTasks);
-    } catch (error) {
-      console.error("Error setting initial tasks:", error);
-      // Fallback to empty array if there's an error
-      setTasks([]);
+          return updatedTasks
+        })
+        return true
+      } catch (error) {
+        console.error("Error updating task:", error);
+        return false;
+      }
     }
-  }, []);
+  });
+
+  // Set initial tasks
+  const setInitialTasks = useCallback((initialTasks: Task[]) => {
+    setTasks(initialTasks)
+  }, [])
 
   // Add a new task
   const addTask = useCallback((newTask: NewTask): Task | null => {
@@ -70,79 +69,137 @@ export function useTaskManagement() {
     }
   }, [])
 
-  // Update a task
+  // Update a task (exposed function)
   const updateTask = useCallback((id: string, updates: Partial<Task>): boolean => {
+    return internalFunctions.current.updateTaskInternal(id, updates);
+  }, []);
+
+  // Add a new task with AI analysis
+  const addTaskWithAIAnalysis = useCallback(async (text: string, initialQuadrant: QuadrantType = "q4"): Promise<{task: Task | null, isAnalyzing: boolean}> => {
     try {
-      let taskExists = false;
+      // First create the task with initial quadrant
+      const task = addTask({
+        text,
+        quadrant: initialQuadrant,
+        completed: false,
+        needsReflection: false,
+      });
       
-      // First check if the task exists
-      taskExists = tasks.some(task => task.id === id);
-      
-      if (taskExists) {
-        setTasks(prevTasks => 
-          prevTasks.map(task => 
-            task.id === id ? { ...task, ...updates, updatedAt: Date.now() } : task
-          )
-        );
+      if (!task) {
+        return { task: null, isAnalyzing: false };
       }
       
-      return taskExists;
+      // Start AI analysis
+      try {
+        // Get user goal and priority from localStorage
+        const userGoal = localStorage.getItem('userGoal') || '';
+        const userPriority = localStorage.getItem('userPriority') || '';
+        
+        // Call the API to analyze the task
+        const response = await fetch('/api/analyze-reflection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            task: text,
+            justification: '',
+            goal: userGoal,
+            priority: userPriority,
+            currentQuadrant: initialQuadrant
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to analyze task');
+        }
+        
+        const result = await response.json();
+        
+        // Update the task with the suggested quadrant
+        if (result.suggestedQuadrant) {
+          internalFunctions.current.updateTaskInternal(task.id, { 
+            quadrant: result.suggestedQuadrant 
+          });
+          
+          // Store the reasoning log
+          ReasoningLogService.storeLog({
+            taskId: task.id,
+            taskText: text,
+            timestamp: Date.now(),
+            suggestedQuadrant: result.suggestedQuadrant,
+            reasoning: result.reasoning || 'No reasoning provided',
+            alignmentScore: result.alignmentScore,
+            urgencyScore: result.urgencyScore,
+            importanceScore: result.importanceScore
+          });
+        }
+        
+        return { task, isAnalyzing: false };
+      } catch (analysisError) {
+        console.error("Error analyzing task:", analysisError);
+        // Return the task even if analysis failed
+        return { task, isAnalyzing: false };
+      }
     } catch (error) {
-      console.error("Error updating task:", error);
-      return false;
+      console.error("Error in addTaskWithAIAnalysis:", error);
+      return { task: null, isAnalyzing: false };
     }
-  }, [tasks])
+  }, [addTask]);
 
   // Delete a task
   const deleteTask = useCallback((id: string): boolean => {
     try {
-      // First check if the task exists
-      const taskExists = tasks.some(task => task.id === id);
+      let taskExists = false;
       
-      if (taskExists) {
-        setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
-      }
+      setTasks(prevTasks => {
+        taskExists = prevTasks.some(task => task.id === id);
+        return prevTasks.filter(task => task.id !== id);
+      });
       
       return taskExists;
     } catch (error) {
       console.error("Error deleting task:", error);
       return false;
     }
-  }, [tasks])
+  }, [])
 
-  // Toggle a task's completed status
+  // Toggle task completion
   const toggleTask = useCallback((id: string): boolean => {
     try {
-      // First check if the task exists
-      const taskExists = tasks.some(task => task.id === id);
+      let taskExists = false;
       
-      if (taskExists) {
-        setTasks(prevTasks => 
-          prevTasks.map(task => {
-            if (task.id === id) {
-              const completed = !task.completed;
-              return {
-                ...task,
-                completed,
-                completedAt: completed ? Date.now() : undefined,
-                updatedAt: Date.now(),
-              };
-            }
-            return task;
-          })
-        );
-      }
+      setTasks(prevTasks => {
+        const taskIndex = prevTasks.findIndex(task => task.id === id);
+        taskExists = taskIndex !== -1;
+        
+        if (!taskExists) return prevTasks;
+        
+        const updatedTasks = [...prevTasks];
+        const task = updatedTasks[taskIndex];
+        const completed = !task.completed;
+        
+        updatedTasks[taskIndex] = {
+          ...task,
+          completed,
+          completedAt: completed ? Date.now() : undefined,
+          updatedAt: Date.now(),
+        };
+        
+        return updatedTasks;
+      });
       
       return taskExists;
     } catch (error) {
       console.error("Error toggling task:", error);
       return false;
     }
-  }, [tasks])
+  }, [])
 
   return {
     tasks,
     addTask,
+    addTaskWithAIAnalysis,
     updateTask,
     deleteTask,
     toggleTask,

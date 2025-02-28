@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
+import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { 
@@ -9,8 +11,6 @@ import {
   Settings
 } from "lucide-react"
 import { exportTasksToCSV } from "@/lib/export-utils"
-import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
-import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { TaskModal } from "@/components/task-modal"
 import { ReflectionCard } from "@/components/ui/reflection-card"
@@ -22,10 +22,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function TaskManager() {
-  const { tasks, addTask, updateTask, deleteTask, toggleTask, setInitialTasks } = useTaskManagement()
+  const { tasks, addTask, addTaskWithAIAnalysis, updateTask, deleteTask, toggleTask, setInitialTasks } = useTaskManagement()
   const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem()
   const { toast } = useToast()
   const [taskModalOpen, setTaskModalOpen] = useState(false)
+  const [isAIThinking, setIsAIThinking] = useState(false)
 
   // Flag to track if tasks are being loaded from localStorage
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
@@ -95,22 +96,28 @@ export function TaskManager() {
     }
   }, [tasks, isLoadingTasks, toast]); // Add toast to dependencies
 
-  const handleAddTask = (text: string, quadrant: string) => {
+  const handleAddTask = async (text: string, quadrant: string) => {
     if (!text.trim()) return;
     
     try {
-      const newTask = addTask({
-        text,
-        quadrant: quadrant as "q1" | "q2" | "q3" | "q4",
-        completed: false,
-        needsReflection: false,
+      // Set AI thinking state to true
+      setIsAIThinking(true);
+      
+      // Show a toast notification that AI is thinking
+      toast({
+        title: "AI is analyzing your task",
+        description: "Determining the best quadrant for your task...",
+        duration: 2000,
       });
       
-      if (newTask) {
+      // Use the new AI analysis method
+      const { task, isAnalyzing } = await addTaskWithAIAnalysis(text, quadrant as "q1" | "q2" | "q3" | "q4");
+      
+      if (task) {
         setTaskModalOpen(false);
         toast({
           title: "Task Added",
-          description: "Your new task has been added successfully.",
+          description: "Your new task has been added and categorized by AI.",
         });
       } else {
         toast({
@@ -119,8 +126,12 @@ export function TaskManager() {
           variant: "destructive",
         });
       }
+      
+      // Set AI thinking state back to false
+      setIsAIThinking(false);
     } catch (error) {
       console.error("Error in handleAddTask:", error);
+      setIsAIThinking(false);
       toast({
         title: "Error Adding Task",
         description: "There was a problem adding your task. Please try again.",
@@ -193,6 +204,7 @@ export function TaskManager() {
           onDeleteTask={deleteTask}
           onReflectionRequested={startReflection}
           onMoveTask={handleMoveTask}
+          isAIThinking={isAIThinking}
         />
       </div>
 
@@ -208,6 +220,7 @@ export function TaskManager() {
         open={taskModalOpen}
         onOpenChange={setTaskModalOpen}
         onAddTask={handleAddTask}
+        isAIThinking={isAIThinking}
       />
     </div>
   )
