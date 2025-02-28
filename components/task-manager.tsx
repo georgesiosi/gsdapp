@@ -14,6 +14,7 @@ import { exportTasksToCSV } from "@/lib/export-utils"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { TaskModal } from "@/components/task-modal"
 import { ReflectionCard } from "@/components/ui/reflection-card"
+import { TaskCompletionConfetti } from "@/components/ui/task-completion-confetti"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +23,17 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function TaskManager() {
-  const { tasks, addTask, addTaskWithAIAnalysis, updateTask, deleteTask, toggleTask, setInitialTasks } = useTaskManagement()
+  const { 
+    tasks, 
+    addTask, 
+    addTaskWithAIAnalysis, 
+    updateTask, 
+    deleteTask, 
+    toggleTask, 
+    setInitialTasks,
+    showConfetti,
+    hideConfetti
+  } = useTaskManagement()
   const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem()
   const { toast } = useToast()
   const [taskModalOpen, setTaskModalOpen] = useState(false)
@@ -157,6 +168,9 @@ export function TaskManager() {
 
   return (
     <div>
+      {/* Confetti animation for completing urgent & important tasks */}
+      <TaskCompletionConfetti show={showConfetti} onComplete={hideConfetti} />
+      
       <div className="flex justify-between items-center gap-3 mb-3">
         <h1 className="text-2xl font-bold">Task Manager</h1>
         <div className="flex items-center gap-2">

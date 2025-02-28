@@ -21,6 +21,7 @@ export type NewTask = Omit<Task, "id" | "createdAt" | "updatedAt">
 
 export function useTaskManagement() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [showConfetti, setShowConfetti] = useState(false)
   
   // Use a ref to store the internal update function
   const internalFunctions = useRef({
@@ -69,11 +70,6 @@ export function useTaskManagement() {
       return null;
     }
   }, [])
-
-  // Update a task (exposed function)
-  const updateTask = useCallback((id: string, updates: Partial<Task>): boolean => {
-    return internalFunctions.current.updateTaskInternal(id, updates);
-  }, []);
 
   // Add a new task with AI analysis
   const addTaskWithAIAnalysis = useCallback(async (text: string, initialQuadrant: QuadrantType = "q4", userGoal: string = "", userPriority: string = ""): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
@@ -145,6 +141,11 @@ export function useTaskManagement() {
     }
   }, [addTask]);
 
+  // Update a task (exposed function)
+  const updateTask = useCallback((id: string, updates: Partial<Task>): boolean => {
+    return internalFunctions.current.updateTaskInternal(id, updates);
+  }, []);
+
   // Delete a task
   const deleteTask = useCallback((id: string): boolean => {
     try {
@@ -165,34 +166,44 @@ export function useTaskManagement() {
   // Toggle task completion
   const toggleTask = useCallback((id: string): boolean => {
     try {
-      let taskExists = false;
+      let isQ1Task = false;
+      let wasCompleted = false;
       
+      // Check if this is a Q1 task that's being completed
       setTasks(prevTasks => {
-        const taskIndex = prevTasks.findIndex(task => task.id === id);
-        taskExists = taskIndex !== -1;
+        const taskIndex = prevTasks.findIndex(task => task.id === id)
+        if (taskIndex === -1) return prevTasks
         
-        if (!taskExists) return prevTasks;
+        isQ1Task = prevTasks[taskIndex].quadrant === "q1";
+        wasCompleted = prevTasks[taskIndex].completed;
         
-        const updatedTasks = [...prevTasks];
-        const task = updatedTasks[taskIndex];
-        const completed = !task.completed;
-        
+        const updatedTasks = [...prevTasks]
         updatedTasks[taskIndex] = {
-          ...task,
-          completed,
-          completedAt: completed ? Date.now() : undefined,
+          ...updatedTasks[taskIndex],
+          completed: !updatedTasks[taskIndex].completed,
           updatedAt: Date.now(),
-        };
-        
-        return updatedTasks;
-      });
+          completedAt: !updatedTasks[taskIndex].completed ? Date.now() : undefined,
+        }
+
+        return updatedTasks
+      })
       
-      return taskExists;
+      // Show confetti if a Q1 task is being marked as completed
+      if (isQ1Task && !wasCompleted) {
+        setShowConfetti(true);
+      }
+      
+      return true
     } catch (error) {
-      console.error("Error toggling task:", error);
-      return false;
+      console.error("Error toggling task:", error)
+      return false
     }
   }, [])
+
+  // Reset confetti state
+  const hideConfetti = useCallback(() => {
+    setShowConfetti(false);
+  }, []);
 
   return {
     tasks,
@@ -202,5 +213,7 @@ export function useTaskManagement() {
     deleteTask,
     toggleTask,
     setInitialTasks,
+    showConfetti,
+    hideConfetti
   }
 }

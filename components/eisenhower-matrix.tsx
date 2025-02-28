@@ -89,7 +89,9 @@ function Quadrant({ title, quadrantId, tasks, onToggleTask, onDeleteTask, onRefl
                   )}
                 </span>
                 <div className="task-actions">
-                  <TaskTypeIndicator taskId={task.id} className="mr-1" />
+                  <div className="task-action-hover">
+                    <TaskTypeIndicator taskId={task.id} className="mr-1" />
+                  </div>
                   <AIReasoningTooltip taskId={task.id} className="mr-1" />
                   <button
                     onClick={() => onDeleteTask(task.id)}

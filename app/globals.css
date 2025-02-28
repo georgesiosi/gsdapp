@@ -221,6 +221,15 @@ body {
   opacity: 1;
 }
 
+.task-action-hover {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.task-item:hover .task-action-hover {
+  opacity: 1;
+}
+
 .task-action-button {
   display: inline-flex;
   align-items: center;

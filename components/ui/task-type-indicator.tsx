@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { 
   Tooltip,
   TooltipContent,
@@ -18,23 +18,17 @@ interface TaskTypeIndicatorProps {
 
 export function TaskTypeIndicator({ taskId, className }: TaskTypeIndicatorProps) {
   const [taskType, setTaskType] = useState<TaskType>(undefined)
-  const [isHovered, setIsHovered] = useState(false)
   const { updateTask } = useTaskManagement()
   
-  // Load task type on hover
-  const handleMouseEnter = () => {
-    setIsHovered(true)
+  // Load task type on mount and when taskId changes
+  useEffect(() => {
     const log = ReasoningLogService.getLogForTask(taskId)
     if (log && log.taskType) {
       setTaskType(log.taskType)
     } else {
       setTaskType(undefined)
     }
-  }
-  
-  const handleMouseLeave = () => {
-    setIsHovered(false)
-  }
+  }, [taskId])
   
   // Toggle task type between personal and work
   const toggleTaskType = () => {
@@ -52,10 +46,6 @@ export function TaskTypeIndicator({ taskId, className }: TaskTypeIndicatorProps)
         taskType: newType
       })
     }
-  }
-  
-  if (!isHovered) {
-    return null
   }
   
   const getBackgroundColor = () => {
@@ -76,8 +66,6 @@ export function TaskTypeIndicator({ taskId, className }: TaskTypeIndicatorProps)
         <TooltipTrigger asChild>
           <button 
             className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-white ${getBackgroundColor()} hover:opacity-90 ${className}`}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
             onClick={toggleTaskType}
           >
             {getLabel()}
