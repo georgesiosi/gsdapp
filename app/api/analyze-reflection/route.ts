@@ -39,16 +39,20 @@ INSTRUCTIONS:
 3. Tasks that block progress on the daily priority should be considered Urgent
 4. Development and coding tasks related to the user's priority should be at least Q2 (Important)
 5. Provide clear reasoning for your categorization decision
+6. Determine if the task is personal or work-related based on its content and context
 
 EXAMPLES:
-- "Fix critical bug in production" → Q1 (Urgent & Important) - Directly impacts product quality
-- "Plan next sprint" → Q2 (Important, Not Urgent) - Important for progress but can be scheduled
-- "Respond to non-critical email" → Q3 (Urgent, Not Important) - Has time pressure but low impact
-- "Browse social media" → Q4 (Not Urgent & Not Important) - Not aligned with goals
+- "Fix critical bug in production" → Q1 (Urgent & Important) - Directly impacts product quality - Work-related
+- "Plan next sprint" → Q2 (Important, Not Urgent) - Important for progress but can be scheduled - Work-related
+- "Respond to non-critical email" → Q3 (Urgent, Not Important) - Has time pressure but low impact - Work-related
+- "Browse social media" → Q4 (Not Urgent & Not Important) - Not aligned with goals - Personal
+- "Doctor appointment" → Q1 (Urgent & Important) - Health is crucial - Personal
+- "Learn new programming language" → Q2 (Important, Not Urgent) - Professional development - Work-related
 
 Respond in JSON format:
 {
   "suggestedQuadrant": "q1|q2|q3|q4",
+  "taskType": "personal|work",
   "reasoning": "Detailed explanation of why this task belongs in the suggested quadrant",
   "alignmentScore": 1-10,
   "urgencyScore": 1-10,
@@ -75,6 +79,7 @@ ${justification ? `User justification: "${justification}"` : ''}`
     
     // Log the AI reasoning to console (in production this could go to a file or database)
     console.log(`[AI Reasoning] Task: "${task}" → ${result.suggestedQuadrant}`);
+    console.log(`[AI Reasoning] Task Type: ${result.taskType}`);
     console.log(`[AI Reasoning] Reasoning: ${result.reasoning}`);
     console.log(`[AI Reasoning] Scores: Alignment=${result.alignmentScore}, Urgency=${result.urgencyScore}, Importance=${result.importanceScore}`);
     
@@ -83,6 +88,7 @@ ${justification ? `User justification: "${justification}"` : ''}`
 
     return NextResponse.json({
       suggestedQuadrant: result.suggestedQuadrant as QuadrantType,
+      taskType: result.taskType,
       reasoning: result.reasoning,
       alignmentScore: result.alignmentScore,
       urgencyScore: result.urgencyScore,

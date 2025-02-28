@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react"
 import { v4 as uuidv4 } from "uuid"
-import { Task as TaskType } from "@/types/task"
+import { Task as TaskType, TaskType as TaskTypeEnum } from "@/types/task"
 import { ReasoningLogService, AIReasoningLog } from "@/services/ai/reasoningLogService"
 
 export type QuadrantType = "q1" | "q2" | "q3" | "q4"
@@ -9,6 +9,7 @@ export interface Task {
   id: string
   text: string
   quadrant: QuadrantType
+  taskType?: TaskTypeEnum
   completed: boolean
   needsReflection: boolean
   createdAt: number
@@ -75,27 +76,22 @@ export function useTaskManagement() {
   }, []);
 
   // Add a new task with AI analysis
-  const addTaskWithAIAnalysis = useCallback(async (text: string, initialQuadrant: QuadrantType = "q4"): Promise<{task: Task | null, isAnalyzing: boolean}> => {
+  const addTaskWithAIAnalysis = useCallback(async (text: string, initialQuadrant: QuadrantType = "q4", userGoal: string = "", userPriority: string = ""): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
     try {
-      // First create the task with initial quadrant
+      // First add the task normally
       const task = addTask({
         text,
         quadrant: initialQuadrant,
         completed: false,
-        needsReflection: false,
+        needsReflection: false
       });
       
       if (!task) {
-        return { task: null, isAnalyzing: false };
+        throw new Error("Failed to add task");
       }
       
-      // Start AI analysis
+      // Then analyze it with AI
       try {
-        // Get user goal and priority from localStorage
-        const userGoal = localStorage.getItem('userGoal') || '';
-        const userPriority = localStorage.getItem('userPriority') || '';
-        
-        // Call the API to analyze the task
         const response = await fetch('/api/analyze-reflection', {
           method: 'POST',
           headers: {
@@ -116,10 +112,11 @@ export function useTaskManagement() {
         
         const result = await response.json();
         
-        // Update the task with the suggested quadrant
+        // Update the task with the suggested quadrant and taskType
         if (result.suggestedQuadrant) {
           internalFunctions.current.updateTaskInternal(task.id, { 
-            quadrant: result.suggestedQuadrant 
+            quadrant: result.suggestedQuadrant,
+            taskType: result.taskType
           });
           
           // Store the reasoning log
@@ -128,6 +125,7 @@ export function useTaskManagement() {
             taskText: text,
             timestamp: Date.now(),
             suggestedQuadrant: result.suggestedQuadrant,
+            taskType: result.taskType,
             reasoning: result.reasoning || 'No reasoning provided',
             alignmentScore: result.alignmentScore,
             urgencyScore: result.urgencyScore,

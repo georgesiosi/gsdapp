@@ -1,4 +1,5 @@
 export type QuadrantType = "q1" | "q2" | "q3" | "q4"
+export type TaskType = "personal" | "work" | undefined
 
 export interface TaskReflection {
   justification: string
@@ -14,6 +15,7 @@ export interface Task {
   id: string
   text: string
   quadrant: QuadrantType
+  taskType?: TaskType
   completed: boolean
   needsReflection: boolean
   reflection?: TaskReflection

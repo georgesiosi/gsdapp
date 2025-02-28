@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { ReflectionBadge } from "@/components/ui/reflection-badge"
 import { AIThinkingIndicator } from "@/components/ui/ai-thinking-indicator"
 import { AIReasoningTooltip } from "@/components/ui/ai-reasoning-tooltip"
+import { TaskTypeIndicator } from "@/components/ui/task-type-indicator"
 import { Task, QuadrantType } from "@/types/task"
 import { DragEvent } from "react"
 
@@ -88,6 +89,7 @@ function Quadrant({ title, quadrantId, tasks, onToggleTask, onDeleteTask, onRefl
                   )}
                 </span>
                 <div className="task-actions">
+                  <TaskTypeIndicator taskId={task.id} className="mr-1" />
                   <AIReasoningTooltip taskId={task.id} className="mr-1" />
                   <button
                     onClick={() => onDeleteTask(task.id)}

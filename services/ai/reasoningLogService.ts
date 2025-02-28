@@ -6,6 +6,7 @@ export interface AIReasoningLog {
   taskText: string;
   timestamp: number;
   suggestedQuadrant: string;
+  taskType?: "personal" | "work";
   reasoning: string;
   alignmentScore?: number;
   urgencyScore?: number;
