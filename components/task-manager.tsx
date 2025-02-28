@@ -218,6 +218,13 @@ export function TaskManager() {
           onDeleteTask={deleteTask}
           onReflectionRequested={startReflection}
           onMoveTask={handleMoveTask}
+          onEditTask={(taskId, newText) => {
+            updateTask(taskId, { text: newText });
+            toast({
+              title: "Task Updated",
+              description: "Your task has been updated successfully.",
+            });
+          }}
           isAIThinking={isAIThinking}
         />
       </div>

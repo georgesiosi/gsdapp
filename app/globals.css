@@ -249,6 +249,19 @@ body {
   color: rgb(239, 68, 68);
 }
 
+.edit-button:hover {
+  color: rgb(59, 130, 246);
+}
+
+.task-item {
+  position: relative;
+}
+
+/* Ensure task items with inline editors have proper spacing */
+.task-item:has(textarea) {
+  padding: 0.5rem;
+}
+
 /* Priority Matrix Styles */
 .priority-matrix-header {
   font-size: 1.5rem;
