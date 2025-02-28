@@ -29,7 +29,14 @@ export function VelocityMeter({
   const [prevCompletedCount, setPrevCompletedCount] = useState(0)
   
   // Filter tasks by type and get counts
-  const typeTasks = tasks.filter(task => task.taskType === type)
+  // Handle both undefined taskType (treat as personal) and explicit type
+  const typeTasks = tasks.filter(task => {
+    if (type === "personal") {
+      return task.taskType === "personal" || task.taskType === undefined;
+    }
+    return task.taskType === type;
+  });
+  
   const totalTasks = typeTasks.length
   const completedTasks = typeTasks.filter(task => task.completed).length
   const pendingTasks = totalTasks - completedTasks
@@ -66,12 +73,30 @@ export function VelocityMeter({
   today.setHours(0, 0, 0, 0)
   
   const todayTasks = typeTasks.filter(task => {
-    const taskDate = new Date(task.createdAt)
+    // Handle both string and number date formats
+    const taskDate = new Date(
+      typeof task.createdAt === 'string' 
+        ? task.createdAt 
+        : Number(task.createdAt)
+    )
     taskDate.setHours(0, 0, 0, 0)
+    
+    // Debug logging
+    console.log(`[VelocityMeter] Task ${task.id} created at:`, task.createdAt);
+    console.log(`[VelocityMeter] Task date:`, taskDate.toISOString());
+    console.log(`[VelocityMeter] Today:`, today.toISOString());
+    console.log(`[VelocityMeter] Is today's task:`, taskDate.getTime() === today.getTime());
+    
     return taskDate.getTime() === today.getTime()
   })
   
+  // Debug logging
+  console.log(`[VelocityMeter] Type: ${type}, Total tasks: ${totalTasks}, Completed: ${completedTasks}`);
+  console.log(`[VelocityMeter] Today's tasks: ${todayTasks.length}`);
+  
   const todayCompleted = todayTasks.filter(task => task.completed).length
+  
+  console.log(`[VelocityMeter] Today's completed: ${todayCompleted}`);
   
   // Determine color scheme based on task type
   const colorScheme = type === "personal" 

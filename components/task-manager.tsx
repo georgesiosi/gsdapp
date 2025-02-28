@@ -248,7 +248,14 @@ export function TaskManager() {
       />
       
       {/* Velocity Meters for personal and work tasks */}
-      <VelocityMeters tasks={tasks} />
+      <VelocityMeters 
+        tasks={tasks.map(task => ({
+          ...task,
+          createdAt: String(task.createdAt),
+          updatedAt: String(task.updatedAt),
+          completedAt: task.completedAt ? String(task.completedAt) : undefined
+        }))} 
+      />
     </div>
   )
 }
