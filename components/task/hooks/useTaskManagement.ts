@@ -190,20 +190,28 @@ export function useTaskManagement() {
           throw new Error(`API returned error: ${result.error}`);
         }
         
-        // Update the task with the suggested quadrant and taskType
+        // Handle the result based on whether it's an idea or task
         if (result.isIdea) {
-          console.log(`[DEBUG] Task ${task.id} identified as an idea`);
+          console.log(`[DEBUG] Item ${task.id} identified as an idea`);
           
+          // Update task type to 'idea' for proper handling in the TaskManager
           const updateSuccess = internalFunctions.current.updateTaskInternal(task.id, { 
-            quadrant: 'q2', // Ideas go to Q2 by default as they're important but not urgent
             taskType: 'idea' as TaskOrIdeaType
           });
           
           if (!updateSuccess) {
-            console.error(`[ERROR] Failed to update task ${task.id} as idea`);
+            console.error(`[ERROR] Failed to mark ${task.id} as idea`);
           }
+
+          // Return the task with isIdea flag for proper handling in TaskManager
+          return { 
+            task: { ...task, taskType: 'idea' as TaskOrIdeaType },
+            isAnalyzing: false,
+            isIdea: true,
+            connectedToPriority: result.connectedToPriority || false
+          };
         } else {
-          // For non-ideas, always update with a quadrant and task type
+          // For non-ideas, update with quadrant and task type
           const targetQuadrant = result.suggestedQuadrant || initialQuadrant || 'q4';
           const taskType = result.taskType || 'work';
           
@@ -232,6 +240,8 @@ export function useTaskManagement() {
           });
           
           console.log(`[DEBUG] Stored reasoning log for task ${task.id}`);
+
+          return { task, isAnalyzing: false, isIdea: false };
         }
         
         return { task, isAnalyzing: false };
