@@ -4,13 +4,27 @@ A modern, feature-rich todo application built with Next.js that helps you organi
 
 ## ✨ Features
 
+### Task Management
 - **Eisenhower Matrix**: Organize tasks based on urgency and importance
+- **Drag-and-Drop**: Intuitive task reordering and quadrant reassignment
 - **Goal Setting**: Set and track your main goals and daily priorities
-- **Task Management**: Add, edit, and delete tasks with ease
-- **AI-Powered Sorting**: Automatically categorize tasks using OpenAI
-- **Export Functionality**: Export your tasks to CSV format
+- **Task Operations**: Add, edit, and delete tasks with ease
+
+### AI-Powered Features
+- **Smart Task Analysis**: Automatically categorize tasks using OpenAI
+- **Idea Detection**: Intelligent identification of ideas vs actionable tasks
+- **Priority Connection**: Smart detection of ideas connected to your priorities
+- **Robust Processing**: Enhanced AI response handling with fallback strategies
+
+### Ideas Management
+- **Ideas Bank**: Dedicated space for storing and managing ideas
+- **Priority-Connected Ideas**: Special handling for ideas aligned with priorities
+- **Idea-to-Task Conversion**: Seamlessly convert ideas into actionable tasks
+
+### User Experience
 - **Modern UI**: Clean and responsive design built with Tailwind CSS
-- **Real-time Updates**: Instant updates as you modify tasks and goals
+- **Real-time Updates**: Instant feedback as you modify tasks and ideas
+- **Export Functionality**: Export your tasks and ideas to CSV format
 
 ## 🚀 Getting Started
 
@@ -60,18 +74,28 @@ yarn dev
 - **Styling**: [Tailwind CSS](https://tailwindcss.com)
 - **UI Components**: Custom components with [Radix UI](https://www.radix-ui.com)
 - **Icons**: [Lucide React](https://lucide.dev)
+- **Drag and Drop**: [React DnD](https://react-dnd.github.io/react-dnd/)
+- **AI Integration**: [OpenAI GPT-3.5](https://openai.com/gpt-3)
+- **State Management**: React Hooks with Context API
 
 ## 📦 Project Structure
 
 ```
 mytodoapp/
 ├── app/                # Next.js app directory
-├── components/         # React components
-│   ├── task-input.tsx     # Task input component
-│   ├── goal-setter.tsx    # Goal setting component
-│   └── eisenhower-matrix.tsx  # Matrix component
-├── public/            # Static assets
-└── styles/            # Global styles
+│   └── api/           # API routes including AI integration
+├── components/        # React components
+│   ├── task/         # Task-related components
+│   │   ├── hooks/   # Task management hooks
+│   │   └── ui/      # Task UI components
+│   ├── ideas/        # Ideas Bank components
+│   ├── ui/           # Shared UI components
+│   ├── task-input.tsx    # Task input component
+│   ├── goal-setter.tsx   # Goal setting component
+│   └── eisenhower-matrix.tsx # Matrix component
+├── lib/              # Shared utilities and helpers
+├── public/           # Static assets
+└── styles/           # Global styles
 ```
 
 ## 🤝 Contributing
