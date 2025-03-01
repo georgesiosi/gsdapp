@@ -196,7 +196,7 @@ export function TaskManager() {
       });
       
       // Use addTaskWithAIAnalysis directly to avoid redundant API calls
-      const { task, isAnalyzing } = await addTaskWithAIAnalysis(
+      const { task, isAnalyzing, isIdea, connectedToPriority } = await addTaskWithAIAnalysis(
         text, 
         quadrant as "q1" | "q2" | "q3" | "q4",
         '', // userGoal
@@ -204,34 +204,35 @@ export function TaskManager() {
       );
       
       if (task) {
-        // Check if the task was identified as an idea (taskType === 'idea')
-        if (task.taskType && task.taskType.toString() === 'idea') {
+        if (isIdea) {
           console.log("[DEBUG] AI detected an idea:", text);
           
-          // For ideas, we need to handle them differently
-          // Remove the task since we'll add it to the ideas bank instead
+          // Remove the temporary task
           deleteTask(task.id);
           
-          // Add to ideas bank
+          // Add to ideas bank with priority connection info
           const idea = addIdea({
             text,
-            taskType: 'idea' as any, // Cast to any to avoid type error
-            connectedToPriority: false // Default to false, can be updated later
+            taskType: 'idea',
+            connectedToPriority: connectedToPriority || false
           });
           
           if (idea) {
             setTaskModalOpen(false);
             
             // Show a toast notification with a link to the Ideas Bank
-            const event = new CustomEvent('showToast', {
-              detail: {
-                message: 'Idea added to Ideas Bank',
-                type: 'success',
-                link: '/ideas-bank',
-                linkText: 'View Ideas Bank'
-              }
+            toast({
+              title: "Idea Added",
+              description: (
+                <div>
+                  Added to Ideas Bank.{" "}
+                  <a href="/ideas-bank" className="underline hover:text-primary">
+                    View Ideas Bank
+                  </a>
+                </div>
+              ),
+              duration: 5000,
             });
-            window.dispatchEvent(event);
           }
         } else {
           // It's a regular task
