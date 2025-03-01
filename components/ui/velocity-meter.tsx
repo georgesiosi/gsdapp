@@ -228,12 +228,13 @@ export function VelocityMeter({
               <div className={cn(
                 "rounded-full p-1 mb-1",
                 colorScheme.primary,
-                "cursor-pointer"
+                "cursor-pointer",
+                !isExpanded && "info-container"
               )}>
                 {isExpanded ? (
                   <BarChart3 size={14} className="text-white" />
                 ) : (
-                  <Info size={12} className="text-white" />
+                  <Info size={12} className="text-white info-icon" />
                 )}
               </div>
             </TooltipTrigger>
