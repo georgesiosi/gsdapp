@@ -278,7 +278,7 @@ export function EisenhowerMatrix({
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
-          className="bg-blue-50 border-blue-200"
+          className="bg-orange-50 border-orange-200"
           isAIThinking={isAIThinking}
         />
         <Quadrant
