@@ -121,65 +121,127 @@ Return a JSON object with the following structure:
     console.log("[API] Raw AI response:", responseContent);
 
     try {
-      // Find the JSON object in the response
-      const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-      
-      if (!jsonMatch) {
-        console.error("[API] Failed to extract JSON from response");
-        return NextResponse.json({ 
-          error: 'Failed to parse AI response',
-          suggestedQuadrant: currentQuadrant,
-          taskType: 'work',
-          isIdea: false
-        });
+      // Clean up the response content
+      const cleanedContent = responseContent.trim();
+      let jsonResponse;
+
+      // Try different parsing strategies
+      try {
+        // First attempt: Try to parse the entire response as JSON
+        jsonResponse = JSON.parse(cleanedContent);
+      } catch (directParseError) {
+        try {
+          // Second attempt: Try to find a JSON object in the response
+          const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            jsonResponse = JSON.parse(jsonMatch[0]);
+          } else {
+            throw new Error('No JSON object found in response');
+          }
+        } catch (matchError) {
+          // Third attempt: Try to extract and sanitize key-value pairs
+          const pairs = cleanedContent.match(/"([^"]+)"\s*:\s*([^}]+?)(?=\s*[,}])/g);
+          
+          if (pairs) {
+            // Clean and normalize each pair
+            const cleanPairs = pairs.map(pair => {
+              // Split into key and value parts
+              const [key, value] = pair.split(':').map(part => part.trim());
+              
+              // Handle string values (may contain escaped quotes)
+              if (value.startsWith('"')) {
+                // Find the last quote that's not escaped
+                const valueContent = value.replace(/^"/, '').replace(/([^\\])".*$/, '$1');
+                return `${key}: "${valueContent}"`;
+              }
+              
+              // Handle boolean and number values
+              if (['true', 'false'].includes(value.toLowerCase()) || !isNaN(Number(value))) {
+                return `${key}: ${value.toLowerCase()}`;
+              }
+              
+              // Default to treating as string
+              return `${key}: "${value.replace(/"/g, '\\"')}"`;
+            });
+            
+            try {
+              const jsonStr = '{' + cleanPairs.join(',') + '}';
+              console.log('[DEBUG] Attempting to parse:', jsonStr);
+              jsonResponse = JSON.parse(jsonStr);
+            } catch (parseError) {
+              console.error('[ERROR] Failed to parse cleaned JSON:', parseError);
+              // Fallback to basic object construction
+              jsonResponse = pairs.reduce((acc, pair) => {
+                const [key, value] = pair.split(':').map(part => part.trim());
+                const cleanKey = key.replace(/"/g, '');
+                const cleanValue = value.toLowerCase();
+                acc[cleanKey] = ['true', 'false'].includes(cleanValue) ? 
+                  cleanValue === 'true' : 
+                  value.replace(/^"|"$/g, '');
+                return acc;
+              }, {} as Record<string, any>);
+            }
+          } else {
+            throw new Error('Could not extract key-value pairs from response');
+          }
+        }
       }
-      
-      const jsonResponse = JSON.parse(jsonMatch[0]);
-      console.log("[API] Parsed response:", jsonResponse);
-      
-      // Validate the response format
-      if (jsonResponse.isIdea === undefined) {
-        console.error("[API] Missing isIdea field in response");
-        jsonResponse.isIdea = false;
+
+      console.log("[API] Successfully parsed response:", jsonResponse);
+
+      // Validate and normalize the response
+      const normalizedResponse = {
+        isIdea: Boolean(jsonResponse.isIdea),
+        suggestedQuadrant: (!jsonResponse.isIdea && jsonResponse.suggestedQuadrant) 
+          ? jsonResponse.suggestedQuadrant 
+          : (currentQuadrant || 'q4'),
+        taskType: jsonResponse.taskType || (jsonResponse.isIdea ? 'idea' : 'work'),
+        connectedToPriority: jsonResponse.isIdea 
+          ? Boolean(jsonResponse.connectedToPriority) 
+          : undefined,
+        reasoning: jsonResponse.reasoning || 'No reasoning provided',
+        alignmentScore: !jsonResponse.isIdea 
+          ? (Number(jsonResponse.alignmentScore) || 5) 
+          : undefined,
+        urgencyScore: !jsonResponse.isIdea 
+          ? (Number(jsonResponse.urgencyScore) || 5) 
+          : undefined,
+        importanceScore: !jsonResponse.isIdea 
+          ? (Number(jsonResponse.importanceScore) || 5) 
+          : undefined
+      };
+
+      // Validate the quadrant value
+      if (!['q1', 'q2', 'q3', 'q4'].includes(normalizedResponse.suggestedQuadrant)) {
+        normalizedResponse.suggestedQuadrant = currentQuadrant || 'q4';
       }
-      
-      // For tasks, ensure we have a quadrant
-      if (!jsonResponse.isIdea && !jsonResponse.suggestedQuadrant) {
-        console.warn("[API] Missing suggestedQuadrant for task, using current quadrant");
-        jsonResponse.suggestedQuadrant = currentQuadrant || 'q4';
+
+      // Validate the task type
+      if (!['personal', 'work', 'idea'].includes(normalizedResponse.taskType)) {
+        normalizedResponse.taskType = jsonResponse.isIdea ? 'idea' : 'work';
       }
-      
-      // Ensure we have a task type
-      if (!jsonResponse.taskType) {
-        console.warn("[API] Missing taskType, defaulting based on isIdea");
-        jsonResponse.taskType = jsonResponse.isIdea ? 'idea' : 'work-business';
-      }
-      
-      // For ideas, ensure we have connectedToPriority
-      if (jsonResponse.isIdea && jsonResponse.connectedToPriority === undefined) {
-        console.warn("[API] Missing connectedToPriority for idea, defaulting to false");
-        jsonResponse.connectedToPriority = false;
-      }
-      
-      // For tasks, ensure we have scores
-      if (!jsonResponse.isIdea) {
-        if (!jsonResponse.alignmentScore) jsonResponse.alignmentScore = 5;
-        if (!jsonResponse.urgencyScore) jsonResponse.urgencyScore = 5;
-        if (!jsonResponse.importanceScore) jsonResponse.importanceScore = 5;
-      }
-      
-      return NextResponse.json(jsonResponse);
+
+      // Validate scores are within range
+      ['alignmentScore', 'urgencyScore', 'importanceScore'].forEach(score => {
+        if (normalizedResponse[score] !== undefined) {
+          normalizedResponse[score] = Math.max(1, Math.min(10, normalizedResponse[score]));
+        }
+      });
+
+      return NextResponse.json(normalizedResponse);
     } catch (parseError) {
       console.error("[API] Error parsing AI response:", parseError);
       console.error("[API] Response content:", responseContent);
       
-      // Return a fallback response
+      // Return a fallback response with the current quadrant
       return NextResponse.json({
-        error: 'Failed to parse AI response',
+        isIdea: false,
         suggestedQuadrant: currentQuadrant || 'q4',
         taskType: 'work',
-        isIdea: false,
-        reasoning: 'Error parsing AI response. Using default values.'
+        reasoning: 'Could not analyze task. Using default values.',
+        alignmentScore: 5,
+        urgencyScore: 5,
+        importanceScore: 5
       });
     }
   } catch (error) {
