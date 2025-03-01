@@ -45,7 +45,20 @@ export class ReasoningLogService {
       const logsJson = localStorage.getItem(STORAGE_KEY);
       if (!logsJson) return [];
       
-      return JSON.parse(logsJson);
+      const logs = JSON.parse(logsJson) as AIReasoningLog[];
+      
+      // Deduplicate logs by taskId, keeping the most recent version
+      const uniqueLogs = Array.from(
+        logs.reduce((map, log) => {
+          const existing = map.get(log.taskId);
+          if (!existing || existing.timestamp < log.timestamp) {
+            map.set(log.taskId, log);
+          }
+          return map;
+        }, new Map<string, AIReasoningLog>()).values()
+      );
+      
+      return uniqueLogs;
     } catch (error) {
       console.error('Error retrieving AI reasoning logs:', error);
       return [];
