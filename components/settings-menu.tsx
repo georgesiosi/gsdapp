@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, Brain, HelpCircle, Github, Menu, Lightbulb } from "lucide-react"
+import { Settings, Brain, HelpCircle, Github, Menu, Lightbulb, Download } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
@@ -30,6 +30,17 @@ export function SettingsMenu() {
             <Lightbulb className="mr-2 h-4 w-4" />
             <span>Ideas Bank</span>
           </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={() => {
+            const event = new CustomEvent('exportTasks');
+            window.dispatchEvent(event);
+          }}
+          className="flex w-full cursor-pointer items-center"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          <span>Export Tasks</span>
         </DropdownMenuItem>
         
         <DropdownMenuItem asChild>

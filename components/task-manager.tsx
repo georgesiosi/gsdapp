@@ -337,44 +337,24 @@ export function TaskManager() {
         onConvertToTask={handleConvertToTask}
       />
       
-      <div className="flex justify-between items-center gap-3 mb-3">
-        <h1 className="text-2xl font-bold">Task Manager</h1>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setTaskModalOpen(true);
-            }}
-            className="h-9 text-sm px-3 py-2"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Task
-          </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="h-9 text-sm px-3 py-2"
-                type="button"
-              >
-                <Settings className="h-4 w-4" />
-                <span className="sr-only">Settings</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => router.push('/ideas-bank')}>
-                <Lightbulb className="h-4 w-4 mr-2" />
-                Ideas Bank {ideas.length > 0 && `(${ideas.length})`}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportTasks}>
-                <Download className="h-4 w-4 mr-2" />
-                Export Tasks
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+      {/* Add event listener for export tasks */}
+      <div className="hidden">
+        {useEffect(() => {
+          const handleExport = () => handleExportTasks();
+          window.addEventListener('exportTasks', handleExport);
+          return () => window.removeEventListener('exportTasks', handleExport);
+        }, [])}
       </div>
+
+      {/* Floating Action Button for adding tasks */}
+      <Button 
+        variant="default" 
+        onClick={() => setTaskModalOpen(true)}
+        className="floating-action-button"
+        aria-label="Add new task"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
 
       <div className="mt-4">
         <EisenhowerMatrix
