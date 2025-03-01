@@ -4,14 +4,10 @@ import { useEffect, useState } from "react"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
+import type { TaskOrIdeaType } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { 
-  Download, 
-  Plus, 
-  Settings,
-  Lightbulb
-} from "lucide-react"
+import { Plus } from "lucide-react"
 import { exportTasksToCSV } from "@/lib/export-utils"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { TaskModal } from "@/components/task-modal"
@@ -20,13 +16,7 @@ import { TaskCompletionConfetti } from "@/components/ui/task-completion-confetti
 import { VelocityMeters } from "@/components/velocity-meters"
 import ToastNotification from "@/components/ui/toast-notification"
 import IdeaPriorityDialog from "@/components/ideas/idea-priority-dialog"
-import { useRouter } from "next/navigation"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { ScorecardButton } from "@/components/scorecard-button"
 
 export function TaskManager() {
   const { 
@@ -44,11 +34,10 @@ export function TaskManager() {
   const { addIdea, ideas, setInitialIdeas } = useIdeasManagement()
   const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem()
   const { toast } = useToast()
-  const router = useRouter()
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [isAIThinking, setIsAIThinking] = useState(false)
   const [ideaDialogOpen, setIdeaDialogOpen] = useState(false)
-  const [currentIdea, setCurrentIdea] = useState({ text: "", taskType: "idea" as const, connectedToPriority: false })
+  const [currentIdea, setCurrentIdea] = useState({ text: "", taskType: "idea" as TaskOrIdeaType, connectedToPriority: false })
 
   // Flag to track if tasks are being loaded from localStorage
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
@@ -184,6 +173,13 @@ export function TaskManager() {
       }
     }
   }, [ideas, isLoadingIdeas, toast]);
+  
+  // Set up export tasks event listener
+  useEffect(() => {
+    const handleExport = () => handleExportTasks();
+    window.addEventListener('exportTasks', handleExport);
+    return () => window.removeEventListener('exportTasks', handleExport);
+  }, []);
 
   const handleAddTask = async (text: string, quadrant: string) => {
     if (!text.trim()) return;
@@ -337,14 +333,7 @@ export function TaskManager() {
         onConvertToTask={handleConvertToTask}
       />
       
-      {/* Add event listener for export tasks */}
-      <div className="hidden">
-        {useEffect(() => {
-          const handleExport = () => handleExportTasks();
-          window.addEventListener('exportTasks', handleExport);
-          return () => window.removeEventListener('exportTasks', handleExport);
-        }, [])}
-      </div>
+      {/* Export tasks event listener is set up in a useEffect at the component level */}
 
       {/* Floating Action Button for adding tasks */}
       <Button 
@@ -395,20 +384,32 @@ export function TaskManager() {
         isAIThinking={isAIThinking}
       />
       
-      {/* Velocity Meters for personal and work tasks */}
-      <VelocityMeters 
-        tasks={tasks.map((task: any) => {
-          // Debug logging for task types
-          console.log(`[TaskManager] Task ${task.id} type:`, task.taskType);
-          
-          return {
-            ...task,
-            createdAt: String(task.createdAt),
-            updatedAt: String(task.updatedAt),
-            completedAt: task.completedAt ? String(task.completedAt) : undefined
-          };
-        })} 
-      />
+      {/* Scorecard Button and Velocity Meters */}
+      <div className="mt-6 mb-2">
+        <div className="flex justify-end mb-2">
+          <ScorecardButton 
+            tasks={tasks.map(task => ({
+              ...task,
+              createdAt: String(task.createdAt),
+              updatedAt: String(task.updatedAt),
+              completedAt: task.completedAt ? String(task.completedAt) : undefined
+            }))} 
+            className="mr-2"
+          />
+        </div>
+        
+        {/* Velocity Meters for personal and work tasks */}
+        <VelocityMeters 
+          tasks={tasks.map(task => {
+            return {
+              ...task,
+              createdAt: String(task.createdAt),
+              updatedAt: String(task.updatedAt),
+              completedAt: task.completedAt ? String(task.completedAt) : undefined
+            };
+          })} 
+        />
+      </div>
     </div>
   )
 }
