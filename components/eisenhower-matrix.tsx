@@ -46,50 +46,88 @@ function Quadrant({
   // Sort tasks by order
   const sortedTasks = [...tasks].sort((a, b) => (a.order || 0) - (b.order || 0));
   
-  // Handle start of drag for reordering within quadrant
-  const handleReorderDragStart = (e: DragEvent, taskId: string) => {
+  // Unified drag and drop handling
+  const handleDragStart = (e: DragEvent, taskId: string) => {
     e.stopPropagation();
     setDraggedTaskId(taskId);
-    setIsDraggingForReorder(true);
-    e.dataTransfer.setData('application/reorder', taskId);
+    
+    // Store both task ID and current quadrant
+    const dragData = {
+      taskId,
+      sourceQuadrant: quadrantId
+    };
+    e.dataTransfer.setData('application/json', JSON.stringify(dragData));
     e.dataTransfer.effectAllowed = 'move';
   };
   
-  // Handle drag over for reordering
-  const handleReorderDragOver = (e: DragEvent, taskId: string) => {
+  const handleDragOver = (e: DragEvent, taskId?: string) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (draggedTaskId === taskId || !isDraggingForReorder) return;
+    if (taskId && draggedTaskId === taskId) return;
     
-    setDragOverTaskId(taskId);
-    e.dataTransfer.dropEffect = 'move';
+    try {
+      const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
+      const isFromSameQuadrant = dragData.sourceQuadrant === quadrantId;
+      
+      // Set visual feedback based on whether it's reordering or moving
+      e.currentTarget.classList.add(
+        isFromSameQuadrant ? 'reorder-target' : 'move-target'
+      );
+      
+      if (taskId) {
+        setDragOverTaskId(taskId);
+      }
+      
+      e.dataTransfer.dropEffect = 'move';
+    } catch (error) {
+      // Handle first dragover when data is not yet available
+      if (taskId) {
+        setDragOverTaskId(taskId);
+      }
+    }
   };
   
-  // Handle drop for reordering
-  const handleReorderDrop = (e: DragEvent, targetTaskId: string) => {
+  const handleDrop = (e: DragEvent, targetTaskId?: string) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!isDraggingForReorder || !draggedTaskId) return;
-    
-    const sourceIndex = sortedTasks.findIndex(t => t.id === draggedTaskId);
-    const targetIndex = sortedTasks.findIndex(t => t.id === targetTaskId);
-    
-    if (sourceIndex !== -1 && targetIndex !== -1 && sourceIndex !== targetIndex) {
-      onReorderTasks(quadrantId, sourceIndex, targetIndex);
+    try {
+      const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
+      const { taskId: draggedId, sourceQuadrant } = dragData;
+      
+      if (!draggedId) return;
+      
+      // If dropping on a task in the same quadrant, reorder
+      if (sourceQuadrant === quadrantId && targetTaskId) {
+        const sourceIndex = sortedTasks.findIndex(t => t.id === draggedId);
+        const targetIndex = sortedTasks.findIndex(t => t.id === targetTaskId);
+        
+        if (sourceIndex !== -1 && targetIndex !== -1 && sourceIndex !== targetIndex) {
+          onReorderTasks(quadrantId, sourceIndex, targetIndex);
+        }
+      }
+      // If dropping in a different quadrant, move the task
+      else if (sourceQuadrant !== quadrantId) {
+        onMoveTask(draggedId, quadrantId);
+      }
+    } catch (error) {
+      console.error('Error handling drop:', error);
     }
     
+    // Reset states
     setDraggedTaskId(null);
     setDragOverTaskId(null);
-    setIsDraggingForReorder(false);
+    e.currentTarget.classList.remove('reorder-target', 'move-target');
   };
   
-  // Handle drag end
-  const handleDragEnd = () => {
+  const handleDragEnd = (e: DragEvent) => {
     setDraggedTaskId(null);
     setDragOverTaskId(null);
-    setIsDraggingForReorder(false);
+    // Remove any lingering drag feedback classes
+    document.querySelectorAll('.reorder-target, .move-target').forEach(el => {
+      el.classList.remove('reorder-target', 'move-target');
+    });
   };
   
   console.log('[Quadrant] Rendering with tasks:', tasks.length, 'needsReflection:', tasks.filter(t => t.needsReflection).length);
@@ -100,29 +138,11 @@ function Quadrant({
         className,
         isAIThinking && "border-primary/40 shadow-sm transition-all duration-300"
       )}
-      onDragOver={(e: DragEvent) => {
-        // Only handle quadrant-level drag if not reordering
-        if (!isDraggingForReorder) {
-          e.preventDefault();
-          e.currentTarget.classList.add('border-2', 'border-primary');
-        }
-      }}
+      onDragOver={(e: DragEvent) => handleDragOver(e)}
       onDragLeave={(e: DragEvent) => {
-        if (!isDraggingForReorder) {
-          e.currentTarget.classList.remove('border-2', 'border-primary');
-        }
+        e.currentTarget.classList.remove('reorder-target', 'move-target');
       }}
-      onDrop={(e: DragEvent) => {
-        // Only handle quadrant-level drop if not reordering
-        if (!isDraggingForReorder) {
-          e.preventDefault();
-          e.currentTarget.classList.remove('border-2', 'border-primary');
-          const taskId = e.dataTransfer.getData('text/plain');
-          if (taskId) {
-            onMoveTask(taskId, quadrantId);
-          }
-        }
-      }}
+      onDrop={(e: DragEvent) => handleDrop(e)}
     >
       <div className="flex items-center justify-between p-3 border-b border-gray-200">
         <h3 className="text-sm font-medium text-gray-900">{title}</h3>
@@ -146,16 +166,13 @@ function Quadrant({
                 key={task.id} 
                 className={cn(
                   "task-item",
-                  dragOverTaskId === task.id && "border-2 border-primary bg-primary/5"
+                  dragOverTaskId === task.id && "border-2 border-primary bg-primary/5",
+                  draggedTaskId === task.id && "opacity-50"
                 )}
                 draggable={editingTaskId !== task.id}
-                onDragStart={(e) => {
-                  if (editingTaskId !== task.id) {
-                    e.dataTransfer.setData('text/plain', task.id);
-                  }
-                }}
-                onDragOver={(e) => handleReorderDragOver(e, task.id)}
-                onDrop={(e) => handleReorderDrop(e, task.id)}
+                onDragStart={(e) => handleDragStart(e, task.id)}
+                onDragOver={(e) => handleDragOver(e, task.id)}
+                onDrop={(e) => handleDrop(e, task.id)}
                 onDragEnd={handleDragEnd}
               >
                 {editingTaskId === task.id ? (
@@ -169,11 +186,7 @@ function Quadrant({
                   />
                 ) : (
                   <>
-                    <div className="task-reorder-handle" 
-                         draggable 
-                         onDragStart={(e) => handleReorderDragStart(e, task.id)}>
-                      <MoveVertical size={14} className="text-gray-400 cursor-move" />
-                    </div>
+
                     <input
                       type="checkbox"
                       checked={task.completed}
