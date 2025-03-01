@@ -55,7 +55,7 @@ export function useIdeasManagement() {
         })
         return true
       } catch (error) {
-        console.error("Error updating idea:", error);
+        console.error("[ERROR] Error updating idea:", error);
         return false;
       }
     }
@@ -63,14 +63,21 @@ export function useIdeasManagement() {
 
   // Set initial ideas
   const setInitialIdeas = useCallback((initialIdeas: Idea[]) => {
-    // Sort ideas by creation date (newest first)
-    const sortedIdeas = [...initialIdeas].sort((a, b) => b.createdAt - a.createdAt);
-    setIdeas(sortedIdeas);
+    try {
+      console.log("[DEBUG] Setting initial ideas:", initialIdeas.length);
+      // Sort ideas by creation date (newest first)
+      const sortedIdeas = [...initialIdeas].sort((a, b) => b.createdAt - a.createdAt);
+      setIdeas(sortedIdeas);
+    } catch (error) {
+      console.error("[ERROR] Error setting initial ideas:", error);
+    }
   }, [])
 
   // Add a new idea
   const addIdea = useCallback((newIdea: NewIdea): Idea | null => {
     try {
+      console.log("[DEBUG] Adding new idea:", newIdea.text.substring(0, 30));
+      
       const idea: Idea = {
         id: uuidv4(),
         ...newIdea,
@@ -79,10 +86,11 @@ export function useIdeasManagement() {
       };
       
       setIdeas(prevIdeas => [idea, ...prevIdeas]); // Add to the beginning (newest first)
+      console.log("[DEBUG] Successfully added idea:", idea.id);
       
       return idea;
     } catch (error) {
-      console.error("Error adding idea:", error);
+      console.error("[ERROR] Error adding idea:", error);
       return null;
     }
   }, [])
@@ -95,6 +103,7 @@ export function useIdeasManagement() {
   // Delete an idea
   const deleteIdea = useCallback((id: string): boolean => {
     try {
+      console.log("[DEBUG] Deleting idea:", id);
       let ideaExists = false;
       
       setIdeas(prevIdeas => {
@@ -102,9 +111,15 @@ export function useIdeasManagement() {
         return prevIdeas.filter(idea => idea.id !== id);
       });
       
+      if (ideaExists) {
+        console.log("[DEBUG] Successfully deleted idea:", id);
+      } else {
+        console.log("[DEBUG] Idea not found for deletion:", id);
+      }
+      
       return ideaExists;
     } catch (error) {
-      console.error("Error deleting idea:", error);
+      console.error("[ERROR] Error deleting idea:", error);
       return false;
     }
   }, [])
@@ -112,11 +127,15 @@ export function useIdeasManagement() {
   // Convert idea to task
   const convertIdeaToTask = useCallback((id: string): { ideaText: string, ideaType: TaskType } | null => {
     try {
+      console.log("[DEBUG] Converting idea to task:", id);
       let ideaData: { ideaText: string, ideaType: TaskType } | null = null;
       
       setIdeas(prevIdeas => {
         const ideaIndex = prevIdeas.findIndex(idea => idea.id === id);
-        if (ideaIndex === -1) return prevIdeas;
+        if (ideaIndex === -1) {
+          console.log("[DEBUG] Idea not found for conversion:", id);
+          return prevIdeas;
+        }
         
         // Store the idea data for return
         ideaData = {
@@ -124,13 +143,15 @@ export function useIdeasManagement() {
           ideaType: prevIdeas[ideaIndex].taskType
         };
         
+        console.log("[DEBUG] Successfully converted idea to task:", id);
+        
         // Remove the idea from the list
         return prevIdeas.filter(idea => idea.id !== id);
       });
       
       return ideaData;
     } catch (error) {
-      console.error("Error converting idea to task:", error);
+      console.error("[ERROR] Error converting idea to task:", error);
       return null;
     }
   }, []);

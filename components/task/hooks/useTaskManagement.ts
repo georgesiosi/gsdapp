@@ -1,15 +1,16 @@
 import { useState, useCallback, useRef } from "react"
 import { v4 as uuidv4 } from "uuid"
-import { Task as TaskType, TaskType as TaskTypeEnum, QuadrantType } from "@/types/task"
-import { ReasoningLogService, AIReasoningLog } from "@/services/ai/reasoningLogService"
+import { TaskOrIdeaType } from "@/types/task"
+import { ReasoningLogService } from "@/services/ai/reasoningLogService"
 
+// Define the quadrant type locally
 export type QuadrantType = "q1" | "q2" | "q3" | "q4"
 
 export interface Task {
   id: string
   text: string
   quadrant: QuadrantType
-  taskType?: TaskTypeEnum
+  taskType?: TaskOrIdeaType
   completed: boolean
   needsReflection: boolean
   createdAt: number
@@ -45,18 +46,25 @@ export function useTaskManagement() {
             taskType: prevTasks[taskIndex].taskType
           });
 
-          const updatedTasks = [...prevTasks]
-          updatedTasks[taskIndex] = {
-            ...updatedTasks[taskIndex],
-            ...updates,
-            updatedAt: Date.now(),
-          }
-          
-          // Debug logging for the task after update
-          console.log(`[DEBUG] updateTaskInternal - Task ${id} after update:`, {
-            id: updatedTasks[taskIndex].id,
-            text: updatedTasks[taskIndex].text.substring(0, 20),
-            taskType: updatedTasks[taskIndex].taskType
+          const updatedTasks = prevTasks.map((t, index) => {
+            if (index === taskIndex) {
+              const updatedTask = {
+                ...t,
+                ...updates,
+                updatedAt: Date.now(),
+              };
+              
+              // Debug logging for the task after update
+              console.log(`[DEBUG] updateTaskInternal - Task ${id} after update:`, {
+                id: updatedTask.id,
+                text: updatedTask.text.substring(0, 20),
+                quadrant: updatedTask.quadrant,
+                taskType: updatedTask.taskType
+              });
+              
+              return updatedTask;
+            }
+            return t;
           });
 
           return updatedTasks
@@ -93,6 +101,10 @@ export function useTaskManagement() {
   // Add a new task
   const addTask = useCallback((newTask: NewTask): Task | null => {
     try {
+      // Generate a single UUID to be used for both the state update and the returned task
+      const taskId = uuidv4();
+      const now = Date.now();
+      
       setTasks(prevTasks => {
         // Find the highest order in this quadrant
         const quadrantTasks = prevTasks.filter(t => t.quadrant === newTask.quadrant);
@@ -101,24 +113,23 @@ export function useTaskManagement() {
           : -1;
         
         const task: Task = {
-          id: uuidv4(),
+          id: taskId, // Use the pre-generated ID
           ...newTask,
           order: maxOrder + 1, // Place at the end of the quadrant
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
         };
         
         return [...prevTasks, task];
       });
       
-      // Return the newly created task
-      // This is a bit of a hack since we can't easily get the created task from the state update
+      // Return a task with the same ID as the one added to state
       const createdTask: Task = {
-        id: uuidv4(),
+        id: taskId, // Use the same ID
         ...newTask,
-        order: 0, // This will be overridden in the state update
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        order: 0, // This will be different in the state update, but it doesn't matter for the returned task
+        createdAt: now,
+        updatedAt: now,
       };
       
       return createdTask;
@@ -131,7 +142,9 @@ export function useTaskManagement() {
   // Add a new task with AI analysis
   const addTaskWithAIAnalysis = useCallback(async (text: string, initialQuadrant: QuadrantType = "q4", userGoal: string = "", userPriority: string = ""): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
     try {
-      // First add the task normally
+      console.log("[DEBUG] Starting AI analysis for task:", text.substring(0, 30));
+      
+      // First add the task normally with a temporary quadrant
       const task = addTask({
         text,
         quadrant: initialQuadrant,
@@ -145,6 +158,13 @@ export function useTaskManagement() {
       
       // Then analyze it with AI
       try {
+        console.log("[DEBUG] Sending task to AI analysis API:", {
+          text,
+          initialQuadrant,
+          userGoal,
+          userPriority
+        });
+        
         const response = await fetch('/api/analyze-reflection', {
           method: 'POST',
           headers: {
@@ -160,17 +180,43 @@ export function useTaskManagement() {
         });
         
         if (!response.ok) {
-          throw new Error('Failed to analyze task');
+          throw new Error(`Failed to analyze task: ${response.status} ${response.statusText}`);
         }
         
         const result = await response.json();
+        console.log("[DEBUG] AI analysis result:", result);
+        
+        if (result.error) {
+          throw new Error(`API returned error: ${result.error}`);
+        }
         
         // Update the task with the suggested quadrant and taskType
-        if (result.suggestedQuadrant) {
-          internalFunctions.current.updateTaskInternal(task.id, { 
-            quadrant: result.suggestedQuadrant,
-            taskType: result.taskType
+        if (result.isIdea) {
+          console.log(`[DEBUG] Task ${task.id} identified as an idea`);
+          
+          const updateSuccess = internalFunctions.current.updateTaskInternal(task.id, { 
+            quadrant: 'q2', // Ideas go to Q2 by default as they're important but not urgent
+            taskType: 'idea' as TaskOrIdeaType
           });
+          
+          if (!updateSuccess) {
+            console.error(`[ERROR] Failed to update task ${task.id} as idea`);
+          }
+        } else {
+          // For non-ideas, always update with a quadrant and task type
+          const targetQuadrant = result.suggestedQuadrant || initialQuadrant || 'q4';
+          const taskType = result.taskType || 'work';
+          
+          console.log(`[DEBUG] Updating task ${task.id} with quadrant ${targetQuadrant} and type ${taskType}`);
+          
+          const updateSuccess = internalFunctions.current.updateTaskInternal(task.id, { 
+            quadrant: targetQuadrant,
+            taskType: taskType
+          });
+          
+          if (!updateSuccess) {
+            console.error(`[ERROR] Failed to update task ${task.id} with AI analysis results`);
+          }
           
           // Store the reasoning log
           ReasoningLogService.storeLog({
@@ -178,18 +224,20 @@ export function useTaskManagement() {
             taskText: text,
             timestamp: Date.now(),
             suggestedQuadrant: result.suggestedQuadrant,
-            taskType: result.taskType,
+            taskType: result.taskType || 'work',
             reasoning: result.reasoning || 'No reasoning provided',
-            alignmentScore: result.alignmentScore,
-            urgencyScore: result.urgencyScore,
-            importanceScore: result.importanceScore
+            alignmentScore: result.alignmentScore || 5,
+            urgencyScore: result.urgencyScore || 5,
+            importanceScore: result.importanceScore || 5
           });
+          
+          console.log(`[DEBUG] Stored reasoning log for task ${task.id}`);
         }
         
         return { task, isAnalyzing: false };
       } catch (analysisError) {
         console.error("Error analyzing task:", analysisError);
-        // Return the task even if analysis failed
+        // Return the task even if analysis failed, but keep it in the initial quadrant
         return { task, isAnalyzing: false };
       }
     } catch (error) {

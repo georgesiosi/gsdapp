@@ -10,7 +10,7 @@ import {
   Download, 
   Plus, 
   Settings,
-  LightBulb
+  Lightbulb
 } from "lucide-react"
 import { exportTasksToCSV } from "@/lib/export-utils"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
@@ -64,11 +64,11 @@ export function TaskManager() {
           
           // Debug logging for loaded tasks
           console.log("[DEBUG] Loading tasks from localStorage:", parsedTasks);
-          console.log("[DEBUG] Task types from localStorage:", parsedTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          console.log("[DEBUG] Task types from localStorage:", parsedTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
           
           // Check if any tasks have work or business type
-          const workTasks = parsedTasks.filter(t => t.taskType === "work" || t.taskType === "business");
-          console.log("[DEBUG] Work/Business tasks in localStorage:", workTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          const workTasks = parsedTasks.filter((t: any) => t.taskType === "work" || t.taskType === "business");
+          console.log("[DEBUG] Work/Business tasks in localStorage:", workTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
           
           // Convert string dates to numbers
           const formattedTasks = parsedTasks.map((task: any) => ({
@@ -88,11 +88,11 @@ export function TaskManager() {
           
           // Debug logging for formatted tasks
           console.log("[DEBUG] Formatted tasks after loading:", formattedTasks);
-          console.log("[DEBUG] Task types after formatting:", formattedTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          console.log("[DEBUG] Task types after formatting:", formattedTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
           
           // Check if any tasks have work or business type after formatting
-          const formattedWorkTasks = formattedTasks.filter(t => t.taskType === "work" || t.taskType === "business");
-          console.log("[DEBUG] Work/Business tasks after formatting:", formattedWorkTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          const formattedWorkTasks = formattedTasks.filter((t: any) => t.taskType === "work" || t.taskType === "business");
+          console.log("[DEBUG] Work/Business tasks after formatting:", formattedWorkTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
           
           setInitialTasks(formattedTasks);
         }
@@ -146,17 +146,17 @@ export function TaskManager() {
       try {
         // Debug logging for tasks before saving
         console.log("[DEBUG] Saving tasks to localStorage:", tasks);
-        console.log("[DEBUG] Task types before saving:", tasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+        console.log("[DEBUG] Task types before saving:", tasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
         
         localStorage.setItem("tasks", JSON.stringify(tasks));
         
-        // Verify what was saved
-        const savedTasks = localStorage.getItem("tasks");
-        if (savedTasks) {
-          const parsedTasks = JSON.parse(savedTasks);
-          console.log("[DEBUG] Verified saved tasks:", parsedTasks.length);
-          console.log("[DEBUG] Verified task types:", parsedTasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
-        }
+          // Verify what was saved
+          const savedTasks = localStorage.getItem("tasks");
+          if (savedTasks) {
+            const parsedTasks = JSON.parse(savedTasks);
+            console.log("[DEBUG] Verified saved tasks:", parsedTasks.length);
+            console.log("[DEBUG] Verified task types:", parsedTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          }
       } catch (error) {
         console.error("Error saving tasks to localStorage:", error);
         toast({
@@ -199,45 +199,28 @@ export function TaskManager() {
         duration: 2000,
       });
       
-      // Use the new AI analysis method
-      const response = await fetch('/api/analyze-reflection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          task: text,
-          justification: '',
-          goal: '',
-          priority: '',
-          currentQuadrant: quadrant
-        }),
-      });
+      // Use addTaskWithAIAnalysis directly to avoid redundant API calls
+      const { task, isAnalyzing } = await addTaskWithAIAnalysis(
+        text, 
+        quadrant as "q1" | "q2" | "q3" | "q4",
+        '', // userGoal
+        ''  // userPriority
+      );
       
-      if (!response.ok) {
-        throw new Error('Failed to analyze task');
-      }
-      
-      const result = await response.json();
-      
-      // Check if this is an idea
-      if (result.isIdea) {
-        console.log("[DEBUG] AI detected an idea:", text);
-        
-        // If it's connected to a priority, show the dialog
-        if (result.connectedToPriority) {
-          setCurrentIdea({
-            text,
-            taskType: result.taskType || "idea",
-            connectedToPriority: true
-          });
-          setIdeaDialogOpen(true);
-        } else {
-          // Otherwise, add it directly to the ideas bank
+      if (task) {
+        // Check if the task was identified as an idea (taskType === 'idea')
+        if (task.taskType && task.taskType.toString() === 'idea') {
+          console.log("[DEBUG] AI detected an idea:", text);
+          
+          // For ideas, we need to handle them differently
+          // Remove the task since we'll add it to the ideas bank instead
+          deleteTask(task.id);
+          
+          // Add to ideas bank
           const idea = addIdea({
             text,
-            taskType: result.taskType || "idea",
-            connectedToPriority: false
+            taskType: 'idea' as any, // Cast to any to avoid type error
+            connectedToPriority: false // Default to false, can be updated later
           });
           
           if (idea) {
@@ -254,24 +237,20 @@ export function TaskManager() {
             });
             window.dispatchEvent(event);
           }
-        }
-      } else {
-        // It's a regular task, add it normally
-        const { task, isAnalyzing } = await addTaskWithAIAnalysis(text, quadrant as "q1" | "q2" | "q3" | "q4");
-        
-        if (task) {
+        } else {
+          // It's a regular task
           setTaskModalOpen(false);
           toast({
             title: "Task Added",
             description: "Your new task has been added and categorized by AI.",
           });
-        } else {
-          toast({
-            title: "Error Adding Task",
-            description: "There was a problem adding your task. Please try again.",
-            variant: "destructive",
-          });
         }
+      } else {
+        toast({
+          title: "Error Adding Task",
+          description: "There was a problem adding your task. Please try again.",
+          variant: "destructive",
+        });
       }
       
       // Set AI thinking state back to false
@@ -329,7 +308,7 @@ export function TaskManager() {
 
   const handleConvertToTask = async () => {
     // Convert the idea to a task
-    const { task, isAnalyzing } = await addTaskWithAIAnalysis(currentIdea.text);
+    const { task } = await addTaskWithAIAnalysis(currentIdea.text);
     
     if (task) {
       setIdeaDialogOpen(false);
@@ -385,7 +364,7 @@ export function TaskManager() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => router.push('/ideas-bank')}>
-                <LightBulb className="h-4 w-4 mr-2" />
+                <Lightbulb className="h-4 w-4 mr-2" />
                 Ideas Bank {ideas.length > 0 && `(${ideas.length})`}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportTasks}>
@@ -438,7 +417,7 @@ export function TaskManager() {
       
       {/* Velocity Meters for personal and work tasks */}
       <VelocityMeters 
-        tasks={tasks.map(task => {
+        tasks={tasks.map((task: any) => {
           // Debug logging for task types
           console.log(`[TaskManager] Task ${task.id} type:`, task.taskType);
           
