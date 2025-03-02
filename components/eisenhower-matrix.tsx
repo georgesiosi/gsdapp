@@ -42,8 +42,15 @@ function Quadrant({
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
 
   
-  // Sort tasks by order
-  const sortedTasks = [...tasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+  // Sort tasks by status (active first) and then by order
+  const sortedTasks = [...tasks].sort((a, b) => {
+    // First sort by status (active tasks first)
+    if (a.status !== b.status) {
+      return a.status === 'active' ? -1 : 1;
+    }
+    // Then sort by order within each status group
+    return (a.order || 0) - (b.order || 0);
+  });
   
   // Unified drag and drop handling
   const handleDragStart = (e: DragEvent, taskId: string) => {
@@ -188,11 +195,14 @@ function Quadrant({
 
                     <input
                       type="checkbox"
-                      checked={task.completed}
+                      checked={task.status === 'completed'}
                       onChange={() => onToggleTask(task.id)}
                       className="task-checkbox"
                     />
-                    <span className={cn("task-text", task.completed && "completed")}>
+                    <span className={cn(
+                      "task-text",
+                      task.status === 'completed' && "line-through text-muted-foreground"
+                    )}>
                       {task.text}
                       {task.needsReflection && onReflectionRequested && (
                         <ReflectionBadge 
