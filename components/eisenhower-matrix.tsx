@@ -146,7 +146,7 @@ function Quadrant({
       <div className="flex items-center justify-between p-3 border-b border-gray-200">
         <h3 className="text-sm font-medium text-gray-900">{title}</h3>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">{tasks.length} tasks</span>
+          <span className="text-xs text-gray-500">{tasks.length} {quadrantId === "q1" ? "tasks to do now" : quadrantId === "q2" ? "tasks to schedule" : quadrantId === "q3" ? "tasks to delegate" : "tasks to avoid"}</span>
           {isAIThinking && quadrantId === "q4" && (
             <AIThinkingIndicator isThinking={true} className="scale-75" />
           )}
