@@ -5,23 +5,27 @@ A modern, feature-rich todo application built with Next.js that helps you organi
 ## ✨ Features
 
 ### Task Management
+
 - **Eisenhower Matrix**: Organize tasks based on urgency and importance
 - **Drag-and-Drop**: Intuitive task reordering and quadrant reassignment
 - **Goal Setting**: Set and track your main goals and daily priorities
 - **Task Operations**: Add, edit, and delete tasks with ease
 
 ### AI-Powered Features
+
 - **Smart Task Analysis**: Automatically categorize tasks using OpenAI
 - **Idea Detection**: Intelligent identification of ideas vs actionable tasks
 - **Priority Connection**: Smart detection of ideas connected to your priorities
 - **Robust Processing**: Enhanced AI response handling with fallback strategies
 
 ### Ideas Management
+
 - **Ideas Bank**: Dedicated space for storing and managing ideas
 - **Priority-Connected Ideas**: Special handling for ideas aligned with priorities
 - **Idea-to-Task Conversion**: Seamlessly convert ideas into actionable tasks
 
 ### User Experience
+
 - **Modern UI**: Clean and responsive design built with Tailwind CSS
 - **Real-time Updates**: Instant feedback as you modify tasks and ideas
 - **Export Functionality**: Export your tasks and ideas to CSV format
@@ -37,36 +41,43 @@ A modern, feature-rich todo application built with Next.js that helps you organi
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/yourusername/mytodoapp.git
 cd mytodoapp
 ```
 
-2. Install dependencies:
+1. Install dependencies:
+
 ```bash
 npm install
 # or
 yarn install
 ```
 
-3. Configure environment variables:
-   - Copy `.env.example` to `.env.local`:
-     ```bash
-     cp .env.example .env.local
-     ```
-   - Add your OpenAI API key to `.env.local`:
-     ```
-     OPENAI_API_KEY=your_openai_api_key_here
-     ```
+1. Configure environment variables:
 
-4. Start the development server:
+   - Copy `.env.example` to `.env.local`:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   - Add your OpenAI API key to `.env.local`:
+
+   ```bash
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+1. Start the development server:
+
 ```bash
 npm run dev
 # or
 yarn dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+1. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## 🛠 Tech Stack
 
@@ -78,9 +89,10 @@ yarn dev
 - **AI Integration**: [OpenAI GPT-3.5](https://openai.com/gpt-3)
 - **State Management**: React Hooks with Context API
 
+
 ## 📦 Project Structure
 
-```
+```text
 mytodoapp/
 ├── app/                # Next.js app directory
 │   └── api/           # API routes including AI integration

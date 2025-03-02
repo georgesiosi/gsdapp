@@ -1,0 +1,11 @@
+{
+  "config": {
+    "default": true,
+    "MD041": false,
+    "MD022": false,
+    "MD033": false
+  },
+  "customRules": [],
+  "noProgress": true,
+  "fix": false
+}

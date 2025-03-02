@@ -1,0 +1,16 @@
+{
+  "css.validate": false,
+  "less.validate": false,
+  "scss.validate": false,
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "markdownlint.ignore": [
+    ".codeium/**/*.md"
+  ],
+  "markdownlint.config": {
+    "MD041": false,
+    "MD022": false,
+    "MD033": false
+  }
+}
