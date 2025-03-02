@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardHeader, CardContent } from "@/components/ui/card"
-import { Target, Flag, Calendar, Pencil, CheckCircle2, ArrowRight, Download } from "lucide-react"
+import { Target, Flag, Calendar, Pencil, CheckCircle2, Download } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { exportGoalsToCSV } from "@/lib/export-utils"
 

@@ -2,7 +2,7 @@
 export type QuadrantType = "q1" | "q2" | "q3" | "q4";
 
 // Task types
-export type TaskType = "personal" | "work";
+export type TaskType = "personal" | "work" | "business";
 
 // Combined task and idea type
 export type TaskOrIdeaType = TaskType | "idea";

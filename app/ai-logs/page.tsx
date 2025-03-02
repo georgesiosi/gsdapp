@@ -16,22 +16,24 @@ export default function AILogsPage() {
 
   // Load logs on component mount
   useEffect(() => {
-    loadLogs()
-  }, [])
-
-  const loadLogs = () => {
-    try {
-      const allLogs = ReasoningLogService.getAllLogs()
-      setLogs(allLogs)
-    } catch (error) {
-      console.error("Error loading logs:", error)
-      toast({
-        title: "Error loading logs",
-        description: "There was a problem loading the AI reasoning logs.",
-        variant: "destructive",
-      })
+    const loadLogs = () => {
+      try {
+        const allLogs = ReasoningLogService.getAllLogs()
+        setLogs(allLogs)
+      } catch (error) {
+        console.error("Error loading logs:", error)
+        toast({
+          title: "Error loading logs",
+          description: "There was a problem loading the AI reasoning logs.",
+          variant: "destructive",
+        })
+      }
     }
-  }
+    
+    loadLogs()
+  }, [toast])
+
+
 
   const handleClearLogs = () => {
     try {

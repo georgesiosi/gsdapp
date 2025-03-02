@@ -93,7 +93,7 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
     if (isOpen && !scorecard && !isLoading) {
       generateScorecard();
     }
-  }, [isOpen]);
+  }, [isOpen, scorecard, isLoading, generateScorecard]);
 
   // Reset state when dialog closes
   useEffect(() => {

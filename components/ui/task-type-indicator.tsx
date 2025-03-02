@@ -17,7 +17,7 @@ interface TaskTypeIndicatorProps {
 }
 
 export function TaskTypeIndicator({ taskId, className }: TaskTypeIndicatorProps) {
-  const [taskType, setTaskType] = useState<TaskType>(undefined)
+  const [taskType, setTaskType] = useState<TaskType | undefined>(undefined)
   const { updateTask } = useTaskManagement()
   
   // Load task type on mount and when taskId changes
@@ -34,21 +34,9 @@ export function TaskTypeIndicator({ taskId, className }: TaskTypeIndicatorProps)
   
   // Toggle task type between personal and work
   const toggleTaskType = () => {
-    // When toggling, use "personal" or "work" as the taskType value
-    // even though we display "B" for work/business tasks
-    const newType = taskType === "personal" ? "work" : "personal"
-    
-    // Debug logging
-    console.log(`[DEBUG] TaskTypeIndicator - Toggling task ${taskId} type from ${taskType} to ${newType}`);
-    console.log(`[DEBUG] TaskTypeIndicator - Current task type state:`, taskType);
-    
-    // Update local state
-    setTaskType(newType)
-    
-    // Update the task
-    console.log(`[DEBUG] TaskTypeIndicator - Calling updateTask with:`, { taskType: newType });
-    const updateResult = updateTask(taskId, { taskType: newType });
-    console.log(`[DEBUG] TaskTypeIndicator - Update task result:`, updateResult);
+    const newType: TaskType = taskType === "personal" ? "work" : "personal";
+    setTaskType(newType);
+    updateTask(taskId, { taskType: newType });
     
     // Update the reasoning log
     const log = ReasoningLogService.getLogForTask(taskId)

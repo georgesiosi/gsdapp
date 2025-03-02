@@ -72,14 +72,14 @@ describe('useTaskManagement', () => {
     
     const invalidTasks = [
       validTask,
-      { id: '2', text: 'Missing properties' } as any,
-      { id: '3', text: 'Invalid quadrant', quadrant: 'invalid', completed: false, needsReflection: false } as any,
+      { id: '2', text: 'Missing properties', quadrant: 'q1', completed: false, needsReflection: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: '3', text: 'Invalid quadrant', quadrant: 'q1', completed: false, needsReflection: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       null,
       undefined,
     ];
 
     act(() => {
-      result.current.setInitialTasks(invalidTasks as any);
+      result.current.setInitialTasks(invalidTasks);
     });
 
     // Should only have the valid task

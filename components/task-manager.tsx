@@ -37,7 +37,7 @@ export function TaskManager() {
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [isAIThinking, setIsAIThinking] = useState(false)
   const [ideaDialogOpen, setIdeaDialogOpen] = useState(false)
-  const [currentIdea, setCurrentIdea] = useState({ text: "", taskType: "idea" as TaskOrIdeaType, connectedToPriority: false })
+  const [currentIdea, setCurrentIdea] = useState({ text: "", taskType: "personal" as TaskType, connectedToPriority: false });
 
   // Flag to track if tasks are being loaded from localStorage
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);

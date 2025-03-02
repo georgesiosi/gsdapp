@@ -1,5 +1,17 @@
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
+import { QuadrantType, TaskType } from '@/types/task';
+
+interface AIResponse {
+  isIdea: boolean;
+  suggestedQuadrant?: QuadrantType;
+  taskType?: TaskType | 'idea';
+  connectedToPriority?: boolean;
+  reasoning?: string;
+  alignmentScore?: number;
+  urgencyScore?: number;
+  importanceScore?: number;
+}
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -129,7 +141,7 @@ Return a JSON object with the following structure:
       try {
         // First attempt: Try to parse the entire response as JSON
         jsonResponse = JSON.parse(cleanedContent);
-      } catch (directParseError) {
+      } catch (_) {
         try {
           // Second attempt: Try to find a JSON object in the response
           const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
@@ -138,7 +150,7 @@ Return a JSON object with the following structure:
           } else {
             throw new Error('No JSON object found in response');
           }
-        } catch (matchError) {
+        } catch (_) {
           // Third attempt: Try to extract and sanitize key-value pairs
           const pairs = cleanedContent.match(/"([^"]+)"\s*:\s*([^}]+?)(?=\s*[,}])/g);
           
@@ -179,7 +191,7 @@ Return a JSON object with the following structure:
                   cleanValue === 'true' : 
                   value.replace(/^"|"$/g, '');
                 return acc;
-              }, {} as Record<string, any>);
+              }, {} as Record<string, string | boolean>);
             }
           } else {
             throw new Error('Could not extract key-value pairs from response');
@@ -190,7 +202,7 @@ Return a JSON object with the following structure:
       console.log("[API] Successfully parsed response:", jsonResponse);
 
       // Validate and normalize the response
-      const normalizedResponse = {
+      const normalizedResponse: AIResponse = {
         isIdea: Boolean(jsonResponse.isIdea),
         suggestedQuadrant: (!jsonResponse.isIdea && jsonResponse.suggestedQuadrant) 
           ? jsonResponse.suggestedQuadrant 
@@ -222,9 +234,9 @@ Return a JSON object with the following structure:
       }
 
       // Validate scores are within range
-      ['alignmentScore', 'urgencyScore', 'importanceScore'].forEach(score => {
+      (['alignmentScore', 'urgencyScore', 'importanceScore'] as const).forEach(score => {
         if (normalizedResponse[score] !== undefined) {
-          normalizedResponse[score] = Math.max(1, Math.min(10, normalizedResponse[score]));
+          normalizedResponse[score] = Math.max(1, Math.min(10, normalizedResponse[score] || 5));
         }
       });
 

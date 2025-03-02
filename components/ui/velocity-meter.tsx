@@ -39,31 +39,12 @@ export function VelocityMeter({
   
   // Filter tasks by type and get counts
   const typeTasks = tasks.filter(task => {
-    // Debug each task type
-    console.log(`[DEBUG] VelocityMeter ${type} - Checking task ${task.id} with type:`, task.taskType);
-    
-    let isIncluded = false;
-    
+    // For personal meter, include tasks with taskType="personal" or undefined
     if (type === "personal") {
-      // For personal meter, include tasks with taskType="personal" or undefined
-      isIncluded = task.taskType === "personal" || task.taskType === undefined;
-    } else if (type === "work") {
-      // For work meter, include tasks with taskType="work" or "business"
-      isIncluded = task.taskType === "work" || task.taskType === "business";
-      
-      // Additional debug logging for work/business tasks
-      if (isIncluded) {
-        console.log(`[DEBUG] VelocityMeter ${type} - Including work/business task:`, {
-          id: task.id,
-          text: task.text.substring(0, 20),
-          taskType: task.taskType,
-          included: isIncluded
-        });
-      }
+      return task.taskType === "personal" || task.taskType === undefined;
     }
-    
-    console.log(`[DEBUG] VelocityMeter ${type} - Task ${task.id} included:`, isIncluded);
-    return isIncluded;
+    // For work meter, include tasks with taskType="work" or "business"
+    return task.taskType === type || task.taskType === "business";
   });
   
   // Debug filtered tasks
@@ -111,37 +92,9 @@ export function VelocityMeter({
   today.setHours(0, 0, 0, 0)
   
   const todayTasks = typeTasks.filter(task => {
-    try {
-      // Handle both string and number date formats
-      let taskCreatedAt = task.createdAt;
-      
-      // Convert to number if it's a string that looks like a number
-      if (typeof taskCreatedAt === 'string' && !isNaN(Number(taskCreatedAt))) {
-        taskCreatedAt = Number(taskCreatedAt);
-      }
-      
-      // Create date object
-      const taskDate = new Date(taskCreatedAt);
-      
-      // Check if date is valid
-      if (isNaN(taskDate.getTime())) {
-        console.log(`[DEBUG] VelocityMeter ${type} - Invalid date for task ${task.id}:`, taskCreatedAt);
-        return false;
-      }
-      
-      taskDate.setHours(0, 0, 0, 0);
-      
-      // Safe logging without toISOString which can throw errors
-      console.log(`[DEBUG] VelocityMeter ${type} - Task ${task.id} created at:`, taskCreatedAt);
-      console.log(`[DEBUG] VelocityMeter ${type} - Task date timestamp:`, taskDate.getTime());
-      console.log(`[DEBUG] VelocityMeter ${type} - Today timestamp:`, today.getTime());
-      console.log(`[DEBUG] VelocityMeter ${type} - Is today's task:`, taskDate.getTime() === today.getTime());
-      
-      return taskDate.getTime() === today.getTime();
-    } catch (error) {
-      console.error(`[DEBUG] VelocityMeter ${type} - Error processing date for task ${task.id}:`, error);
-      return false;
-    }
+    const taskDate = new Date(task.createdAt);
+    taskDate.setHours(0, 0, 0, 0);
+    return taskDate.getTime() === today.getTime();
   });
   
   // Debug logging

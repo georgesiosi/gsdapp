@@ -1,6 +1,5 @@
 "use client"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ReflectionBadge } from "@/components/ui/reflection-badge"
 import { AIThinkingIndicator } from "@/components/ui/ai-thinking-indicator"
@@ -9,7 +8,7 @@ import { TaskTypeIndicator } from "@/components/ui/task-type-indicator"
 import { InlineTaskEditor } from "@/components/ui/inline-task-editor"
 import { Task, QuadrantType } from "@/types/task"
 import { DragEvent } from "react"
-import { Edit2, MoveVertical } from "lucide-react"
+import { Edit2 } from "lucide-react"
 
 interface QuadrantProps {
   title: string
@@ -41,7 +40,7 @@ function Quadrant({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
-  const [isDraggingForReorder, setIsDraggingForReorder] = useState(false)
+
   
   // Sort tasks by order
   const sortedTasks = [...tasks].sort((a, b) => (a.order || 0) - (b.order || 0));

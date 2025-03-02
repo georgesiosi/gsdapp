@@ -14,7 +14,7 @@ export function VelocityMeters({ tasks }: VelocityMetersProps) {
   // Count tasks by type
   const personalTasks = tasks.filter(t => t.taskType === "personal" || t.taskType === undefined).length;
   const workTasks = tasks.filter(t => t.taskType === "work" || t.taskType === "business").length;
-  const unknownTasks = tasks.filter(t => t.taskType !== "personal" && t.taskType !== "work" && t.taskType !== "business" && t.taskType !== undefined).length;
+  const unknownTasks = tasks.filter(t => !t.taskType || (t.taskType !== "personal" && t.taskType !== "work" && t.taskType !== "business")).length;
   
   console.log("[DEBUG] VelocityMeters - Task type counts:", {
     personal: personalTasks,
