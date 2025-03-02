@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { ChevronLeft } from 'lucide-react'
+import Link from 'next/link'
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings()
@@ -26,7 +28,15 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/" className="-ml-2">
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Back</span>
+          </Link>
+        </Button>
+        <h1 className="text-2xl font-bold">Settings</h1>
+      </div>
       
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Task Management</h2>
