@@ -7,17 +7,23 @@ export type TaskType = "personal" | "work" | "business";
 // Combined task and idea type
 export type TaskOrIdeaType = TaskType | "idea";
 
+// Task status type
+export type TaskStatus = 'active' | 'completed' | 'archived' | 'deleted';
+
 // Task interface
 export interface Task {
   id: string;
   text: string;
   quadrant: QuadrantType;
   taskType?: TaskOrIdeaType;
-  completed: boolean;
+  status: TaskStatus;
   needsReflection: boolean;
   reflection?: TaskReflection;
   createdAt: string;
   updatedAt: string;
+  completedAt?: string;
+  archivedAt?: string;
+  deletedAt?: string;
   order?: number; // Order within the quadrant, used for manual sorting
 }
 
@@ -66,6 +72,14 @@ export interface TaskManagerContextType {
   addTaskWithAIAnalysis: (text: string, initialQuadrant?: QuadrantType, userGoal?: string, userPriority?: string) => Promise<{ task: Task | null, isAnalyzing: boolean }>;
 }
 
+// Task settings interface
+export interface TaskSettings {
+  endOfDayTime: string; // 24-hour format HH:mm
+  autoArchiveDelay: number; // days after completion
+  gracePeriod: number; // days before permanent deletion
+  retainRecurringTasks: boolean;
+}
+
 // User settings interface
 export interface UserSettings {
   goal?: string;
@@ -73,6 +87,7 @@ export interface UserSettings {
   theme?: 'light' | 'dark' | 'system';
   showCompletedTasks?: boolean;
   autoAnalyze?: boolean;
+  taskSettings: TaskSettings;
 }
 
 // AI Analysis Result interface
