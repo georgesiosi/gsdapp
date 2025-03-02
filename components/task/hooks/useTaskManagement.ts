@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react"
 import { v4 as uuidv4 } from "uuid"
-import { TaskOrIdeaType } from "@/types/task"
+import { TaskOrIdeaType, TaskStatus } from "@/types/task"
 import { ReasoningLogService } from "@/services/ai/reasoningLogService"
 
 // Define the quadrant type locally
@@ -17,6 +17,9 @@ export interface Task {
   completedAt?: number
   updatedAt: number
   order?: number
+  status: TaskStatus
+  archivedAt?: string
+  deletedAt?: string
 }
 
 export type NewTask = Omit<Task, "id" | "createdAt" | "updatedAt">
@@ -77,16 +80,24 @@ export function useTaskManagement() {
     }
   });
 
+  // Migrate task data to include new fields
+  const migrateTask = (task: any): Task => {
+    return {
+      ...task,
+      status: task.status || (task.completed ? 'completed' : 'active'),
+      archivedAt: task.archivedAt || undefined,
+      deletedAt: task.deletedAt || undefined,
+      order: task.order !== undefined ? task.order : 0
+    };
+  };
+
   // Set initial tasks
   const setInitialTasks = useCallback((initialTasks: Task[]) => {
-    // Ensure all tasks have an order property
-    const tasksWithOrder = initialTasks.map((task, index) => ({
-      ...task,
-      order: task.order !== undefined ? task.order : index
-    }));
+    // Migrate and ensure all tasks have required properties
+    const migratedTasks = initialTasks.map((task, index) => migrateTask(task));
     
     // Sort tasks by order within each quadrant
-    const sortedTasks = [...tasksWithOrder].sort((a, b) => {
+    const sortedTasks = [...migratedTasks].sort((a, b) => {
       // First sort by quadrant
       if (a.quadrant !== b.quadrant) {
         return a.quadrant.localeCompare(b.quadrant);
@@ -118,6 +129,7 @@ export function useTaskManagement() {
           order: maxOrder + 1, // Place at the end of the quadrant
           createdAt: now,
           updatedAt: now,
+          status: newTask.status || 'active', // Ensure status is set
         };
         
         return [...prevTasks, task];
@@ -130,6 +142,7 @@ export function useTaskManagement() {
         order: 0, // This will be different in the state update, but it doesn't matter for the returned task
         createdAt: now,
         updatedAt: now,
+        status: newTask.status || 'active', // Ensure status is set
       };
       
       return createdTask;
@@ -149,7 +162,8 @@ export function useTaskManagement() {
         text,
         quadrant: initialQuadrant,
         completed: false,
-        needsReflection: false
+        needsReflection: false,
+        status: 'active'
       });
       
       if (!task) {
