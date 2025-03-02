@@ -7,7 +7,8 @@ import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
 import type { TaskOrIdeaType } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Plus, History } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { exportTasksToCSV } from "@/lib/export-utils"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { TaskModal } from "@/components/task-modal"
@@ -17,8 +18,10 @@ import { VelocityMeters } from "@/components/velocity-meters"
 import ToastNotification from "@/components/ui/toast-notification"
 import IdeaPriorityDialog from "@/components/ideas/idea-priority-dialog"
 import { ScorecardButton } from "@/components/scorecard-button"
+import { EndDayScorecard } from "@/components/end-day-scorecard"
 
 export function TaskManager() {
+  const router = useRouter();
   const { 
     tasks, 
     addTask, 
@@ -42,6 +45,7 @@ export function TaskManager() {
   // Flag to track if tasks are being loaded from localStorage
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
+  const [scorecardOpen, setScorecardOpen] = useState(false);
 
   // Load tasks from localStorage on mount
   useEffect(() => {
@@ -180,6 +184,42 @@ export function TaskManager() {
     window.addEventListener('exportTasks', handleExport);
     return () => window.removeEventListener('exportTasks', handleExport);
   }, []);
+
+  const handleUpdateTaskStatus = (taskId: string, status: TaskStatus) => {
+    // Find all tasks in the same quadrant
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const quadrantTasks = tasks.filter(t => t.quadrant === task.quadrant);
+    
+    // Calculate new order based on status
+    let newOrder: number;
+    if (status === 'completed') {
+      // If completing task, put it at the end
+      const maxOrder = Math.max(...quadrantTasks.map(t => t.order || 0));
+      newOrder = maxOrder + 1;
+    } else if (status === 'active') {
+      // If uncompleting task, put it at the start of active tasks
+      const activeTasks = quadrantTasks.filter(t => t.status === 'active');
+      const minActiveOrder = activeTasks.length > 0 
+        ? Math.min(...activeTasks.map(t => t.order || 0))
+        : 0;
+      newOrder = minActiveOrder - 1;
+    }
+
+
+    const timestamp = new Date().toISOString();
+    const updates: Partial<Task> = {
+      status,
+      ...(status === 'completed' && { completedAt: timestamp }),
+      ...(status === 'archived' && { archivedAt: timestamp }),
+      ...(status === 'deleted' && { deletedAt: timestamp }),
+      updatedAt: timestamp,
+      order: newOrder
+    };
+
+    updateTask(taskId, updates);
+  };
 
   const handleAddTask = async (text: string, quadrant: string) => {
     if (!text.trim()) return;
@@ -346,16 +386,49 @@ export function TaskManager() {
         <Plus className="h-6 w-6" />
       </Button>
 
+      {/* Task Actions Section */}
+      <div className="mb-4 flex justify-end space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => router.push("/history")}
+        >
+          <History className="h-4 w-4" />
+          History
+        </Button>
+        <ScorecardButton
+          onClick={() => setScorecardOpen(true)}
+          tasks={tasks.filter(t => t.status === 'active' || t.status === 'completed')}
+          className="w-auto"
+        />
+      </div>
+
       <div className="mt-4">
         <EisenhowerMatrix
-          tasks={tasks.map(task => ({
+          tasks={tasks
+            .filter(t => {
+              // Show active tasks and tasks completed today
+              if (t.status === 'active') return true;
+              if (t.status === 'completed' && t.completedAt) {
+                const completedDate = new Date(t.completedAt);
+                const today = new Date();
+                return completedDate.toDateString() === today.toDateString();
+              }
+              return false;
+            })
+            .map(task => ({
             ...task,
             createdAt: String(task.createdAt),
             updatedAt: String(task.updatedAt),
             completedAt: task.completedAt ? String(task.completedAt) : undefined
           }))}
-          onToggleTask={toggleTask}
-          onDeleteTask={deleteTask}
+          onToggleTask={(id) => {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+            handleUpdateTaskStatus(id, task.status === 'completed' ? 'active' : 'completed');
+          }}
+          onDeleteTask={(id) => handleUpdateTaskStatus(id, 'deleted')}
           onReflectionRequested={startReflection}
           onMoveTask={handleMoveTask}
           onEditTask={(taskId, newText) => {
@@ -385,23 +458,19 @@ export function TaskManager() {
         isAIThinking={isAIThinking}
       />
       
-      {/* Scorecard Button and Velocity Meters */}
+      {/* Velocity Meters */}
       <div className="mt-6 mb-2">
-        <div className="flex justify-end mb-2">
-          <ScorecardButton 
-            tasks={tasks.map(task => ({
-              ...task,
-              createdAt: String(task.createdAt),
-              updatedAt: String(task.updatedAt),
-              completedAt: task.completedAt ? String(task.completedAt) : undefined
-            }))} 
-            className="mr-2"
-          />
-        </div>
         
         {/* Velocity Meters for personal and work tasks */}
+        <EndDayScorecard
+          isOpen={scorecardOpen}
+          onClose={() => setScorecardOpen(false)}
+          tasks={tasks}
+          onUpdateTaskStatus={handleUpdateTaskStatus}
+        />
+
         <VelocityMeters 
-          tasks={tasks.map(task => {
+          tasks={tasks.filter(t => t.status === 'active' || t.status === 'completed').map(task => {
             return {
               ...task,
               createdAt: String(task.createdAt),
