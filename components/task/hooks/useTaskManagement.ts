@@ -29,7 +29,25 @@ export function useTaskManagement() {
   const [showConfetti, setShowConfetti] = useState(false)
   
   // Use a ref to store the internal update function
-  const internalFunctions = useRef({
+  const internalFunctions = useRef<{
+    updateTaskInternal: (id: string, updates: Partial<Task>) => boolean;
+    deleteTaskInternal: (id: string) => boolean;
+  }>({
+    deleteTaskInternal: (id: string): boolean => {
+      try {
+        let taskExists = false;
+        
+        setTasks(prevTasks => {
+          taskExists = prevTasks.some(task => task.id === id);
+          return prevTasks.filter(task => task.id !== id);
+        });
+        
+        return taskExists;
+      } catch (error) {
+        console.error("Error deleting task:", error);
+        return false;
+      }
+    },
     updateTaskInternal: (id: string, updates: Partial<Task>): boolean => {
       try {
         // Debug logging for task updates
@@ -82,12 +100,24 @@ export function useTaskManagement() {
 
   // Migrate task data to include new fields
   const migrateTask = (task: Partial<Task> & { completed?: boolean }): Task => {
+    if (!task.id || !task.text || !task.quadrant) {
+      throw new Error('Missing required task fields');
+    }
+    
     return {
-      ...task,
+      id: task.id,
+      text: task.text,
+      quadrant: task.quadrant,
+      taskType: task.taskType || 'personal',
+      completed: task.completed || false,
+      needsReflection: task.needsReflection || false,
+      createdAt: task.createdAt || Date.now(),
+      completedAt: task.completedAt,
+      updatedAt: task.updatedAt || Date.now(),
+      order: task.order || 0,
       status: task.status || (task.completed ? 'completed' : 'active'),
-      archivedAt: task.archivedAt || undefined,
-      deletedAt: task.deletedAt || undefined,
-      order: task.order !== undefined ? task.order : 0
+      archivedAt: task.archivedAt,
+      deletedAt: task.deletedAt
     };
   };
 
@@ -209,8 +239,8 @@ export function useTaskManagement() {
 
         // If this is an idea and we're not coming from the Ideas Bank, add it to the Ideas Bank
         if (result.isIdea && initialQuadrant !== 'q4') {
-          // Delete the temporary task
-          deleteTask(task.id);
+          // Delete the temporary task using internal function
+          internalFunctions.current.deleteTaskInternal(task.id);
           
           // Add to Ideas Bank
           const event = new CustomEvent('addToIdeasBank', {
@@ -271,7 +301,7 @@ export function useTaskManagement() {
       console.error("Error in addTaskWithAIAnalysis:", error);
       return { task: null, isAnalyzing: false };
     }
-  }, [addTask, deleteTask]);
+  }, [addTask]);
 
   // Update a task (exposed function)
   const updateTask = useCallback((id: string, updates: Partial<Task>): boolean => {
@@ -280,19 +310,7 @@ export function useTaskManagement() {
 
   // Delete a task
   const deleteTask = useCallback((id: string): boolean => {
-    try {
-      let taskExists = false;
-      
-      setTasks(prevTasks => {
-        taskExists = prevTasks.some(task => task.id === id);
-        return prevTasks.filter(task => task.id !== id);
-      });
-      
-      return taskExists;
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      return false;
-    }
+    return internalFunctions.current.deleteTaskInternal(id);
   }, [])
 
   // Toggle task completion
