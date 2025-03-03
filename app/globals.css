@@ -9,7 +9,7 @@
   --card-foreground: 222.2 84% 4.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
+  --primary: 222.2 84% 4.9%;
   --primary-foreground: 210 40% 98%;
   --secondary: 210 40% 96.1%;
   --secondary-foreground: 222.2 47.4% 11.2%;
@@ -22,6 +22,8 @@
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
   --ring: 221.2 83.2% 53.3%;
+  --blue: 221.2 83.2% 53.3%;
+  --blue-foreground: 210 40% 98%;
   --radius: 0.5rem;
 }
 
@@ -32,7 +34,7 @@
   --card-foreground: 213 31% 91%;
   --popover: 224 71% 4%;
   --popover-foreground: 215 20.2% 95.1%;
-  --primary: 210 100% 66%;
+  --primary: 210 40% 98%;
   --primary-foreground: 222.2 47.4% 11.2%;
   --secondary: 217.2 32.6% 30%;
   --secondary-foreground: 210 40% 98%;
@@ -45,6 +47,8 @@
   --border: 216 34% 17%;
   --input: 216 34% 17%;
   --ring: 224.3 76.3% 60%;
+  --blue: 217.2 91.2% 59.8%;
+  --blue-foreground: 222.2 47.4% 11.2%;
 }
 
 * {
@@ -138,7 +142,7 @@ body {
   }
 
   .quadrant-not-urgent-important {
-    @apply bg-primary/5 hover:bg-primary/10;
+    @apply bg-[hsl(var(--blue)/0.05)] hover:bg-[hsl(var(--blue)/0.1)];
   }
 
   .quadrant-urgent-not-important {
@@ -468,7 +472,7 @@ body {
 
 /* Task type styling */
 .task-type-personal {
-  border-left: 3px solid #3b82f6; /* Blue */
+  border-left: 3px solid hsl(var(--primary)); /* Primary */
 }
 
 .task-type-work {
