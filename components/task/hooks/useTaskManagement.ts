@@ -333,28 +333,44 @@ export function useTaskManagement() {
   const reorderTasks = useCallback((quadrant: QuadrantType, sourceIndex: number, destinationIndex: number): boolean => {
     try {
       setTasks(prevTasks => {
-        // Get tasks in this quadrant
-        const quadrantTasks = prevTasks
-          .filter(task => task.quadrant === quadrant)
+        // Get tasks in this quadrant, separated by status
+        const activeTasks = prevTasks
+          .filter(task => task.quadrant === quadrant && task.status === 'active')
           .sort((a, b) => (a.order || 0) - (b.order || 0));
         
-        if (sourceIndex < 0 || sourceIndex >= quadrantTasks.length || 
-            destinationIndex < 0 || destinationIndex >= quadrantTasks.length) {
+        const completedTasks = prevTasks
+          .filter(task => task.quadrant === quadrant && task.status === 'completed')
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        // Determine which array we're working with based on the source index
+        const isActiveTask = sourceIndex < activeTasks.length;
+        const workingArray = isActiveTask ? activeTasks : completedTasks;
+        const adjustedSourceIndex = isActiveTask ? sourceIndex : sourceIndex - activeTasks.length;
+        const adjustedDestIndex = isActiveTask ? destinationIndex : destinationIndex - activeTasks.length;
+        
+        if (adjustedSourceIndex < 0 || adjustedSourceIndex >= workingArray.length || 
+            adjustedDestIndex < 0 || adjustedDestIndex >= workingArray.length) {
           return prevTasks; // Invalid indices
         }
         
         // Remove the task from its current position
-        const [movedTask] = quadrantTasks.splice(sourceIndex, 1);
+        const [movedTask] = workingArray.splice(adjustedSourceIndex, 1);
         
         // Insert the task at the new position
-        quadrantTasks.splice(destinationIndex, 0, movedTask);
+        workingArray.splice(adjustedDestIndex, 0, movedTask);
         
-        // Update order values for all tasks in the quadrant
-        const updatedQuadrantTasks = quadrantTasks.map((task, index) => ({
+        // Update order values for the affected array
+        const updatedArray = workingArray.map((task, index) => ({
           ...task,
           order: index,
           updatedAt: Date.now()
         }));
+
+        // Combine everything back together
+        const updatedQuadrantTasks = [
+          ...updatedArray,
+          ...(isActiveTask ? completedTasks : activeTasks)
+        ];
         
         // Create a new tasks array with the updated quadrant tasks
         return prevTasks
