@@ -108,11 +108,11 @@ export function VelocityMeter({
   // Determine color scheme based on task type
   const colorScheme = type === "personal" 
     ? { 
-        primary: "bg-blue-500", 
-        secondary: "bg-blue-300",
-        muted: "bg-blue-100",
-        text: "text-blue-700",
-        hover: "hover:bg-blue-600"
+        primary: "bg-[hsl(var(--blue))]", 
+        secondary: "bg-[hsl(var(--blue)/0.7)]",
+        muted: "bg-[hsl(var(--blue)/0.2)]",
+        text: "text-[hsl(var(--blue))]",
+        hover: "hover:bg-[hsl(var(--blue)/0.9)]"
       }
     : {
         primary: "bg-green-500",

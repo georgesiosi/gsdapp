@@ -56,7 +56,7 @@ export default function ToastNotification() {
         return <ExclamationCircleIcon className="h-6 w-6 text-red-500" />
       case 'info':
       default:
-        return <InformationCircleIcon className="h-6 w-6 text-blue-500" />
+        return <InformationCircleIcon className="h-6 w-6 text-primary" />
     }
   }
 
@@ -68,7 +68,7 @@ export default function ToastNotification() {
         return 'bg-red-50'
       case 'info':
       default:
-        return 'bg-blue-50'
+        return 'bg-primary/5'
     }
   }
 
@@ -89,7 +89,7 @@ export default function ToastNotification() {
           {toast.link && toast.linkText && (
             <button
               onClick={handleNavigate}
-              className="mt-1 text-sm font-medium text-blue-600 hover:text-blue-800"
+              className="mt-1 text-sm font-medium text-primary hover:text-primary/80"
             >
               {toast.linkText}
             </button>

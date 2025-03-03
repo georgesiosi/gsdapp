@@ -52,7 +52,7 @@ export function InlineTaskEditor({
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
-        className="w-full min-h-[60px] p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+        className="w-full min-h-[60px] p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         placeholder="Task description..."
       />
       <div className="flex justify-end gap-2">
