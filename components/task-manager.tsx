@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { ReasoningLogService } from "@/services/ai/reasoningLogService"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
@@ -15,13 +16,13 @@ import { TaskModal } from "@/components/task-modal"
 import { ReflectionCard } from "@/components/ui/reflection-card"
 import { TaskCompletionConfetti } from "@/components/ui/task-completion-confetti"
 import { VelocityMeters } from "@/components/velocity-meters"
-import ToastNotification from "@/components/ui/toast-notification"
 import IdeaPriorityDialog from "@/components/ideas/idea-priority-dialog"
 import { ScorecardButton } from "@/components/scorecard-button"
 import { EndDayScorecard } from "@/components/end-day-scorecard"
 
 export function TaskManager() {
   const router = useRouter();
+  const { toast } = useToast();
   const { 
     tasks, 
     addTask, 
@@ -36,7 +37,7 @@ export function TaskManager() {
   } = useTaskManagement()
   const { addIdea, ideas, setInitialIdeas } = useIdeasManagement()
   const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem()
-  const { toast } = useToast()
+
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [isAIThinking, setIsAIThinking] = useState(false)
   const [ideaDialogOpen, setIdeaDialogOpen] = useState(false)
@@ -185,6 +186,8 @@ export function TaskManager() {
     return () => window.removeEventListener('exportTasks', handleExport);
   }, []);
 
+
+
   const handleUpdateTaskStatus = (taskId: string, status: TaskStatus) => {
     // Find all tasks in the same quadrant
     const task = tasks.find(t => t.id === taskId);
@@ -230,64 +233,105 @@ export function TaskManager() {
       
       // Show a toast notification that AI is thinking
       toast({
-        title: "AI is analyzing your task",
-        description: "Determining the best quadrant for your task...",
+        title: "AI is analyzing your input",
+        description: "Determining if this is a task or an idea...",
         duration: 2000,
       });
       
-      // Use addTaskWithAIAnalysis directly to avoid redundant API calls
-      const { task, isAnalyzing, isIdea, connectedToPriority } = await addTaskWithAIAnalysis(
-        text, 
-        quadrant as "q1" | "q2" | "q3" | "q4",
-        '', // userGoal
-        ''  // userPriority
-      );
+      // First, analyze with AI without creating a task
+      const response = await fetch('/api/analyze-reflection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task: text,
+          justification: '',
+          goal: '',
+          priority: '',
+          currentQuadrant: quadrant
+        }),
+      });
       
-      if (task) {
-        if (isIdea) {
-          console.log("[DEBUG] AI detected an idea:", text);
+      if (!response.ok) {
+        throw new Error(`Failed to analyze input: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log("[DEBUG] AI analysis result:", result);
+      
+      if (result.isIdea) {
+        console.log("[DEBUG] AI detected an idea:", text);
+        
+        // Add directly to ideas bank with priority connection info
+        const idea = addIdea({
+          text,
+          taskType: 'idea',
+          connectedToPriority: result.connectedToPriority || false
+        });
+        
+        if (idea) {
+          setTaskModalOpen(false);
           
-          // Remove the temporary task
-          deleteTask(task.id);
-          
-          // Add to ideas bank with priority connection info
-          const idea = addIdea({
-            text,
-            taskType: 'idea',
-            connectedToPriority: connectedToPriority || false
+          // Show a toast notification with a link to the Ideas Bank
+          toast({
+            title: "Idea Added",
+            description: (
+              <div>
+                Added to Ideas Bank.{" "}
+                <button 
+                  onClick={() => router.push("/ideas-bank")} 
+                  className="font-medium underline hover:text-primary"
+                >
+                  View Ideas Bank
+                </button>
+              </div>
+            ),
+            duration: 5000,
           });
-          
-          if (idea) {
-            setTaskModalOpen(false);
-            
-            // Show a toast notification with a link to the Ideas Bank
-            toast({
-              title: "Idea Added",
-              description: (
-                <div>
-                  Added to Ideas Bank.{" "}
-                  <a href="/ideas-bank" className="underline hover:text-primary">
-                    View Ideas Bank
-                  </a>
-                </div>
-              ),
-              duration: 5000,
+        }
+      } else {
+        // It's a regular task, create it with the analyzed properties
+        const task = addTask({
+          text,
+          quadrant: result.suggestedQuadrant || (quadrant as "q1" | "q2" | "q3" | "q4"),
+          taskType: result.taskType || 'work',
+          completed: false,
+          needsReflection: false,
+          status: 'active'
+        });
+        
+        if (task) {
+          // Store the reasoning log
+          try {
+            ReasoningLogService.storeLog({
+              taskId: task.id,
+              taskText: text,
+              timestamp: Date.now(),
+              suggestedQuadrant: result.suggestedQuadrant,
+              taskType: result.taskType || 'work',
+              reasoning: result.reasoning || 'No reasoning provided',
+              alignmentScore: result.alignmentScore || 5,
+              urgencyScore: result.urgencyScore || 5,
+              importanceScore: result.importanceScore || 5
             });
+          } catch (logError) {
+            console.error('Error storing reasoning log:', logError);
+            // Continue execution even if logging fails
           }
-        } else {
-          // It's a regular task
+          
           setTaskModalOpen(false);
           toast({
             title: "Task Added",
             description: "Your new task has been added and categorized by AI.",
           });
+        } else {
+          toast({
+            title: "Error Adding Task",
+            description: "There was a problem adding your task. Please try again.",
+            variant: "destructive",
+          });
         }
-      } else {
-        toast({
-          title: "Error Adding Task",
-          description: "There was a problem adding your task. Please try again.",
-          variant: "destructive",
-        });
       }
       
       // Set AI thinking state back to false
@@ -303,11 +347,21 @@ export function TaskManager() {
     }
   };
 
-  const handleMoveTask = (taskId: string, newQuadrant: string) => {
-    // Ensure the quadrant is a valid QuadrantType
-    if (["q1", "q2", "q3", "q4"].includes(newQuadrant)) {
-      updateTask(taskId, { quadrant: newQuadrant as "q1" | "q2" | "q3" | "q4" })
-    }
+  const handleMoveTask = (taskId: string, newQuadrant: QuadrantType) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // Update the task's quadrant
+    updateTask(taskId, { quadrant: newQuadrant });
+
+    // Show a toast notification
+    toast({
+      title: "Task Moved",
+      description: `Task moved to ${newQuadrant === 'q1' ? 'Urgent & Important' :
+                    newQuadrant === 'q2' ? 'Important, Not Urgent' :
+                    newQuadrant === 'q3' ? 'Urgent, Not Important' :
+                    'Neither Urgent nor Important'}`
+    });
   }
 
   const handleExportTasks = () => {
@@ -331,15 +385,21 @@ export function TaskManager() {
       setTaskModalOpen(false);
       
       // Show a toast notification with a link to the Ideas Bank
-      const event = new CustomEvent('showToast', {
-        detail: {
-          message: 'Idea added to Ideas Bank',
-          type: 'success',
-          link: '/ideas-bank',
-          linkText: 'View Ideas Bank'
-        }
+      toast({
+        title: "Idea Added",
+        description: (
+          <div>
+            Added to Ideas Bank.{" "}
+            <button 
+              onClick={() => router.push("/ideas-bank")} 
+              className="font-medium underline hover:text-primary"
+            >
+              View Ideas Bank
+            </button>
+          </div>
+        ),
+        duration: 5000,
       });
-      window.dispatchEvent(event);
     }
   };
 
@@ -361,9 +421,6 @@ export function TaskManager() {
     <div>
       {/* Confetti animation for completing urgent & important tasks */}
       <TaskCompletionConfetti show={showConfetti} onComplete={hideConfetti} />
-      
-      {/* Toast notification component */}
-      <ToastNotification />
       
       {/* Idea priority dialog */}
       <IdeaPriorityDialog
