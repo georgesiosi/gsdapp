@@ -142,7 +142,7 @@ function Quadrant({
       className={cn(
         "quadrant", 
         className,
-        isAIThinking && "border-primary/40 shadow-sm transition-all duration-300"
+        isAIThinking && "ring-2 ring-primary/40 transition-all duration-300"
       )}
       onDragOver={(e: DragEvent) => handleDragOver(e)}
       onDragLeave={(e: DragEvent) => {
@@ -150,10 +150,10 @@ function Quadrant({
       }}
       onDrop={(e: DragEvent) => handleDrop(e)}
     >
-      <div className="flex items-center justify-between p-3 border-b border-gray-200">
-        <h3 className="text-sm font-medium text-gray-900">{title}</h3>
+      <div className="flex items-center justify-between p-3 border-b">
+        <h3 className="text-sm font-medium">{title}</h3>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">{tasks.length} {quadrantId === "q1" ? "tasks to do now" : quadrantId === "q2" ? "tasks to schedule" : quadrantId === "q3" ? "tasks to delegate" : "tasks to avoid"}</span>
+          <span className="text-xs text-muted-foreground">{tasks.length} {quadrantId === "q1" ? "tasks to do now" : quadrantId === "q2" ? "tasks to schedule" : quadrantId === "q3" ? "tasks to delegate" : "tasks to avoid"}</span>
           {isAIThinking && quadrantId === "q4" && (
             <AIThinkingIndicator isThinking={true} className="scale-75" />
           )}
@@ -172,7 +172,7 @@ function Quadrant({
                 key={task.id} 
                 className={cn(
                   "task-item",
-                  dragOverTaskId === task.id && "border-2 border-primary bg-primary/5",
+                  dragOverTaskId === task.id && "ring-2 ring-primary",
                   draggedTaskId === task.id && "opacity-50"
                 )}
                 draggable={editingTaskId !== task.id}
@@ -287,7 +287,7 @@ export function EisenhowerMatrix({
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
-          className="bg-red-50 border-red-200"
+          className="quadrant-urgent-important border-destructive/20"
           isAIThinking={isAIThinking}
         />
         <Quadrant
@@ -300,7 +300,7 @@ export function EisenhowerMatrix({
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
-          className="bg-orange-50 border-orange-200"
+          className="quadrant-not-urgent-important border-primary/20"
           isAIThinking={isAIThinking}
         />
         <Quadrant
@@ -313,7 +313,7 @@ export function EisenhowerMatrix({
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
-          className="bg-yellow-50 border-yellow-200"
+          className="quadrant-urgent-not-important border-yellow-500/20"
           isAIThinking={isAIThinking}
         />
         <Quadrant
@@ -326,7 +326,7 @@ export function EisenhowerMatrix({
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
-          className="bg-gray-50 border-gray-200"
+          className="quadrant-not-urgent-not-important border-muted-foreground/20"
           isAIThinking={isAIThinking}
         />
       </div>

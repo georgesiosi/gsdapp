@@ -28,23 +28,23 @@
 .dark {
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 217.2 91.2% 59.8%;
+  --card: 224 71% 4%;
+  --card-foreground: 213 31% 91%;
+  --popover: 224 71% 4%;
+  --popover-foreground: 215 20.2% 95.1%;
+  --primary: 210 100% 66%;
   --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
+  --secondary: 217.2 32.6% 30%;
   --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
+  --muted: 223 47% 11%;
+  --muted-foreground: 215 20.2% 75.1%;
+  --accent: 216 34% 17%;
   --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 0 63% 50%;
   --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 224.3 76.3% 48%;
+  --border: 216 34% 17%;
+  --input: 216 34% 17%;
+  --ring: 224.3 76.3% 60%;
 }
 
 * {
@@ -66,11 +66,11 @@ body {
   }
 
   .goal-setter-container {
-    @apply bg-white rounded-lg border border-gray-200 shadow-sm;
+    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
   }
 
   .goal-setter-header {
-    @apply px-4 py-3 flex flex-row items-center justify-between border-b border-gray-200;
+    @apply flex flex-row items-center justify-between border-b px-4 py-3;
   }
 
   .goal-setter-content {
@@ -86,7 +86,7 @@ body {
   }
 
   .task-input-header {
-    @apply text-sm font-medium text-gray-700 mb-2;
+    @apply text-sm font-medium text-foreground;
   }
 
   .task-input-content {
@@ -98,60 +98,76 @@ body {
   }
 
   .task-input {
-    @apply flex-1 h-9 px-3 rounded-md border border-gray-200 bg-white text-sm;
+    @apply h-9 w-full rounded-md border bg-background px-3 py-1 text-sm
+    ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none
+    focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
 
   .add-task-button {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-3 bg-gray-900 text-white hover:bg-gray-800;
+    @apply inline-flex h-9 items-center justify-center rounded-md bg-primary px-3
+    text-sm font-medium text-primary-foreground ring-offset-background transition-colors
+    hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2
+    focus-visible:ring-ring focus-visible:ring-offset-2;
   }
 
   .export-button {
-    @apply inline-flex items-center text-sm text-gray-500 hover:text-gray-700;
+    @apply inline-flex items-center text-sm text-muted-foreground transition-colors
+    hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2
+    focus-visible:ring-ring focus-visible:ring-offset-2;
   }
 
   .task-manager-container {
-    @apply grid grid-cols-2 gap-4 mt-6;
+    @apply mt-6 grid grid-cols-2 gap-4;
   }
 
   .quadrant {
-    @apply rounded-lg h-[280px] flex flex-col;
+    @apply flex h-[280px] flex-col rounded-lg border text-card-foreground shadow-sm
+    transition-colors;
+  }
+
+  .quadrant {
+    @apply flex flex-col h-full rounded-lg border shadow-sm overflow-hidden;
   }
 
   .quadrant-content {
-    @apply p-3 overflow-y-auto flex-1;
+    @apply flex-1 overflow-y-auto p-3;
   }
 
   .quadrant-urgent-important {
-    @apply bg-red-50;
+    @apply bg-destructive/5 hover:bg-destructive/10;
   }
 
   .quadrant-not-urgent-important {
-    @apply bg-green-50;
+    @apply bg-primary/5 hover:bg-primary/10;
   }
 
   .quadrant-urgent-not-important {
-    @apply bg-amber-50;
+    @apply bg-yellow-500/5 hover:bg-yellow-500/10;
   }
 
   .quadrant-not-urgent-not-important {
-    @apply bg-blue-50;
+    @apply bg-gray-500/5 hover:bg-gray-500/10;
   }
 
   /* Task Item Styles */
   .task-item {
-    @apply flex items-center gap-2 py-1.5;
+    @apply flex items-center gap-2 rounded-md p-2
+    transition-colors hover:bg-accent/10 focus-within:ring-2 focus-within:ring-ring;
   }
 
   .task-checkbox {
-    @apply h-4 w-4 rounded border-gray-300 text-gray-900;
+    @apply h-4 w-4 rounded-sm border bg-background text-primary
+    transition-colors focus-visible:outline-none focus-visible:ring-2
+    focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed
+    disabled:opacity-50;
   }
 
   .task-text {
-    @apply text-sm text-gray-700;
+    @apply text-sm text-card-foreground transition-colors;
   }
 
   .task-text.completed {
-    @apply line-through text-gray-400;
+    @apply line-through text-muted-foreground;
   }
 
   .task-actions {
@@ -159,11 +175,13 @@ body {
   }
 
   .task-action-button {
-    @apply p-1 text-gray-400 hover:text-gray-600;
+    @apply rounded-sm p-1 text-muted-foreground transition-colors
+    hover:bg-accent hover:text-accent-foreground
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
 
   .delete-button:hover {
-    @apply text-red-500;
+    @apply bg-destructive text-destructive-foreground;
   }
 
   /* Priority Arrow */
@@ -290,11 +308,7 @@ body {
 }
 
 .goal-setter-container {
-  background-color: white;
-  border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
+  @apply bg-card rounded-lg border border-border shadow-sm mb-6 p-4;
 }
 
 .goal-header {
@@ -333,17 +347,11 @@ body {
 }
 
 .task-input-container {
-  background-color: white;
-  border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 1.5rem;
-  overflow: hidden;
+  @apply bg-card rounded-lg border border-border shadow-sm mb-6 overflow-hidden;
 }
 
 .task-input-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-  font-weight: 600;
+  @apply p-4 border-b border-border font-semibold text-card-foreground;
 }
 
 .task-input-content {
@@ -356,21 +364,11 @@ body {
 }
 
 .task-input {
-  flex: 1;
-  border-radius: 0.375rem;
-  border: 1px solid #e2e8f0;
-  padding: 0.5rem 0.75rem;
+  @apply flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
 }
 
 .add-task-button {
-  background-color: #000;
-  color: white;
-  border-radius: 0.375rem;
-  padding: 0.5rem 1rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  @apply bg-primary text-primary-foreground rounded-md px-4 py-2 font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors;
 }
 
 .export-tasks-button {
