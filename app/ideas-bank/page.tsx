@@ -111,7 +111,7 @@ export default function IdeasBankPage() {
         return 'bg-purple-100 text-purple-800'
       case 'work':
       case 'business':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-primary/10 text-primary'
       case 'idea':
         return 'bg-green-100 text-green-800'
       default:

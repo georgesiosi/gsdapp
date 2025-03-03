@@ -111,7 +111,7 @@ export default function TaskHistoryPage() {
                   <span className={cn(
                     "text-sm font-medium",
                     task.status === "completed" && "text-green-600",
-                    task.status === "archived" && "text-blue-600",
+                    task.status === "archived" && "text-primary",
                     task.status === "deleted" && "text-red-600"
                   )}>
                     {getStatusIcon(task.status)}

@@ -120,7 +120,7 @@ export default function AILogsPage() {
               <Card key={log.taskId} className="overflow-hidden">
                 <CardHeader className={`
                   ${log.suggestedQuadrant === "q1" ? "bg-red-50 dark:bg-red-950/20" : ""}
-                  ${log.suggestedQuadrant === "q2" ? "bg-blue-50 dark:bg-blue-950/20" : ""}
+                  ${log.suggestedQuadrant === "q2" ? "bg-primary/5" : ""}
                   ${log.suggestedQuadrant === "q3" ? "bg-yellow-50 dark:bg-yellow-950/20" : ""}
                   ${log.suggestedQuadrant === "q4" ? "bg-green-50 dark:bg-green-950/20" : ""}
                 `}>
