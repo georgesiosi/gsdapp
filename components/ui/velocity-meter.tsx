@@ -34,7 +34,7 @@ export function VelocityMeter({
     id: t.id, 
     text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''),
     taskType: t.taskType,
-    completed: t.completed
+    status: t.status
   })));
   
   // Filter tasks by type and get counts
@@ -53,57 +53,46 @@ export function VelocityMeter({
     id: t.id, 
     text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''), 
     taskType: t.taskType,
-    completed: t.completed
+    status: t.status
   })));
   
-  const totalTasks = typeTasks.length
-  const completedTasks = typeTasks.filter(task => task.completed).length
-  const pendingTasks = totalTasks - completedTasks
+  // Get all active and completed tasks in the matrix (excluding archived/deleted)
+  const nonArchivedTasks = typeTasks.filter(task => !task.archivedAt)
+  const activeTasks = nonArchivedTasks.filter(task => task.status === 'active')
+  const completedTasksArray = nonArchivedTasks.filter(task => task.status === 'completed')
+  const completedTasksCount = completedTasksArray.length
+  const totalTasks = activeTasks.length + completedTasksCount
+
   
   // Check if a task was just completed and trigger pulse animation
   useEffect(() => {
-    if (completedTasks > prevCompletedCount && prevCompletedCount > 0) {
+    if (completedTasksCount > prevCompletedCount && prevCompletedCount > 0) {
       setIsPulsing(true)
       const timer = setTimeout(() => {
         setIsPulsing(false)
       }, 1000)
       return () => clearTimeout(timer)
     }
-    setPrevCompletedCount(completedTasks)
-  }, [completedTasks, prevCompletedCount])
+    setPrevCompletedCount(completedTasksCount)
+  }, [completedTasksCount, prevCompletedCount])
   
   // Calculate percentages for visualization
-  const completionPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+  const completionPercentage = totalTasks > 0 ? (completedTasksCount / totalTasks) * 100 : 0
   
-  // Get tasks by quadrant
-  const q1Tasks = typeTasks.filter(task => task.quadrant === "q1")
-  const q2Tasks = typeTasks.filter(task => task.quadrant === "q2")
-  const q3Tasks = typeTasks.filter(task => task.quadrant === "q3")
-  const q4Tasks = typeTasks.filter(task => task.quadrant === "q4")
+  // Get tasks by quadrant from non-archived tasks
+  const q1Tasks = nonArchivedTasks.filter(task => task.quadrant === "q1")
+  const q2Tasks = nonArchivedTasks.filter(task => task.quadrant === "q2")
+  const q3Tasks = nonArchivedTasks.filter(task => task.quadrant === "q3")
+  const q4Tasks = nonArchivedTasks.filter(task => task.quadrant === "q4")
   
   // Calculate completion by quadrant
-  const q1Completed = q1Tasks.filter(task => task.completed).length
-  const q2Completed = q2Tasks.filter(task => task.completed).length
-  const q3Completed = q3Tasks.filter(task => task.completed).length
-  const q4Completed = q4Tasks.filter(task => task.completed).length
-  
-  // Get today's tasks and completed tasks
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
-  const todayTasks = typeTasks.filter(task => {
-    const taskDate = new Date(task.createdAt);
-    taskDate.setHours(0, 0, 0, 0);
-    return taskDate.getTime() === today.getTime();
-  });
+  const q1Completed = q1Tasks.filter(task => task.status === 'completed').length
+  const q2Completed = q2Tasks.filter(task => task.status === 'completed').length
+  const q3Completed = q3Tasks.filter(task => task.status === 'completed').length
+  const q4Completed = q4Tasks.filter(task => task.status === 'completed').length
   
   // Debug logging
-  console.log(`[DEBUG] VelocityMeter ${type} - Total tasks: ${totalTasks}, Completed: ${completedTasks}`);
-  console.log(`[DEBUG] VelocityMeter ${type} - Today's tasks: ${todayTasks.length}`);
-  
-  const todayCompleted = todayTasks.filter(task => task.completed).length
-  
-  console.log(`[DEBUG] VelocityMeter ${type} - Today's completed: ${todayCompleted}`);
+  console.log(`[DEBUG] VelocityMeter ${type} - Active: ${activeTasks.length}, Completed: ${completedTasksCount}, Total: ${totalTasks}`);
   
   // Determine color scheme based on task type
   const colorScheme = type === "personal" 
@@ -143,32 +132,11 @@ export function VelocityMeter({
         )}
         style={{ 
           height: `${completionPercentage}%`,
-          opacity: completedTasks > 0 ? 0.8 : 0.4
+          opacity: completedTasksCount > 0 ? 0.8 : 0.4
         }}
       />
       
-      {/* Today's tasks indicator */}
-      {todayTasks.length > 0 && (
-        <div 
-          className={cn(
-            "absolute w-full py-1 flex items-center justify-center",
-            colorScheme.secondary,
-            isExpanded ? "px-2" : ""
-          )}
-          style={{ 
-            bottom: `${completionPercentage}%`,
-            height: `${(todayTasks.length / totalTasks) * 100}%`,
-            minHeight: "20px",
-            opacity: 0.8
-          }}
-        >
-          {isExpanded && (
-            <span className="text-xs font-bold text-white">
-              {todayCompleted}/{todayTasks.length}
-            </span>
-          )}
-        </div>
-      )}
+
       
       {/* Info section at top */}
       <div className={cn(
@@ -193,8 +161,7 @@ export function VelocityMeter({
             </TooltipTrigger>
             <TooltipContent side={position === "left" ? "right" : "left"}>
               <p className="text-xs font-medium">{type === "personal" ? "Personal" : "Work"} Tasks</p>
-              <p className="text-xs">Completed: {completedTasks}/{totalTasks}</p>
-              <p className="text-xs">Today: {todayCompleted}/{todayTasks.length}</p>
+              <p className="text-xs">Tasks: {completedTasksCount}/{totalTasks}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -205,7 +172,7 @@ export function VelocityMeter({
               {type === "personal" ? "Personal" : "Work"}
             </p>
             <p className="text-xs font-medium mt-1">
-              {completedTasks}/{totalTasks}
+              {completedTasksCount}/{totalTasks}
             </p>
           </div>
         )}
