@@ -13,13 +13,12 @@ export interface Task {
   taskType?: TaskOrIdeaType
   completed: boolean
   needsReflection: boolean
-  createdAt: number
-  completedAt?: number
-  updatedAt: number
+  createdAt: string
+  completedAt?: string
+  updatedAt: string
   order?: number
   status: TaskStatus
-  archivedAt?: string
-  deletedAt?: string
+  archivedAt?: string // Used to hide tasks from view (replaces deletedAt functionality)
 }
 
 export type NewTask = Omit<Task, "id" | "createdAt" | "updatedAt">
@@ -38,13 +37,22 @@ export function useTaskManagement() {
         let taskExists = false;
         
         setTasks(prevTasks => {
-          taskExists = prevTasks.some(task => task.id === id);
-          return prevTasks.filter(task => task.id !== id);
+          const taskIndex = prevTasks.findIndex(task => task.id === id);
+          if (taskIndex === -1) return prevTasks;
+          
+          taskExists = true;
+          const updatedTasks = [...prevTasks];
+          updatedTasks[taskIndex] = {
+            ...updatedTasks[taskIndex],
+            archivedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          return updatedTasks;
         });
         
         return taskExists;
       } catch (error) {
-        console.error("Error deleting task:", error);
+        console.error("Error archiving task:", error);
         return false;
       }
     },
@@ -53,6 +61,8 @@ export function useTaskManagement() {
         // Debug logging for task updates
         console.log(`[DEBUG] updateTaskInternal - Updating task ${id} with:`, updates);
         
+        let updateSuccessful = false;
+        
         setTasks(prevTasks => {
           const taskIndex = prevTasks.findIndex(task => task.id === id)
           if (taskIndex === -1) {
@@ -60,37 +70,30 @@ export function useTaskManagement() {
             return prevTasks;
           }
 
-          // Debug logging for the task before update
-          console.log(`[DEBUG] updateTaskInternal - Task ${id} before update:`, {
-            id: prevTasks[taskIndex].id,
-            text: prevTasks[taskIndex].text.substring(0, 20),
-            taskType: prevTasks[taskIndex].taskType
+          // Create a new array to ensure React detects the change
+          const updatedTasks = [...prevTasks];
+          
+          // Update the specific task
+          updatedTasks[taskIndex] = {
+            ...updatedTasks[taskIndex],
+            ...updates,
+            updatedAt: new Date().toISOString(),
+          };
+          
+          // Debug logging for the task after update
+          console.log(`[DEBUG] updateTaskInternal - Task ${id} after update:`, {
+            id: updatedTasks[taskIndex].id,
+            text: updatedTasks[taskIndex].text.substring(0, 20),
+            quadrant: updatedTasks[taskIndex].quadrant,
+            taskType: updatedTasks[taskIndex].taskType,
+            completed: updatedTasks[taskIndex].completed
           });
-
-          const updatedTasks = prevTasks.map((t, index) => {
-            if (index === taskIndex) {
-              const updatedTask = {
-                ...t,
-                ...updates,
-                updatedAt: Date.now(),
-              };
-              
-              // Debug logging for the task after update
-              console.log(`[DEBUG] updateTaskInternal - Task ${id} after update:`, {
-                id: updatedTask.id,
-                text: updatedTask.text.substring(0, 20),
-                quadrant: updatedTask.quadrant,
-                taskType: updatedTask.taskType
-              });
-              
-              return updatedTask;
-            }
-            return t;
-          });
-
-          return updatedTasks
-        })
-        return true
+          
+          updateSuccessful = true;
+          return updatedTasks;
+        });
+        
+        return updateSuccessful;
       } catch (error) {
         console.error("Error updating task:", error);
         return false;
@@ -111,13 +114,12 @@ export function useTaskManagement() {
       taskType: task.taskType || 'personal',
       completed: task.completed || false,
       needsReflection: task.needsReflection || false,
-      createdAt: task.createdAt || Date.now(),
+      createdAt: task.createdAt || new Date().toISOString(),
       completedAt: task.completedAt,
-      updatedAt: task.updatedAt || Date.now(),
+      updatedAt: task.updatedAt || new Date().toISOString(),
       order: task.order || 0,
       status: task.status || (task.completed ? 'completed' : 'active'),
-      archivedAt: task.archivedAt,
-      deletedAt: task.deletedAt
+      archivedAt: task.archivedAt
     };
   };
 
@@ -144,7 +146,6 @@ export function useTaskManagement() {
     try {
       // Generate a single UUID to be used for both the state update and the returned task
       const taskId = uuidv4();
-      const now = Date.now();
       
       setTasks(prevTasks => {
         // Find the highest order in this quadrant
@@ -157,8 +158,8 @@ export function useTaskManagement() {
           id: taskId, // Use the pre-generated ID
           ...newTask,
           order: maxOrder + 1, // Place at the end of the quadrant
-          createdAt: now,
-          updatedAt: now,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           status: newTask.status || 'active', // Ensure status is set
         };
         
@@ -170,8 +171,8 @@ export function useTaskManagement() {
         id: taskId, // Use the same ID
         ...newTask,
         order: 0, // This will be different in the state update, but it doesn't matter for the returned task
-        createdAt: now,
-        updatedAt: now,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         status: newTask.status || 'active', // Ensure status is set
       };
       
@@ -330,9 +331,10 @@ export function useTaskManagement() {
         const updatedTasks = [...prevTasks]
         updatedTasks[taskIndex] = {
           ...updatedTasks[taskIndex],
-          completed: !updatedTasks[taskIndex].completed,
-          updatedAt: Date.now(),
-          completedAt: !updatedTasks[taskIndex].completed ? Date.now() : undefined,
+          status: updatedTasks[taskIndex].status === 'completed' ? 'active' : 'completed',
+          completed: updatedTasks[taskIndex].status === 'completed' ? false : true,
+          updatedAt: new Date().toISOString(),
+          completedAt: updatedTasks[taskIndex].status === 'completed' ? undefined : new Date().toISOString(),
         }
 
         return updatedTasks
@@ -384,7 +386,7 @@ export function useTaskManagement() {
         const updatedArray = workingArray.map((task, index) => ({
           ...task,
           order: index,
-          updatedAt: Date.now()
+          updatedAt: new Date().toISOString()
         }));
 
         // Combine everything back together
