@@ -216,7 +216,6 @@ export function TaskManager() {
       status,
       ...(status === 'completed' && { completedAt: timestamp }),
       ...(status === 'archived' && { archivedAt: timestamp }),
-      ...(status === 'deleted' && { deletedAt: timestamp }),
       updatedAt: timestamp,
       order: newOrder
     };
@@ -485,7 +484,7 @@ export function TaskManager() {
             if (!task) return;
             handleUpdateTaskStatus(id, task.status === 'completed' ? 'active' : 'completed');
           }}
-          onDeleteTask={(id) => handleUpdateTaskStatus(id, 'deleted')}
+          onDeleteTask={(id) => handleUpdateTaskStatus(id, 'archived')}
           onReflectionRequested={startReflection}
           onMoveTask={handleMoveTask}
           onEditTask={(taskId, newText) => {
