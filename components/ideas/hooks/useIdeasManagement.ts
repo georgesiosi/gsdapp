@@ -125,7 +125,7 @@ export function useIdeasManagement() {
   }, [])
 
   // Convert idea to task
-  const convertIdeaToTask = useCallback((id: string): { ideaText: string, ideaType: TaskType } | null => {
+  const convertIdeaToTask = useCallback((id: string): { text: string, taskType: TaskType } | null => {
     try {
       console.log("[DEBUG] Converting idea to task:", id);
       let ideaData: { ideaText: string, ideaType: TaskType } | null = null;
@@ -139,8 +139,8 @@ export function useIdeasManagement() {
         
         // Store the idea data for return
         ideaData = {
-          ideaText: prevIdeas[ideaIndex].text,
-          ideaType: prevIdeas[ideaIndex].taskType
+          text: prevIdeas[ideaIndex].text,
+          taskType: prevIdeas[ideaIndex].taskType
         };
         
         console.log("[DEBUG] Successfully converted idea to task:", id);

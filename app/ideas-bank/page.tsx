@@ -54,17 +54,40 @@ export default function IdeasBankPage() {
   const handleConvertToTask = async (id: string) => {
     const ideaData = convertIdeaToTask(id)
     if (ideaData) {
-      // Add the idea as a task
-      await addTaskWithAIAnalysis(ideaData.ideaText)
-      
-      // Show a toast notification
-      const event = new CustomEvent('showToast', {
-        detail: {
-          message: 'Idea converted to task',
-          type: 'success'
+      try {
+        console.log('[DEBUG] Converting idea with data:', ideaData)
+        // First add it to Q4 temporarily
+        const result = await addTaskWithAIAnalysis(ideaData.text, 'q4', '', '')
+        
+        if (result.task) {
+          // Show a toast notification
+          const event = new CustomEvent('showToast', {
+            detail: {
+              message: 'Idea successfully converted to task',
+              type: 'success'
+            }
+          })
+          window.dispatchEvent(event)
+          
+          // Navigate back to the main page after a short delay to ensure the task is visible
+          setTimeout(() => {
+            router.push('/')
+          }, 500)
+        } else {
+          throw new Error('Failed to create task')
         }
-      })
-      window.dispatchEvent(event)
+      } catch (error) {
+        console.error('Error converting idea to task:', error)
+        
+        // Show error toast
+        const event = new CustomEvent('showToast', {
+          detail: {
+            message: 'Failed to convert idea to task. Please try again.',
+            type: 'error'
+          }
+        })
+        window.dispatchEvent(event)
+      }
     }
   }
 
