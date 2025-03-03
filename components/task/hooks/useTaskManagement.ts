@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react"
 import { v4 as uuidv4 } from "uuid"
 import { TaskOrIdeaType, TaskStatus } from "@/types/task"
-import { ReasoningLogService } from "@/services/ai/reasoningLogService"
+// Removed ReasoningLogService import as it's not needed here
 
 // Define the quadrant type locally
 export type QuadrantType = "q1" | "q2" | "q3" | "q4"
@@ -81,7 +81,7 @@ export function useTaskManagement() {
   });
 
   // Migrate task data to include new fields
-  const migrateTask = (task: any): Task => {
+  const migrateTask = (task: Partial<Task> & { completed?: boolean }): Task => {
     return {
       ...task,
       status: task.status || (task.completed ? 'completed' : 'active'),
@@ -94,7 +94,7 @@ export function useTaskManagement() {
   // Set initial tasks
   const setInitialTasks = useCallback((initialTasks: Task[]) => {
     // Migrate and ensure all tasks have required properties
-    const migratedTasks = initialTasks.map((task, index) => migrateTask(task));
+    const migratedTasks = initialTasks.map(task => migrateTask(task));
     
     // Sort tasks by order within each quadrant
     const sortedTasks = [...migratedTasks].sort((a, b) => {
@@ -157,10 +157,10 @@ export function useTaskManagement() {
     try {
       console.log("[DEBUG] Starting AI analysis for task:", text.substring(0, 30));
       
-      // First add the task normally with a temporary quadrant
+      // Always add the task to Q4 first for visual feedback
       const task = addTask({
         text,
-        quadrant: initialQuadrant,
+        quadrant: 'q4', // Always start in Q4
         completed: false,
         needsReflection: false,
         status: 'active'
@@ -178,6 +178,9 @@ export function useTaskManagement() {
           userGoal,
           userPriority
         });
+        
+        // Add a slight delay to ensure the task is visible in Q4
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         const response = await fetch('/api/analyze-reflection', {
           method: 'POST',
@@ -203,62 +206,62 @@ export function useTaskManagement() {
         if (result.error) {
           throw new Error(`API returned error: ${result.error}`);
         }
-        
-        // Handle the result based on whether it's an idea or task
-        if (result.isIdea) {
-          console.log(`[DEBUG] Item ${task.id} identified as an idea`);
-          
-          // Update task type to 'idea' for proper handling in the TaskManager
-          const updateSuccess = internalFunctions.current.updateTaskInternal(task.id, { 
-            taskType: 'idea' as TaskOrIdeaType
-          });
-          
-          if (!updateSuccess) {
-            console.error(`[ERROR] Failed to mark ${task.id} as idea`);
-          }
 
-          // Return the task with isIdea flag for proper handling in TaskManager
-          return { 
-            task: { ...task, taskType: 'idea' as TaskOrIdeaType },
-            isAnalyzing: false,
-            isIdea: true,
-            connectedToPriority: result.connectedToPriority || false
-          };
-        } else {
-          // For non-ideas, update with quadrant and task type
-          const targetQuadrant = result.suggestedQuadrant || initialQuadrant || 'q4';
-          const taskType = result.taskType || 'work';
+        // If this is an idea and we're not coming from the Ideas Bank, add it to the Ideas Bank
+        if (result.isIdea && initialQuadrant !== 'q4') {
+          // Delete the temporary task
+          deleteTask(task.id);
           
-          console.log(`[DEBUG] Updating task ${task.id} with quadrant ${targetQuadrant} and type ${taskType}`);
-          
-          const updateSuccess = internalFunctions.current.updateTaskInternal(task.id, { 
-            quadrant: targetQuadrant,
-            taskType: taskType
+          // Add to Ideas Bank
+          const event = new CustomEvent('addToIdeasBank', {
+            detail: {
+              text: text,
+              taskType: result.taskType || 'idea',
+              connectedToPriority: result.connectedToPriority || false
+            }
           });
+          window.dispatchEvent(event);
           
-          if (!updateSuccess) {
-            console.error(`[ERROR] Failed to update task ${task.id} with AI analysis results`);
-          }
-          
-          // Store the reasoning log
-          ReasoningLogService.storeLog({
-            taskId: task.id,
-            taskText: text,
-            timestamp: Date.now(),
-            suggestedQuadrant: result.suggestedQuadrant,
-            taskType: result.taskType || 'work',
-            reasoning: result.reasoning || 'No reasoning provided',
-            alignmentScore: result.alignmentScore || 5,
-            urgencyScore: result.urgencyScore || 5,
-            importanceScore: result.importanceScore || 5
+          // Show a toast notification
+          const toastEvent = new CustomEvent('showToast', {
+            detail: {
+              message: 'Added to Ideas Bank',
+              type: 'success',
+              action: {
+                label: 'View',
+                onClick: () => window.location.href = '/ideas-bank'
+              }
+            }
           });
+          window.dispatchEvent(toastEvent);
           
-          console.log(`[DEBUG] Stored reasoning log for task ${task.id}`);
-
-          return { task, isAnalyzing: false, isIdea: false };
+          return { task: null, isAnalyzing: false };
         }
         
+        // For tasks (or items from Ideas Bank), update with AI analysis
+        const targetQuadrant = result.suggestedQuadrant || initialQuadrant || 'q4';
+        const taskType = result.taskType || 'work';
+        
+        console.log(`[DEBUG] Moving task ${task.id} from Q4 to ${targetQuadrant}`);
+        
+        // Always update with the AI analysis results
+        const updateSuccess = internalFunctions.current.updateTaskInternal(task.id, { 
+          quadrant: targetQuadrant,
+          taskType: taskType
+        });
+        
+        if (!updateSuccess) {
+          console.error(`[ERROR] Failed to update task ${task.id} with AI analysis results`);
+        }
+        
+        if (!updateSuccess) {
+          console.error(`[ERROR] Failed to update task ${task.id} with AI analysis results`);
+        }
+        
+        // Log the task update for debugging
+        console.log(`[DEBUG] Task ${task.id} updated with quadrant ${targetQuadrant} and type ${taskType}`);
         return { task, isAnalyzing: false };
+        
       } catch (analysisError) {
         console.error("Error analyzing task:", analysisError);
         // Return the task even if analysis failed, but keep it in the initial quadrant
@@ -268,7 +271,7 @@ export function useTaskManagement() {
       console.error("Error in addTaskWithAIAnalysis:", error);
       return { task: null, isAnalyzing: false };
     }
-  }, [addTask]);
+  }, [addTask, deleteTask]);
 
   // Update a task (exposed function)
   const updateTask = useCallback((id: string, updates: Partial<Task>): boolean => {
