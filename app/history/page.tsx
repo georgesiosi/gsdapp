@@ -3,18 +3,26 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, Clock, Archive, Trash } from "lucide-react"
+import { ChevronLeft, Clock, Archive } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Task, TaskStatus } from "@/types/task"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { format } from "date-fns"
 
-type FilterStatus = "completed" | "archived" | "deleted" | "all"
+type FilterStatus = "completed" | "archived" | "all"
 
 export default function TaskHistoryPage() {
   const router = useRouter()
   const { tasks } = useTaskManagement()
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all")
+
+  // Debug logging
+  console.log('[DEBUG] History - All tasks:', tasks.map(t => ({
+    id: t.id,
+    status: t.status,
+    completedAt: t.completedAt,
+    archivedAt: t.archivedAt
+  })));
 
   // Filter out active tasks and sort by most recent
   const historicalTasks = tasks
@@ -27,18 +35,18 @@ export default function TaskHistoryPage() {
         switch (task.status) {
           case "completed": return task.completedAt
           case "archived": return task.archivedAt
-          case "deleted": return task.deletedAt
           default: return task.updatedAt
         }
       }
-      return new Date(getDate(b)).getTime() - new Date(getDate(a)).getTime()
+      const dateB = getDate(b) || b.updatedAt
+      const dateA = getDate(a) || a.updatedAt
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
     })
 
   const getStatusIcon = (status: TaskStatus) => {
     switch (status) {
       case "completed": return <Clock className="h-4 w-4" />
       case "archived": return <Archive className="h-4 w-4" />
-      case "deleted": return <Trash className="h-4 w-4" />
       default: return null
     }
   }
@@ -47,7 +55,6 @@ export default function TaskHistoryPage() {
     switch (task.status) {
       case "completed": return task.completedAt
       case "archived": return task.archivedAt
-      case "deleted": return task.deletedAt
       default: return task.updatedAt
     }
   }
@@ -87,12 +94,7 @@ export default function TaskHistoryPage() {
         >
           Archived
         </Button>
-        <Button
-          variant={filterStatus === "deleted" ? "default" : "outline"}
-          onClick={() => setFilterStatus("deleted")}
-        >
-          Deleted
-        </Button>
+
       </div>
 
       <div className="space-y-4">
@@ -111,14 +113,13 @@ export default function TaskHistoryPage() {
                   <span className={cn(
                     "text-sm font-medium",
                     task.status === "completed" && "text-green-600",
-                    task.status === "archived" && "text-primary",
-                    task.status === "deleted" && "text-red-600"
+                    task.status === "archived" && "text-primary"
                   )}>
                     {getStatusIcon(task.status)}
                   </span>
                   <span className={cn(
                     "text-sm",
-                    task.status === "deleted" && "line-through"
+                    task.status === "archived" && "line-through"
                   )}>
                     {task.text}
                   </span>
@@ -126,7 +127,7 @@ export default function TaskHistoryPage() {
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span>
                     {task.status.charAt(0).toUpperCase() + task.status.slice(1)} on{" "}
-                    {format(new Date(getStatusDate(task)), "MMM d, yyyy 'at' h:mm a")}
+                    {format(new Date(getStatusDate(task) || task.updatedAt), "MMM d, yyyy 'at' h:mm a")}
                   </span>
                   <span>Quadrant: {task.quadrant.toUpperCase()}</span>
                 </div>
