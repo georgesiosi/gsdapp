@@ -227,15 +227,8 @@ export function TaskManager() {
     if (!text.trim()) return;
     
     try {
-      // Set AI thinking state to true
+      // Set AI thinking state to true - will show indicator in Q4
       setIsAIThinking(true);
-      
-      // Show a toast notification that AI is thinking
-      toast({
-        title: "AI is analyzing your input",
-        description: "Determining if this is a task or an idea...",
-        duration: 2000,
-      });
       
       // First, analyze with AI without creating a task
       const response = await fetch('/api/analyze-reflection', {
