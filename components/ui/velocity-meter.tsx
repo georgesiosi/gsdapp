@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { Task, TaskType } from "@/types/task"
 import { BarChart3, Info } from "lucide-react"
@@ -10,6 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { isTaskFromToday, formatTaskDate } from '@/utils/dateUtils';
 
 interface VelocityMeterProps {
   tasks: Task[]
@@ -27,18 +28,24 @@ export function VelocityMeter({
   const [isExpanded, setIsExpanded] = useState(false)
   const [isPulsing, setIsPulsing] = useState(false)
   const [prevCompletedCount, setPrevCompletedCount] = useState(0)
-  
+  const [forceUpdate, setForceUpdate] = useState(false)
+
   // Debug all tasks
   console.log(`[DEBUG] VelocityMeter ${type} - All tasks:`, tasks.length);
-  console.log(`[DEBUG] VelocityMeter ${type} - All task types:`, tasks.map(t => ({ 
-    id: t.id, 
+  console.log(`[DEBUG] VelocityMeter ${type} - All task details:`, tasks.map(t => ({
+    id: t.id,
     text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''),
     taskType: t.taskType,
-    status: t.status
+    status: t.status,
+    createdAt: formatTaskDate(t.createdAt),
+    completedAt: t.completedAt ? formatTaskDate(t.completedAt) : 'Not completed'
   })));
   
   // Filter tasks by type and get counts
   const typeTasks = tasks.filter(task => {
+    // First check if task is from today
+    if (!isTaskFromToday(task)) return false;
+    
     // For personal meter, include tasks with taskType="personal" or undefined
     if (type === "personal") {
       return task.taskType === "personal" || task.taskType === undefined;
@@ -48,12 +55,14 @@ export function VelocityMeter({
   });
   
   // Debug filtered tasks
-  console.log(`[DEBUG] VelocityMeter ${type} - Filtered tasks:`, typeTasks.length);
-  console.log(`[DEBUG] VelocityMeter ${type} - Filtered task details:`, typeTasks.map(t => ({ 
-    id: t.id, 
-    text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''), 
+  console.log(`[DEBUG] VelocityMeter ${type} - Today's tasks:`, typeTasks.length);
+  console.log(`[DEBUG] VelocityMeter ${type} - Today's task details:`, typeTasks.map(t => ({
+    id: t.id,
+    text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''),
     taskType: t.taskType,
-    status: t.status
+    status: t.status,
+    createdAt: formatTaskDate(t.createdAt),
+    completedAt: t.completedAt ? formatTaskDate(t.completedAt) : 'Not completed'
   })));
   
   // Get all active and completed tasks in the matrix (excluding archived/deleted)
@@ -63,6 +72,9 @@ export function VelocityMeter({
   const completedTasksCount = completedTasksArray.length
   const totalTasks = activeTasks.length + completedTasksCount
 
+  // Create stable task references
+  const tasksString = JSON.stringify(tasks);
+  const stableTasks = useMemo(() => tasks, [tasksString]);
   
   // Check if a task was just completed and trigger pulse animation
   useEffect(() => {
@@ -75,6 +87,22 @@ export function VelocityMeter({
     }
     setPrevCompletedCount(completedTasksCount)
   }, [completedTasksCount, prevCompletedCount])
+  
+  // Watch for task changes
+  useEffect(() => {
+    console.log(`[DEBUG] VelocityMeter ${type} - Tasks changed, recalculating...`);
+    setForceUpdate(prev => !prev); // Toggle state to force re-render
+  }, [stableTasks, type]);
+
+  // Debug task changes
+  useEffect(() => {
+    console.log(`[DEBUG] VelocityMeter ${type} - Task state recalculated`);
+    console.log(`[DEBUG] VelocityMeter ${type} - Current task states:`, stableTasks.map(t => ({
+      id: t.id,
+      status: t.status,
+      lastUpdated: new Date().toLocaleTimeString()
+    })));
+  }, [forceUpdate, stableTasks, type]);
   
   // Calculate percentages for visualization
   const completionPercentage = totalTasks > 0 ? (completedTasksCount / totalTasks) * 100 : 0
