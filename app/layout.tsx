@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import { Providers } from "./providers";
+import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -49,6 +50,7 @@ export default function RootLayout({
         {/* ServiceWorkerRegistration is now only used to unregister service workers */}
         <ServiceWorkerRegistration />
         <Providers>{children}</Providers>
+        <Toaster />
       </body>
     </html>
   );

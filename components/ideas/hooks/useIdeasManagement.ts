@@ -37,11 +37,13 @@ export function useIdeasManagement() {
             taskType: prevIdeas[ideaIndex].taskType
           });
 
+          const now = Date.now();
+          
           const updatedIdeas = [...prevIdeas]
           updatedIdeas[ideaIndex] = {
             ...updatedIdeas[ideaIndex],
             ...updates,
-            updatedAt: Date.now(),
+            updatedAt: now,
           }
           
           // Debug logging for the idea after update
@@ -78,11 +80,14 @@ export function useIdeasManagement() {
     try {
       console.log("[DEBUG] Adding new idea:", newIdea.text.substring(0, 30));
       
+      // Get current timestamp
+      const now = Date.now();
+      
       const idea: Idea = {
         id: uuidv4(),
         ...newIdea,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       };
       
       setIdeas(prevIdeas => [idea, ...prevIdeas]); // Add to the beginning (newest first)
@@ -125,10 +130,10 @@ export function useIdeasManagement() {
   }, [])
 
   // Convert idea to task
-  const convertIdeaToTask = useCallback((id: string): { text: string, taskType: TaskType } | null => {
+  const convertIdeaToTask = useCallback((id: string): { text: string, taskType: TaskType, createdAt: number, updatedAt: number } | null => {
     try {
       console.log("[DEBUG] Converting idea to task:", id);
-      let ideaData: { ideaText: string, ideaType: TaskType } | null = null;
+      let ideaData: { text: string, taskType: TaskType, createdAt: number, updatedAt: number } | null = null;
       
       setIdeas(prevIdeas => {
         const ideaIndex = prevIdeas.findIndex(idea => idea.id === id);
@@ -137,10 +142,14 @@ export function useIdeasManagement() {
           return prevIdeas;
         }
         
+        const idea = prevIdeas[ideaIndex];
+        
         // Store the idea data for return
         ideaData = {
-          text: prevIdeas[ideaIndex].text,
-          taskType: prevIdeas[ideaIndex].taskType
+          text: idea.text,
+          taskType: idea.taskType,
+          createdAt: idea.createdAt,
+          updatedAt: Date.now()
         };
         
         console.log("[DEBUG] Successfully converted idea to task:", id);

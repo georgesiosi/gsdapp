@@ -180,12 +180,58 @@ export function TaskManager() {
     }
   }, [ideas, isLoadingIdeas, toast]);
   
-  // Set up export tasks event listener
+  // Function removed after debugging was complete
+
+  // Set up event listeners
   useEffect(() => {
-    const handleExport = () => handleExportTasks();
+    // Export tasks event listener
+    const handleExport = () => {
+      exportTasksToCSV();
+      toast({
+        title: "Tasks Exported",
+        description: "Your tasks have been exported to CSV",
+      });
+    };
+    
+    // Ideas Bank event listener - listen for addToIdeasBank events from useTaskManagement
+    const handleAddToIdeasBank = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      
+      if (customEvent.detail && customEvent.detail.text) {
+        const idea = addIdea({
+          text: customEvent.detail.text,
+          taskType: customEvent.detail.taskType || 'idea',
+          connectedToPriority: customEvent.detail.connectedToPriority || false
+        });
+        
+        if (idea) {
+          toast({
+            title: "Idea Added",
+            description: (
+              <div>
+                Added to Ideas Bank.{" "}
+                <button 
+                  onClick={() => router.push("/ideas-bank")} 
+                  className="font-medium underline hover:text-primary"
+                >
+                  View Ideas Bank
+                </button>
+              </div>
+            ),
+            duration: 5000,
+          });
+        }
+      }
+    };
+    
     window.addEventListener('exportTasks', handleExport);
-    return () => window.removeEventListener('exportTasks', handleExport);
-  }, []);
+    window.addEventListener('addToIdeasBank', handleAddToIdeasBank);
+    
+    return () => {
+      window.removeEventListener('exportTasks', handleExport);
+      window.removeEventListener('addToIdeasBank', handleAddToIdeasBank);
+    };
+  }, [addIdea, router, toast]);
 
 
 
@@ -234,7 +280,8 @@ export function TaskManager() {
         quadrant: 'q4', // Always start in Q4
         completed: false,
         needsReflection: false,
-        status: 'active'
+        status: 'active',
+        taskType: 'personal' // Default type until AI analysis
       });
       
       if (!task) {
@@ -269,37 +316,38 @@ export function TaskManager() {
         const result = await response.json();
         console.log("[DEBUG] AI analysis result:", result);
         
+        // Validate the AI response
+        if (!result || typeof result.isIdea !== 'boolean') {
+          throw new Error('Invalid AI analysis response');
+        }
+        
         if (result.isIdea) {
-          // If it's an idea, move it to the ideas bank
+          console.log("[DEBUG] Detected idea:", text);
+          // If it's an idea, move it to the ideas bank via event system
+          
+          // First delete the task
           deleteTask(task.id);
           
-          const idea = addIdea({
-            text,
-            taskType: 'idea',
-            connectedToPriority: result.connectedToPriority || false
+          // Then dispatch the event to add to Ideas Bank
+          const event = new CustomEvent('addToIdeasBank', {
+            detail: {
+              text,
+              taskType: result.taskType || 'idea', 
+              connectedToPriority: result.connectedToPriority || false
+            }
           });
-          
-          if (idea) {
-            toast({
-              title: "Idea Added",
-              description: (
-                <div>
-                  Added to Ideas Bank.{" "}
-                  <button 
-                    onClick={() => router.push("/ideas-bank")} 
-                    className="font-medium underline hover:text-primary"
-                  >
-                    View Ideas Bank
-                  </button>
-                </div>
-              ),
-              duration: 5000,
-            });
-          }
+          console.log("[DEBUG] Dispatching addToIdeasBank event:", event.detail);
+          window.dispatchEvent(event);
         } else {
           // Update the task with AI analysis
           const targetQuadrant = result.suggestedQuadrant || quadrant;
           const taskType = result.taskType || 'work';
+          
+          console.log("[DEBUG] Updating task with AI analysis:", {
+            id: task.id,
+            quadrant: targetQuadrant,
+            taskType: taskType
+          });
           
           updateTask(task.id, {
             quadrant: targetQuadrant,
@@ -362,41 +410,57 @@ export function TaskManager() {
     });
   }
 
-  const handleExportTasks = () => {
-    exportTasksToCSV()
-    toast({
-      title: "Tasks Exported",
-      description: "Your tasks have been exported to CSV",
-    })
-  }
-
   const handleSendToIdeasBank = () => {
-    // Add the idea to the Ideas Bank
-    const idea = addIdea({
-      text: currentIdea.text,
+    console.log('[DEBUG] handleSendToIdeasBank called with:', {
+      text: currentIdea.text.substring(0, 30),
       taskType: currentIdea.taskType,
       connectedToPriority: currentIdea.connectedToPriority
     });
     
-    if (idea) {
-      setIdeaDialogOpen(false);
-      setTaskModalOpen(false);
+    // Add the idea to the Ideas Bank
+    try {
+      const idea = addIdea({
+        text: currentIdea.text,
+        taskType: currentIdea.taskType,
+        connectedToPriority: currentIdea.connectedToPriority
+      });
       
-      // Show a toast notification with a link to the Ideas Bank
+      console.log('[DEBUG] addIdea returned:', idea ? idea.id : 'null');
+      
+      if (idea) {
+        setIdeaDialogOpen(false);
+        setTaskModalOpen(false);
+        
+        // Show a toast notification with a link to the Ideas Bank
+        toast({
+          title: "Idea Added",
+          description: (
+            <div>
+              Added to Ideas Bank.{" "}
+              <button 
+                onClick={() => router.push("/ideas-bank")} 
+                className="font-medium underline hover:text-primary"
+              >
+                View Ideas Bank
+              </button>
+            </div>
+          ),
+          duration: 5000,
+        });
+      } else {
+        console.error('[ERROR] addIdea returned null');
+        toast({
+          title: "Error Adding Idea",
+          description: "There was a problem adding your idea. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('[ERROR] Error in handleSendToIdeasBank:', error);
       toast({
-        title: "Idea Added",
-        description: (
-          <div>
-            Added to Ideas Bank.{" "}
-            <button 
-              onClick={() => router.push("/ideas-bank")} 
-              className="font-medium underline hover:text-primary"
-            >
-              View Ideas Bank
-            </button>
-          </div>
-        ),
-        duration: 5000,
+        title: "Error Adding Idea",
+        description: "There was a problem adding your idea. Please try again.",
+        variant: "destructive",
       });
     }
   };
@@ -443,6 +507,7 @@ export function TaskManager() {
 
       {/* Task Actions Section */}
       <div className="mb-4 flex justify-end space-x-2">
+        {/* Test button removed after debugging was complete */}
         <Button
           variant="outline"
           size="sm"

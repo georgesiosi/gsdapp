@@ -19,9 +19,22 @@ export default function IdeasBankPage() {
       try {
         const storedIdeas = localStorage.getItem('ideas')
         if (storedIdeas) {
-          const parsedIdeas = JSON.parse(storedIdeas) as Idea[]
-          console.log('[DEBUG] Loaded ideas from localStorage:', parsedIdeas.length)
-          setInitialIdeas(parsedIdeas)
+          const parsedIdeas = JSON.parse(storedIdeas)
+          console.log('[DEBUG] Raw ideas from localStorage:', parsedIdeas)
+          
+          // Convert string dates to numbers if needed
+          const formattedIdeas = parsedIdeas.map((idea: any) => ({
+            ...idea,
+            createdAt: typeof idea.createdAt === 'string' ? 
+              (isNaN(Number(idea.createdAt)) ? new Date(idea.createdAt).getTime() : Number(idea.createdAt)) : 
+              idea.createdAt,
+            updatedAt: typeof idea.updatedAt === 'string' ? 
+              (isNaN(Number(idea.updatedAt)) ? new Date(idea.updatedAt).getTime() : Number(idea.updatedAt)) : 
+              idea.updatedAt
+          }));
+          
+          console.log('[DEBUG] Formatted ideas:', formattedIdeas)
+          setInitialIdeas(formattedIdeas)
         } else {
           console.log('[DEBUG] No ideas found in localStorage')
         }
@@ -57,7 +70,16 @@ export default function IdeasBankPage() {
       try {
         console.log('[DEBUG] Converting idea with data:', ideaData)
         // First add it to Q4 temporarily
-        const result = await addTaskWithAIAnalysis(ideaData.text, 'q4', '', '')
+        const result = await addTaskWithAIAnalysis({
+          text: ideaData.text,
+          quadrant: 'q4',
+          completed: false,
+          needsReflection: false,
+          status: 'active',
+          taskType: ideaData.taskType,
+          createdAt: ideaData.createdAt,
+          updatedAt: ideaData.updatedAt
+        })
         
         if (result.task) {
           // Show a toast notification

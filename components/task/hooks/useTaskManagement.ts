@@ -34,25 +34,39 @@ export function useTaskManagement() {
   }>({
     deleteTaskInternal: (id: string): boolean => {
       try {
+        console.log(`[DEBUG] deleteTaskInternal - Deleting task ${id}`);
         let taskExists = false;
         
+        // First, delete the task from localStorage to ensure it's completely removed
+        try {
+          const savedTasks = localStorage.getItem("tasks");
+          if (savedTasks) {
+            const parsedTasks = JSON.parse(savedTasks);
+            const filteredTasks = parsedTasks.filter((t: any) => t.id !== id);
+            localStorage.setItem("tasks", JSON.stringify(filteredTasks));
+            console.log(`[DEBUG] deleteTaskInternal - Removed task ${id} from localStorage, remaining tasks:`, filteredTasks.length);
+          }
+        } catch (storageError) {
+          console.error(`[ERROR] deleteTaskInternal - Failed to remove task ${id} from localStorage:`, storageError);
+        }
+        
+        // Then update the state to actually remove the task (not just archive it)
         setTasks(prevTasks => {
           const taskIndex = prevTasks.findIndex(task => task.id === id);
-          if (taskIndex === -1) return prevTasks;
+          if (taskIndex === -1) {
+            console.log(`[DEBUG] deleteTaskInternal - Task ${id} not found in state`);
+            return prevTasks;
+          }
           
           taskExists = true;
-          const updatedTasks = [...prevTasks];
-          updatedTasks[taskIndex] = {
-            ...updatedTasks[taskIndex],
-            archivedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          return updatedTasks;
+          console.log(`[DEBUG] deleteTaskInternal - Removing task ${id} from state`);
+          const filteredTasks = prevTasks.filter(task => task.id !== id);
+          return filteredTasks;
         });
         
         return taskExists;
       } catch (error) {
-        console.error("Error archiving task:", error);
+        console.error(`[ERROR] deleteTaskInternal - Error deleting task ${id}:`, error);
         return false;
       }
     },
@@ -184,46 +198,54 @@ export function useTaskManagement() {
   }, [])
 
   // Add a new task with AI analysis
-  const addTaskWithAIAnalysis = useCallback(async (text: string, initialQuadrant: QuadrantType = "q4", userGoal: string = "", userPriority: string = ""): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
+  const addTaskWithAIAnalysis = useCallback(async (taskData: {
+    text: string,
+    quadrant?: QuadrantType,
+    completed?: boolean,
+    needsReflection?: boolean,
+    status?: TaskStatus,
+    taskType?: TaskType,
+    createdAt?: number,
+    updatedAt?: number
+  }): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
     try {
-      console.log("[DEBUG] Starting AI analysis for task:", text.substring(0, 30));
+      console.log("[DEBUG] Starting AI analysis for task:", taskData.text.substring(0, 30));
       
-      // Always add the task to Q4 first for visual feedback
+      // Add the task with provided or default values
       const task = addTask({
-        text,
-        quadrant: 'q4', // Always start in Q4
-        completed: false,
-        needsReflection: false,
-        status: 'active'
+        text: taskData.text,
+        quadrant: taskData.quadrant || 'q4',
+        completed: taskData.completed || false,
+        needsReflection: taskData.needsReflection || false,
+        status: taskData.status || 'active',
+        taskType: taskData.taskType || 'personal',
+        createdAt: taskData.createdAt || Date.now(),
+        updatedAt: taskData.updatedAt || Date.now()
       });
       
       if (!task) {
         throw new Error("Failed to add task");
       }
-      
-      // Then analyze it with AI
-      try {
-        console.log("[DEBUG] Sending task to AI analysis API:", {
-          text,
-          initialQuadrant,
-          userGoal,
-          userPriority
-        });
-        
-        // Add a slight delay to ensure the task is visible in Q4
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const response = await fetch('/api/analyze-reflection', {
+
+      // Return immediately to show the task in Q4
+      setTimeout(async () => {
+        try {
+          console.log("[DEBUG] Sending task to AI analysis API:", {
+            text: taskData.text,
+            quadrant: taskData.quadrant || 'q4'
+          });
+          
+          const response = await fetch('/api/analyze-reflection', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            task: text,
+            task: taskData.text,
             justification: '',
-            goal: userGoal,
-            priority: userPriority,
-            currentQuadrant: initialQuadrant
+            goal: '',
+            priority: '',
+            currentQuadrant: taskData.quadrant || 'q4'
           }),
         });
         
@@ -239,19 +261,28 @@ export function useTaskManagement() {
         }
 
         // If this is an idea and we're not coming from the Ideas Bank, add it to the Ideas Bank
-        if (result.isIdea && initialQuadrant !== 'q4') {
-          // Delete the temporary task using internal function
-          internalFunctions.current.deleteTaskInternal(task.id);
+        if (result.isIdea) {
+          console.log("[DEBUG] Detected idea, moving to Ideas Bank:", taskData.text);
           
           // Add to Ideas Bank
+          // Create and dispatch event to add to Ideas Bank
           const event = new CustomEvent('addToIdeasBank', {
             detail: {
-              text: text,
-              taskType: result.taskType || 'idea',
-              connectedToPriority: result.connectedToPriority || false
+              text: taskData.text,
+              taskType: result.taskType || taskData.taskType || 'idea',
+              connectedToPriority: result.connectedToPriority || false,
+              createdAt: taskData.createdAt || Date.now(),
+              updatedAt: taskData.updatedAt || Date.now()
             }
           });
           window.dispatchEvent(event);
+          
+          // Remove the task from the tasks list
+          console.log('[DEBUG] Detected idea, removing from tasks list:', task.id);
+          
+          // Use the deleteTask function to properly remove the task
+          // This will handle both localStorage and state updates
+          internalFunctions.current.deleteTaskInternal(task.id);
           
           // Show a toast notification
           const toastEvent = new CustomEvent('showToast', {
@@ -270,34 +301,35 @@ export function useTaskManagement() {
         }
         
         // For tasks (or items from Ideas Bank), update with AI analysis
-        const targetQuadrant = result.suggestedQuadrant || initialQuadrant || 'q4';
-        const taskType = result.taskType || 'work';
+        const targetQuadrant = result.suggestedQuadrant || taskData.quadrant || 'q4';
+        const taskType = result.taskType || taskData.taskType || 'personal';
         
         console.log(`[DEBUG] Moving task ${task.id} from Q4 to ${targetQuadrant}`);
         
         // Always update with the AI analysis results
-        const updateSuccess = internalFunctions.current.updateTaskInternal(task.id, { 
-          quadrant: targetQuadrant,
-          taskType: taskType
+        setTasks(prevTasks => {
+          const taskIndex = prevTasks.findIndex(t => t.id === task.id);
+          if (taskIndex === -1) return prevTasks;
+
+          const updatedTasks = [...prevTasks];
+          updatedTasks[taskIndex] = {
+            ...updatedTasks[taskIndex],
+            quadrant: targetQuadrant,
+            taskType: taskType,
+            updatedAt: Date.now()
+          };
+
+          console.log(`[DEBUG] Task ${task.id} updated with quadrant ${targetQuadrant} and type ${taskType}`);
+          return updatedTasks;
         });
-        
-        if (!updateSuccess) {
-          console.error(`[ERROR] Failed to update task ${task.id} with AI analysis results`);
+        } catch (analysisError) {
+          console.error("Error analyzing task:", analysisError);
+          // Keep the task in Q4 if analysis fails
         }
-        
-        if (!updateSuccess) {
-          console.error(`[ERROR] Failed to update task ${task.id} with AI analysis results`);
-        }
-        
-        // Log the task update for debugging
-        console.log(`[DEBUG] Task ${task.id} updated with quadrant ${targetQuadrant} and type ${taskType}`);
-        return { task, isAnalyzing: false };
-        
-      } catch (analysisError) {
-        console.error("Error analyzing task:", analysisError);
-        // Return the task even if analysis failed, but keep it in the initial quadrant
-        return { task, isAnalyzing: false };
-      }
+      }, 100); // Start analysis after a very short delay
+
+      // Return immediately with the task in Q4
+      return { task, isAnalyzing: true };
     } catch (error) {
       console.error("Error in addTaskWithAIAnalysis:", error);
       return { task: null, isAnalyzing: false };
