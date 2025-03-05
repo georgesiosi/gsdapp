@@ -228,82 +228,92 @@ export function TaskManager() {
     if (!text.trim()) return;
     
     try {
-      // Set AI thinking state to true - will show indicator in Q4
-      setIsAIThinking(true);
-      
-      // First, analyze with AI without creating a task
-      const response = await fetch('/api/analyze-reflection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          task: text,
-          justification: '',
-          goal: '',
-          priority: '',
-          currentQuadrant: quadrant,
-          personalContext: useProfile.getState().getPersonalContext()
-        }),
+      // First add the task to Q4
+      const task = addTask({
+        text,
+        quadrant: 'q4', // Always start in Q4
+        completed: false,
+        needsReflection: false,
+        status: 'active'
       });
       
-      if (!response.ok) {
-        throw new Error(`Failed to analyze input: ${response.status} ${response.statusText}`);
+      if (!task) {
+        throw new Error("Failed to add task");
       }
       
-      const result = await response.json();
-      console.log("[DEBUG] AI analysis result:", result);
+      setTaskModalOpen(false);
       
-      if (result.isIdea) {
-        console.log("[DEBUG] AI detected an idea:", text);
-        
-        // Add directly to ideas bank with priority connection info
-        const idea = addIdea({
-          text,
-          taskType: 'idea',
-          connectedToPriority: result.connectedToPriority || false
+      // Then analyze with AI
+      setIsAIThinking(true);
+      
+      try {
+        const response = await fetch('/api/analyze-reflection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            task: text,
+            justification: '',
+            goal: '',
+            priority: '',
+            currentQuadrant: 'q4',
+            personalContext: useProfile.getState().getPersonalContext()
+          }),
         });
         
-        if (idea) {
-          setTaskModalOpen(false);
-          
-          // Show a toast notification with a link to the Ideas Bank
-          toast({
-            title: "Idea Added",
-            description: (
-              <div>
-                Added to Ideas Bank.{" "}
-                <button 
-                  onClick={() => router.push("/ideas-bank")} 
-                  className="font-medium underline hover:text-primary"
-                >
-                  View Ideas Bank
-                </button>
-              </div>
-            ),
-            duration: 5000,
-          });
+        if (!response.ok) {
+          throw new Error(`Failed to analyze input: ${response.status} ${response.statusText}`);
         }
-      } else {
-        // It's a regular task, create it with the analyzed properties
-        const task = addTask({
-          text,
-          quadrant: result.suggestedQuadrant || (quadrant as "q1" | "q2" | "q3" | "q4"),
-          taskType: result.taskType || 'work',
-          completed: false,
-          needsReflection: false,
-          status: 'active'
-        });
         
-        if (task) {
+        const result = await response.json();
+        console.log("[DEBUG] AI analysis result:", result);
+        
+        if (result.isIdea) {
+          // If it's an idea, move it to the ideas bank
+          deleteTask(task.id);
+          
+          const idea = addIdea({
+            text,
+            taskType: 'idea',
+            connectedToPriority: result.connectedToPriority || false
+          });
+          
+          if (idea) {
+            toast({
+              title: "Idea Added",
+              description: (
+                <div>
+                  Added to Ideas Bank.{" "}
+                  <button 
+                    onClick={() => router.push("/ideas-bank")} 
+                    className="font-medium underline hover:text-primary"
+                  >
+                    View Ideas Bank
+                  </button>
+                </div>
+              ),
+              duration: 5000,
+            });
+          }
+        } else {
+          // Update the task with AI analysis
+          const targetQuadrant = result.suggestedQuadrant || quadrant;
+          const taskType = result.taskType || 'work';
+          
+          updateTask(task.id, {
+            quadrant: targetQuadrant,
+            taskType: taskType
+          });
+          
           // Store the reasoning log
           try {
             ReasoningLogService.storeLog({
               taskId: task.id,
               taskText: text,
               timestamp: Date.now(),
-              suggestedQuadrant: result.suggestedQuadrant,
-              taskType: result.taskType || 'work',
+              suggestedQuadrant: targetQuadrant,
+              taskType: taskType,
               reasoning: result.reasoning || 'No reasoning provided',
               alignmentScore: result.alignmentScore || 5,
               urgencyScore: result.urgencyScore || 5,
@@ -311,24 +321,18 @@ export function TaskManager() {
             });
           } catch (logError) {
             console.error('Error storing reasoning log:', logError);
-            // Continue execution even if logging fails
           }
-          
-          setTaskModalOpen(false);
-          toast({
-            title: "Task Added",
-            description: "Your new task has been added and categorized by AI.",
-          });
-        } else {
-          toast({
-            title: "Error Adding Task",
-            description: "There was a problem adding your task. Please try again.",
-            variant: "destructive",
-          });
         }
+      } catch (analysisError) {
+        console.error("Error analyzing task:", analysisError);
+        // Task stays in Q4 if analysis fails
+        toast({
+          title: "Analysis Failed",
+          description: "Task added to Q4. AI analysis failed.",
+          variant: "destructive",
+        });
       }
       
-      // Set AI thinking state back to false
       setIsAIThinking(false);
     } catch (error) {
       console.error("Error in handleAddTask:", error);

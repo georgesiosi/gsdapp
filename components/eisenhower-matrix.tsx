@@ -6,6 +6,7 @@ import { AIThinkingIndicator } from "@/components/ui/ai-thinking-indicator"
 import { AIReasoningTooltip } from "@/components/ui/ai-reasoning-tooltip"
 import { TaskTypeIndicator } from "@/components/ui/task-type-indicator"
 import { InlineTaskEditor } from "@/components/ui/inline-task-editor"
+import { QuadrantInfoTooltip } from "@/components/ui/quadrant-info-tooltip"
 import { Task, QuadrantType } from "@/types/task"
 import { DragEvent } from "react"
 import { Edit2 } from "lucide-react"
@@ -151,7 +152,10 @@ function Quadrant({
       onDrop={(e: DragEvent) => handleDrop(e)}
     >
       <div className="flex items-center justify-between p-3 border-b">
-        <h3 className="text-sm font-medium">{title}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium">{title}</h3>
+          <QuadrantInfoTooltip quadrantId={quadrantId} />
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{tasks.length} {quadrantId === "q1" ? "tasks to do now" : quadrantId === "q2" ? "tasks to schedule" : quadrantId === "q3" ? "tasks to delegate" : "tasks to avoid"}</span>
           {isAIThinking && quadrantId === "q4" && (
