@@ -29,12 +29,12 @@ export function AIThinkingIndicator({ isThinking, className }: AIThinkingIndicat
   
   return (
     <div className={cn(
-      "inline-flex items-center gap-1 text-xs font-medium text-primary/70 animate-pulse transition-opacity duration-300",
+      "inline-flex items-center gap-1 text-xs font-medium text-blue-500 animate-pulse transition-opacity duration-300",
       className
     )}>
       <div className="relative w-3 h-3">
-        <div className="absolute w-full h-full rounded-full bg-primary/20 animate-ping"></div>
-        <div className="absolute w-full h-full rounded-full bg-primary/40"></div>
+        <div className="absolute w-full h-full rounded-full bg-blue-500/20 animate-ping"></div>
+        <div className="absolute w-full h-full rounded-full bg-blue-500/40"></div>
       </div>
       <span>AI thinking{dots}</span>
     </div>
