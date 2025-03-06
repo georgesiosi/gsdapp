@@ -9,7 +9,7 @@ import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
 import type { TaskOrIdeaType, Task, TaskStatus, TaskType, QuadrantType } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Plus, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { exportTasksToCSV } from "@/lib/export-utils"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
@@ -20,6 +20,7 @@ import { VelocityMeters } from "@/components/velocity-meters"
 import IdeaPriorityDialog from "@/components/ideas/idea-priority-dialog"
 import { ScorecardButton } from "@/components/scorecard-button"
 import { EndDayScorecard } from "@/components/end-day-scorecard"
+import { ChatDialog } from "@/components/ui/chat-dialog"
 
 export function TaskManager() {
   const router = useRouter();
@@ -48,6 +49,7 @@ export function TaskManager() {
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
   const [scorecardOpen, setScorecardOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Load tasks from localStorage on mount
   useEffect(() => {
@@ -136,11 +138,10 @@ export function TaskManager() {
       try {
         // Debug logging for tasks before saving
         console.log("[DEBUG] Saving tasks to localStorage:", tasks);
-        console.log("[DEBUG] Task completion status:", tasks.map(t => ({
+        console.log("[DEBUG] Task status:", tasks.map(t => ({
           id: t.id,
           text: t.text.substring(0, 20),
           status: t.status,
-          completed: t.completed,
           completedAt: t.completedAt
         })));
         
@@ -159,11 +160,10 @@ export function TaskManager() {
         if (savedTasks) {
           const parsedTasks = JSON.parse(savedTasks);
           console.log("[DEBUG] Verified saved tasks:", parsedTasks.length);
-          console.log("[DEBUG] Verified task completion status:", parsedTasks.map((t: any) => ({
+          console.log("[DEBUG] Verified task status:", parsedTasks.map((t: any) => ({
             id: t.id,
             text: t.text.substring(0, 20),
             status: t.status,
-            completed: t.completed,
             completedAt: t.completedAt
           })));
         }
@@ -291,7 +291,6 @@ export function TaskManager() {
       const task = addTask({
         text,
         quadrant: 'q4', // Always start in Q4
-        completed: false,
         needsReflection: false,
         status: 'active',
         taskType: 'personal' // Default type until AI analysis
@@ -508,15 +507,25 @@ export function TaskManager() {
       
       {/* Export tasks event listener is set up in a useEffect at the component level */}
 
-      {/* Floating Action Button for adding tasks */}
-      <Button 
-        variant="default" 
-        onClick={() => setTaskModalOpen(true)}
-        className="floating-action-button"
-        aria-label="Add new task"
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-4 right-4 flex flex-col gap-2">
+        <Button 
+          variant="default" 
+          onClick={() => setChatOpen(true)}
+          className="rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-200"
+          aria-label="Open chat assistant"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </Button>
+        <Button 
+          variant="default" 
+          onClick={() => setTaskModalOpen(true)}
+          className="rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-200"
+          aria-label="Add new task"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      </div>
 
       {/* Task Actions Section */}
       <div className="mb-4 flex justify-end space-x-2">
@@ -590,8 +599,14 @@ export function TaskManager() {
           isOpen={scorecardOpen}
           onClose={() => setScorecardOpen(false)}
           tasks={tasks}
-          onUpdateTaskStatus={handleUpdateTaskStatus}
-        />
+      />
+
+      <ChatDialog
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          tasks={tasks}
+          userContext={useProfile.getState().getPersonalContext()}
+      />
 
         <VelocityMeters 
           tasks={tasks.filter(t => t.status === 'active' || t.status === 'completed').map(task => {
