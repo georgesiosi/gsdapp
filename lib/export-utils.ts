@@ -1,7 +1,7 @@
 interface ExportableGoal extends Record<string, unknown> {
   goal: string
   priority: string
-  completed: boolean
+  status: 'active' | 'completed'
   lastModified: string
 }
 
@@ -9,7 +9,8 @@ interface ExportableTask extends Record<string, unknown> {
   id: string
   text: string
   quadrant: string
-  completed: boolean
+  status: 'active' | 'completed'
+  completedAt?: string
 }
 
 export function convertToCSV<T extends Record<string, unknown>>(data: T[], headers: string[]): string {
@@ -39,7 +40,7 @@ export function exportGoalsToCSV(): void {
     if (!savedData) return
 
     const goalData = JSON.parse(savedData) as ExportableGoal
-    const headers = ['Goal', 'Priority', 'Completed', 'LastModified']
+    const headers = ['Goal', 'Priority', 'Status', 'LastModified']
     const csvContent = convertToCSV([goalData], headers)
     
     downloadCSV(csvContent, 'my-goals.csv')
@@ -54,7 +55,7 @@ export function exportTasksToCSV(): void {
     if (!savedTasks) return
 
     const tasks = JSON.parse(savedTasks) as ExportableTask[]
-    const headers = ['Id', 'Text', 'Quadrant', 'Completed']
+    const headers = ['Id', 'Text', 'Quadrant', 'Status', 'CompletedAt']
     const csvContent = convertToCSV(tasks, headers)
     
     downloadCSV(csvContent, 'my-tasks.csv')
