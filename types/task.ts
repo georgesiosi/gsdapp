@@ -7,22 +7,40 @@ export type TaskType = "personal" | "work" | "business";
 // Combined task and idea type
 export type TaskOrIdeaType = TaskType | "idea";
 
-// Task status type
+/**
+ * Represents the possible states of a task.
+ * - 'active': Task is currently in progress or pending
+ * - 'completed': Task has been finished
+ */
 export type TaskStatus = 'active' | 'completed';
 
-// Task interface
+/**
+ * Core Task interface representing a single task in the system.
+ * Tasks are the primary unit of work in the GSD (Getting Stuff Done) app.
+ */
 export interface Task {
+  /** Unique identifier for the task */
   id: string;
+  /** Task description or content */
   text: string;
+  /** Eisenhower quadrant classification */
   quadrant: QuadrantType;
+  /** Optional categorization of the task */
   taskType?: TaskOrIdeaType;
+  /** Current status of the task */
   status: TaskStatus;
+  /** Whether the task needs quadrant placement reflection */
   needsReflection: boolean;
+  /** Optional reflection data if task has been reflected upon */
   reflection?: TaskReflection;
+  /** ISO timestamp of task creation */
   createdAt: string;
+  /** ISO timestamp of last task update */
   updatedAt: string;
+  /** ISO timestamp of task completion, only set when status is 'completed' */
   completedAt?: string;
-  order?: number; // Order within the quadrant, used for manual sorting
+  /** Optional ordering within the quadrant for manual sorting */
+  order?: number;
 }
 
 // Idea interface
