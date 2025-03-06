@@ -43,8 +43,12 @@ export function VelocityMeter({
   
   // Filter tasks by type and get counts
   const typeTasks = tasks.filter(task => {
-    // First check if task is from today
-    if (!isTaskFromToday(task)) return false;
+    // Include task if:
+    // 1. It was completed today, OR
+    // 2. It's still active (regardless of when it was created)
+    const isCompletedToday = task.status === 'completed' && task.completedAt && isTaskFromToday(task);
+    const isActive = task.status === 'active';
+    if (!isCompletedToday && !isActive) return false;
     
     // For personal meter, include tasks with taskType="personal" or undefined
     if (type === "personal") {
