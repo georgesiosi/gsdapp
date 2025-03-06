@@ -65,19 +65,16 @@ export function TaskManager() {
           const workTasks = parsedTasks.filter((t: any) => t.taskType === "work" || t.taskType === "business");
           console.log("[DEBUG] Work/Business tasks in localStorage:", workTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
           
-          // Convert string dates to numbers
+          // Convert all dates to ISO strings for consistent handling
           const formattedTasks = parsedTasks.map((task: any) => ({
             ...task,
             createdAt: typeof task.createdAt === 'string' ? 
-              (isNaN(Number(task.createdAt)) ? new Date(task.createdAt).getTime() : Number(task.createdAt)) : 
-              task.createdAt,
+              task.createdAt : new Date(task.createdAt).toISOString(),
             updatedAt: typeof task.updatedAt === 'string' ? 
-              (isNaN(Number(task.updatedAt)) ? new Date(task.updatedAt).getTime() : Number(task.updatedAt)) : 
-              task.updatedAt,
+              task.updatedAt : new Date(task.updatedAt).toISOString(),
             completedAt: task.completedAt ? 
               (typeof task.completedAt === 'string' ? 
-                (isNaN(Number(task.completedAt)) ? new Date(task.completedAt).getTime() : Number(task.completedAt)) : 
-                task.completedAt) : 
+                task.completedAt : new Date(task.completedAt).toISOString()) : 
               undefined
           }));
           
@@ -112,15 +109,13 @@ export function TaskManager() {
           // Debug logging for loaded ideas
           console.log("[DEBUG] Loading ideas from localStorage:", parsedIdeas);
           
-          // Convert string dates to numbers if needed
+          // Convert all dates to ISO strings for consistent handling
           const formattedIdeas = parsedIdeas.map((idea: any) => ({
             ...idea,
             createdAt: typeof idea.createdAt === 'string' ? 
-              (isNaN(Number(idea.createdAt)) ? new Date(idea.createdAt).getTime() : Number(idea.createdAt)) : 
-              idea.createdAt,
+              idea.createdAt : new Date(idea.createdAt).toISOString(),
             updatedAt: typeof idea.updatedAt === 'string' ? 
-              (isNaN(Number(idea.updatedAt)) ? new Date(idea.updatedAt).getTime() : Number(idea.updatedAt)) : 
-              idea.updatedAt
+              idea.updatedAt : new Date(idea.updatedAt).toISOString()
           }));
           
           setInitialIdeas(formattedIdeas);
@@ -141,17 +136,37 @@ export function TaskManager() {
       try {
         // Debug logging for tasks before saving
         console.log("[DEBUG] Saving tasks to localStorage:", tasks);
-        console.log("[DEBUG] Task types before saving:", tasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+        console.log("[DEBUG] Task completion status:", tasks.map(t => ({
+          id: t.id,
+          text: t.text.substring(0, 20),
+          status: t.status,
+          completed: t.completed,
+          completedAt: t.completedAt
+        })));
         
-        localStorage.setItem("tasks", JSON.stringify(tasks));
+        // Ensure all tasks have proper date fields before saving
+        const tasksToSave = tasks.map(task => ({
+          ...task,
+          createdAt: task.createdAt || new Date().toISOString(),
+          updatedAt: task.updatedAt || new Date().toISOString(),
+          completedAt: task.status === 'completed' ? (task.completedAt || new Date().toISOString()) : undefined
+        }));
         
-          // Verify what was saved
-          const savedTasks = localStorage.getItem("tasks");
-          if (savedTasks) {
-            const parsedTasks = JSON.parse(savedTasks);
-            console.log("[DEBUG] Verified saved tasks:", parsedTasks.length);
-            console.log("[DEBUG] Verified task types:", parsedTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
-          }
+        localStorage.setItem("tasks", JSON.stringify(tasksToSave));
+        
+        // Verify what was saved
+        const savedTasks = localStorage.getItem("tasks");
+        if (savedTasks) {
+          const parsedTasks = JSON.parse(savedTasks);
+          console.log("[DEBUG] Verified saved tasks:", parsedTasks.length);
+          console.log("[DEBUG] Verified task completion status:", parsedTasks.map((t: any) => ({
+            id: t.id,
+            text: t.text.substring(0, 20),
+            status: t.status,
+            completed: t.completed,
+            completedAt: t.completedAt
+          })));
+        }
       } catch (error) {
         console.error("Error saving tasks to localStorage:", error);
         toast({
