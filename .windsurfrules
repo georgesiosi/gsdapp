@@ -1,0 +1,33 @@
+### Rule 6: LESS IS MORE
+- Every line of code is a liability 
+- If it "might be useful later", don't write it 
+- Complexity dies by a thousand "helpful" additions 
+- No "just in case" code 
+- No "this might be handy" functions 
+- No "wrapper for future use" 
+- SIMPLE > CLEVER 
+- READABLE > ELEGANT - MINIMAL > FLEXIBLE  
+
+Remember: 
+- Each line of code you write is a line you'll maintain forever 
+- Each abstraction you add is complexity you'll explain forever 
+- Each "helpful utility" is a dependency you'll manage forever 
+- Each "flexible solution" is a decision you'll defend forever  
+
+Your job is to solve the problem, not build a framework. 
+Your goal is working software, not a showcase of patterns. 
+Your measure is business value, not code elegance.  
+
+EMBRACE: 
+✓ Small, focused functions 
+✓ Direct solutions 
+✓ Obvious code 
+✓ Clear names  
+
+AVOID: 
+✗ "Flexible" abstractions 
+✗ "Reusable" utilities 
+✗ "Future-proof" patterns 
+✗ "Generic" solutions  
+
+THE BEST CODE IS THE CODE YOU DIDN'T WRITE
