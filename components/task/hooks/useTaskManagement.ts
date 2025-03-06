@@ -1,28 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { v4 as uuidv4 } from "uuid"
-import { TaskOrIdeaType } from "@/types/task"
+import { TaskOrIdeaType, TaskType, QuadrantType, TaskStatus, Task } from "@/types/task"
 
-export type TaskStatus = "active" | "completed"
-// Removed ReasoningLogService import as it's not needed here
+// Using types from @/types/task
 
-// Define the quadrant type locally
-export type QuadrantType = "q1" | "q2" | "q3" | "q4"
+export type NewTask = Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
 
-export interface Task {
-  id: string
-  text: string
-  quadrant: QuadrantType
-  taskType?: TaskOrIdeaType
-  completed: boolean
-  needsReflection: boolean
-  createdAt: string
-  completedAt?: string
-  updatedAt: string
-  order?: number
-  status: TaskStatus
-}
-
-export type NewTask = Omit<Task, "id" | "createdAt" | "updatedAt">
+// NewTask is now defined above as an interface
 
 export function useTaskManagement() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -116,24 +100,26 @@ export function useTaskManagement() {
     }
   });
 
-  // Migrate task data to include new fields
+  // Migrate task data to include new fields and handle legacy completed flag
   const migrateTask = (task: Partial<Task> & { completed?: boolean }): Task => {
     if (!task.id || !task.text || !task.quadrant) {
       throw new Error('Missing required task fields');
     }
+    
+    // Determine status from either status field or legacy completed flag
+    const status = task.status || (task.completed ? 'completed' : 'active');
     
     return {
       id: task.id,
       text: task.text,
       quadrant: task.quadrant,
       taskType: task.taskType || 'personal',
-      completed: task.completed || false,
       needsReflection: task.needsReflection || false,
       createdAt: task.createdAt || new Date().toISOString(),
-      completedAt: task.completedAt,
+      completedAt: status === 'completed' ? (task.completedAt || new Date().toISOString()) : undefined,
       updatedAt: task.updatedAt || new Date().toISOString(),
       order: task.order || 0,
-      status: task.status || (task.completed ? 'completed' : 'active')
+      status
     };
   };
 
@@ -215,7 +201,6 @@ export function useTaskManagement() {
       const task = addTask({
         text: taskData.text,
         quadrant: taskData.quadrant || 'q4',
-        completed: taskData.completed || false,
         needsReflection: taskData.needsReflection || false,
         status: taskData.status || 'active',
         taskType: taskData.taskType || 'personal',
@@ -316,7 +301,7 @@ export function useTaskManagement() {
             ...updatedTasks[taskIndex],
             quadrant: targetQuadrant,
             taskType: taskType,
-            updatedAt: Date.now()
+            updatedAt: new Date().toISOString()
           };
 
           console.log(`[DEBUG] Task ${task.id} updated with quadrant ${targetQuadrant} and type ${taskType}`);
@@ -366,7 +351,6 @@ export function useTaskManagement() {
         updatedTasks[taskIndex] = {
           ...currentTask,
           status: wasCompleted ? 'active' : 'completed',
-          completed: !wasCompleted,
           updatedAt: now,
           completedAt: wasCompleted ? undefined : now
         };
