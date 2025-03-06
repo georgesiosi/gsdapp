@@ -1,6 +1,8 @@
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { v4 as uuidv4 } from "uuid"
-import { TaskOrIdeaType, TaskStatus } from "@/types/task"
+import { TaskOrIdeaType } from "@/types/task"
+
+export type TaskStatus = "active" | "completed"
 // Removed ReasoningLogService import as it's not needed here
 
 // Define the quadrant type locally
@@ -18,7 +20,6 @@ export interface Task {
   updatedAt: string
   order?: number
   status: TaskStatus
-  archivedAt?: string // Used to hide tasks from view (replaces deletedAt functionality)
 }
 
 export type NewTask = Omit<Task, "id" | "createdAt" | "updatedAt">
@@ -132,8 +133,7 @@ export function useTaskManagement() {
       completedAt: task.completedAt,
       updatedAt: task.updatedAt || new Date().toISOString(),
       order: task.order || 0,
-      status: task.status || (task.completed ? 'completed' : 'active'),
-      archivedAt: task.archivedAt
+      status: task.status || (task.completed ? 'completed' : 'active')
     };
   };
 
@@ -368,7 +368,7 @@ export function useTaskManagement() {
           status: wasCompleted ? 'active' : 'completed',
           completed: !wasCompleted,
           updatedAt: now,
-          completedAt: wasCompleted ? undefined : now,
+          completedAt: wasCompleted ? undefined : now
         };
 
         // Debug logging for task completion
@@ -397,44 +397,28 @@ export function useTaskManagement() {
   const reorderTasks = useCallback((quadrant: QuadrantType, sourceIndex: number, destinationIndex: number): boolean => {
     try {
       setTasks(prevTasks => {
-        // Get tasks in this quadrant, separated by status
-        const activeTasks = prevTasks
-          .filter(task => task.quadrant === quadrant && task.status === 'active')
-          .sort((a, b) => (a.order || 0) - (b.order || 0));
-        
-        const completedTasks = prevTasks
-          .filter(task => task.quadrant === quadrant && task.status === 'completed')
+        // Get tasks in this quadrant
+        const quadrantTasks = prevTasks
+          .filter(task => task.quadrant === quadrant)
           .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        // Determine which array we're working with based on the source index
-        const isActiveTask = sourceIndex < activeTasks.length;
-        const workingArray = isActiveTask ? activeTasks : completedTasks;
-        const adjustedSourceIndex = isActiveTask ? sourceIndex : sourceIndex - activeTasks.length;
-        const adjustedDestIndex = isActiveTask ? destinationIndex : destinationIndex - activeTasks.length;
-        
-        if (adjustedSourceIndex < 0 || adjustedSourceIndex >= workingArray.length || 
-            adjustedDestIndex < 0 || adjustedDestIndex >= workingArray.length) {
+        if (sourceIndex < 0 || sourceIndex >= quadrantTasks.length || 
+            destinationIndex < 0 || destinationIndex >= quadrantTasks.length) {
           return prevTasks; // Invalid indices
         }
         
         // Remove the task from its current position
-        const [movedTask] = workingArray.splice(adjustedSourceIndex, 1);
+        const [movedTask] = quadrantTasks.splice(sourceIndex, 1);
         
         // Insert the task at the new position
-        workingArray.splice(adjustedDestIndex, 0, movedTask);
+        quadrantTasks.splice(destinationIndex, 0, movedTask);
         
-        // Update order values for the affected array
-        const updatedArray = workingArray.map((task, index) => ({
+        // Update order values for all tasks in the quadrant
+        const updatedQuadrantTasks = quadrantTasks.map((task, index) => ({
           ...task,
           order: index,
           updatedAt: new Date().toISOString()
         }));
-
-        // Combine everything back together
-        const updatedQuadrantTasks = [
-          ...updatedArray,
-          ...(isActiveTask ? completedTasks : activeTasks)
-        ];
         
         // Create a new tasks array with the updated quadrant tasks
         return prevTasks
@@ -448,6 +432,8 @@ export function useTaskManagement() {
       return false;
     }
   }, []);
+
+
 
   // Reset confetti state
   const hideConfetti = useCallback(() => {

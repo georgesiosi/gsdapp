@@ -8,7 +8,7 @@ export type TaskType = "personal" | "work" | "business";
 export type TaskOrIdeaType = TaskType | "idea";
 
 // Task status type
-export type TaskStatus = 'active' | 'completed' | 'archived';
+export type TaskStatus = 'active' | 'completed';
 
 // Task interface
 export interface Task {
@@ -22,7 +22,6 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
-  archivedAt?: string; // Used to hide tasks from view (replaces deletedAt functionality)
   order?: number; // Order within the quadrant, used for manual sorting
 }
 

@@ -6,10 +6,10 @@ import { ReasoningLogService } from "@/services/ai/reasoningLogService"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
-import type { TaskOrIdeaType } from "@/types/task"
+import type { TaskOrIdeaType, Task, TaskStatus, TaskType, QuadrantType } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { Plus, History } from "lucide-react"
+import { Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { exportTasksToCSV } from "@/lib/export-utils"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
@@ -258,7 +258,7 @@ export function TaskManager() {
     const quadrantTasks = tasks.filter(t => t.quadrant === task.quadrant);
     
     // Calculate new order based on status
-    let newOrder: number;
+    let newOrder = 0; // Default value
     if (status === 'completed') {
       // If completing task, put it at the end
       const maxOrder = Math.max(...quadrantTasks.map(t => t.order || 0));
@@ -272,12 +272,10 @@ export function TaskManager() {
       newOrder = minActiveOrder - 1;
     }
 
-
     const timestamp = new Date().toISOString();
     const updates: Partial<Task> = {
       status,
       ...(status === 'completed' && { completedAt: timestamp }),
-      ...(status === 'archived' && { archivedAt: timestamp }),
       updatedAt: timestamp,
       order: newOrder
     };
@@ -523,15 +521,6 @@ export function TaskManager() {
       {/* Task Actions Section */}
       <div className="mb-4 flex justify-end space-x-2">
         {/* Test button removed after debugging was complete */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => router.push("/history")}
-        >
-          <History className="h-4 w-4" />
-          History
-        </Button>
         <ScorecardButton
           onClick={() => setScorecardOpen(true)}
           tasks={tasks.filter(t => t.status === 'active' || t.status === 'completed')}
@@ -563,7 +552,7 @@ export function TaskManager() {
             if (!task) return;
             handleUpdateTaskStatus(id, task.status === 'completed' ? 'active' : 'completed');
           }}
-          onDeleteTask={(id) => handleUpdateTaskStatus(id, 'archived')}
+          onDeleteTask={deleteTask}
           onReflectionRequested={startReflection}
           onMoveTask={handleMoveTask}
           onEditTask={(taskId, newText) => {
