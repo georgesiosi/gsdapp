@@ -357,30 +357,39 @@ export function useTaskManagement() {
         const taskIndex = prevTasks.findIndex(task => task.id === id)
         if (taskIndex === -1) return prevTasks
         
-        isQ1Task = prevTasks[taskIndex].quadrant === "q1";
-        wasCompleted = prevTasks[taskIndex].completed;
+        const currentTask = prevTasks[taskIndex];
+        isQ1Task = currentTask.quadrant === "q1";
+        wasCompleted = currentTask.status === 'completed';
         
-        const updatedTasks = [...prevTasks]
+        const now = new Date().toISOString();
+        const updatedTasks = [...prevTasks];
         updatedTasks[taskIndex] = {
-          ...updatedTasks[taskIndex],
-          status: updatedTasks[taskIndex].status === 'completed' ? 'active' : 'completed',
-          completed: updatedTasks[taskIndex].status === 'completed' ? false : true,
-          updatedAt: new Date().toISOString(),
-          completedAt: updatedTasks[taskIndex].status === 'completed' ? undefined : new Date().toISOString(),
-        }
+          ...currentTask,
+          status: wasCompleted ? 'active' : 'completed',
+          completed: !wasCompleted,
+          updatedAt: now,
+          completedAt: wasCompleted ? undefined : now,
+        };
 
-        return updatedTasks
-      })
+        // Debug logging for task completion
+        console.log(`[DEBUG] Toggling task ${id}:`, {
+          wasCompleted,
+          newStatus: updatedTasks[taskIndex].status,
+          completedAt: updatedTasks[taskIndex].completedAt
+        });
+
+        return updatedTasks;
+      });
       
       // Show confetti if a Q1 task is being marked as completed
       if (isQ1Task && !wasCompleted) {
         setShowConfetti(true);
       }
       
-      return true
+      return true;
     } catch (error) {
-      console.error("Error toggling task:", error)
-      return false
+      console.error("Error toggling task:", error);
+      return false;
     }
   }, [])
 
