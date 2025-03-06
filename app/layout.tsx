@@ -17,13 +17,13 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Priority Matrix",
-  description: "An Eisenhower Matrix task management app",
+  title: "GSD App",
+  description: "A modern task management app for getting things done",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Priority Matrix",
+    title: "GSD App",
   },
 };
 
@@ -42,7 +42,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Priority Matrix" />
+        <meta name="apple-mobile-web-app-title" content="GSD App" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased bg-background text-foreground`}

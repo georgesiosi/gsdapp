@@ -43,8 +43,8 @@ A modern, feature-rich todo application built with Next.js that helps you organi
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/mytodoapp.git
-cd mytodoapp
+git clone https://github.com/yourusername/gsdapp.git
+cd gsdapp
 ```
 
 1. Install dependencies:
@@ -93,7 +93,7 @@ yarn dev
 ## 📦 Project Structure
 
 ```text
-mytodoapp/
+gsdapp/
 ├── app/                # Next.js app directory
 │   └── api/           # API routes including AI integration
 ├── components/        # React components

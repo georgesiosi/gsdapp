@@ -1,7 +1,7 @@
 {
-  "name": "Priority Matrix",
-  "short_name": "Tasks",
-  "description": "An Eisenhower Matrix task management app",
+  "name": "GSD App",
+  "short_name": "GSD",
+  "description": "A modern task management app for getting things done",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
