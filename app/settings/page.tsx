@@ -13,6 +13,8 @@ import Link from 'next/link'
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings()
+  const [isEditingKey, setIsEditingKey] = useState(false)
+  const [newApiKey, setNewApiKey] = useState('')
   const [taskSettings, setTaskSettings] = useState<TaskSettings>(
     settings.taskSettings || {
       endOfDayTime: '23:59',
@@ -42,27 +44,73 @@ export default function SettingsPage() {
         <h2 className="text-xl font-semibold mb-4">AI Integration</h2>
         <div className="space-y-6">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="openAIKey">OpenAI API Key</Label>
-            <Input
-              id="openAIKey"
-              type="password"
-              value={settings.openAIKey || ''}
-              onChange={(e) => updateSettings({ ...settings, openAIKey: e.target.value })}
-              placeholder="sk-..."
-              className="font-mono"
-            />
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>Required for AI-powered task analysis and idea detection.</p>
-              <p>
-                <a 
-                  href="https://platform.openai.com/api-keys" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
+            <div className="flex items-center justify-between">
+              <Label htmlFor="openAIKey">OpenAI API Key</Label>
+              {settings.openAIKey && !isEditingKey && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setIsEditingKey(true)
+                    setNewApiKey('')
+                  }}
                 >
-                  Get your API key from OpenAI →
-                </a>
-              </p>
+                  Change Key
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                id="openAIKey"
+                type="password"
+                value={isEditingKey ? newApiKey : settings.openAIKey || ''}
+                onChange={(e) => isEditingKey ? setNewApiKey(e.target.value) : updateSettings({ ...settings, openAIKey: e.target.value })}
+                placeholder="sk-..."
+                className="font-mono"
+                disabled={settings.openAIKey && !isEditingKey}
+              />
+              {isEditingKey && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="default"
+                    onClick={() => {
+                      if (newApiKey) {
+                        updateSettings({ ...settings, openAIKey: newApiKey })
+                      }
+                      setIsEditingKey(false)
+                    }}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="default"
+                    onClick={() => setIsEditingKey(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="text-sm text-muted-foreground space-y-1">
+              {settings.openAIKey ? (
+                <p>Your API key is securely stored. Click "Change Key" to update it.</p>
+              ) : (
+                <>
+                  <p>Required for AI-powered task analysis and idea detection.</p>
+                  <p>
+                    <a 
+                      href="https://platform.openai.com/api-keys" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Get your API key from OpenAI →
+                    </a>
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
