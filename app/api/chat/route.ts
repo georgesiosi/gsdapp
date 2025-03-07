@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 type MessageRole = 'system' | 'user' | 'assistant';
+
+// Create OpenAI client with user's API key
+function createOpenAIClient(apiKey: string | null) {
+  if (!apiKey) {
+    throw new ChatError('OpenAI API key is required', 400);
+  }
+  return new OpenAI({ apiKey });
+}
 
 interface ChatMessage {
   id?: string;
@@ -48,10 +51,7 @@ function validateMessage(message: ChatMessage): asserts message is ChatMessage {
   }
 }
 
-// Validate that we have an API key
-if (!process.env.OPENAI_API_KEY) {
-  console.error('[ERROR] OPENAI_API_KEY is not set');
-}
+
 
 import { LicenseService } from '@/services/license/licenseService';
 
@@ -70,6 +70,18 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
+
+    // Get user's OpenAI API key
+    const openAIKey = request.headers.get('x-openai-key');
+    if (!openAIKey) {
+      return NextResponse.json(
+        { error: 'OpenAI API key is required. Please add your API key in Settings.' },
+        { status: 400 }
+      );
+    }
+
+    // Initialize OpenAI client with user's key
+    const openai = createOpenAIClient(openAIKey);
 
     // Extract and validate the request data
     const { messages, userContext, tasks }: ChatRequest = await request.json();
