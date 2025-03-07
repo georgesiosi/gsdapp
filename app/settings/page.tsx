@@ -38,6 +38,36 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold">Settings</h1>
       </div>
       
+      <Card className="p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">AI Integration</h2>
+        <div className="space-y-6">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="openAIKey">OpenAI API Key</Label>
+            <Input
+              id="openAIKey"
+              type="password"
+              value={settings.openAIKey || ''}
+              onChange={(e) => updateSettings({ ...settings, openAIKey: e.target.value })}
+              placeholder="sk-..."
+              className="font-mono"
+            />
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>Required for AI-powered task analysis and idea detection.</p>
+              <p>
+                <a 
+                  href="https://platform.openai.com/api-keys" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Get your API key from OpenAI →
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Task Management</h2>
         
