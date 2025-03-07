@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [isEditingKey, setIsEditingKey] = useState(false)
   const [newApiKey, setNewApiKey] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [localKey, setLocalKey] = useState('')
   const [taskSettings, setTaskSettings] = useState<TaskSettings>(
     settings.taskSettings || {
       endOfDayTime: '23:59',
@@ -27,7 +28,18 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true)
+    // Initialize local key state from settings
+    if (settings.openAIKey) {
+      setLocalKey(settings.openAIKey)
+    }
   }, [])
+
+  // Update local key when settings change
+  useEffect(() => {
+    if (settings.openAIKey) {
+      setLocalKey(settings.openAIKey)
+    }
+  }, [settings.openAIKey])
 
   const handleSave = () => {
     updateSettings({ ...settings, taskSettings })
@@ -89,11 +101,11 @@ export default function SettingsPage() {
               <Input
                 id="openAIKey"
                 type="password"
-                value={isEditingKey ? newApiKey : (mounted ? (settings.openAIKey || '') : '')}
+                value={isEditingKey ? newApiKey : (mounted ? localKey : '')}
                 onChange={handleKeyChange}
                 placeholder="sk-..."
                 className="font-mono"
-                disabled={settings.openAIKey && !isEditingKey}
+                disabled={localKey && !isEditingKey}
               />
               {isEditingKey && (
                 <div className="flex gap-2">
