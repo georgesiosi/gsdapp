@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { toast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, CheckCircle, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
   Form,
@@ -41,12 +41,18 @@ const profileFormSchema = z.object({
     required_error: "Please select a theme.",
   }),
   personalContext: z.string().optional(),
+  licenseKey: z.string().optional(),
 })
 
 export default function ProfilePage() {
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
-  const { profile, setProfile } = useProfile()
+  const { profile, setProfile, initializeProfile } = useProfile()
+
+  // Initialize legacy status for existing users
+  useEffect(() => {
+    initializeProfile()
+  }, [])
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
@@ -55,6 +61,7 @@ export default function ProfilePage() {
       email: profile?.email || "",
       theme: profile?.theme || "system",
       personalContext: profile?.personalContext || "",
+      licenseKey: profile?.licenseKey || "",
     },
   })
 
@@ -171,6 +178,54 @@ export default function ProfilePage() {
                         placeholder="Share your context here..."
                         className="min-h-[200px] resize-y"
                         {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="licenseKey"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      License Key
+                      {profile?.licenseStatus === 'legacy' && (
+                        <span className="flex items-center gap-1 text-sm text-blue-600">
+                          <CheckCircle className="h-4 w-4" />
+                          Legacy Access
+                        </span>
+                      )}
+                      {profile?.licenseStatus === 'active' && (
+                        <span className="flex items-center gap-1 text-sm text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          Active
+                        </span>
+                      )}
+                      {profile?.licenseStatus === 'inactive' && (
+                        <span className="flex items-center gap-1 text-sm text-yellow-600">
+                          <AlertCircle className="h-4 w-4" />
+                          Inactive
+                        </span>
+                      )}
+                    </FormLabel>
+                    <FormDescription>
+                      {profile?.isLegacyUser 
+                        ? "You have lifetime access as an existing user."
+                        : profile?.licenseStatus === 'active'
+                        ? "Your license is active and valid."
+                        : "Enter your license key to activate the full version."}
+                    </FormDescription>
+                    <FormControl>
+                      <Input
+                        placeholder={profile?.isLegacyUser ? "Lifetime Access Granted" : "Enter your license key"}
+                        {...field}
+                        disabled={profile?.isLegacyUser}
+                        className={profile?.licenseStatus === 'legacy' ? 'bg-blue-50' : 
+                                 profile?.licenseStatus === 'active' ? 'bg-green-50' : 
+                                 'bg-white'}
                       />
                     </FormControl>
                     <FormMessage />
