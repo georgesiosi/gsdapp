@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [newApiKey, setNewApiKey] = useState('')
   const [mounted, setMounted] = useState(false)
   const [localKey, setLocalKey] = useState('')
+  const [initialLoad, setInitialLoad] = useState(true)
   const [taskSettings, setTaskSettings] = useState<TaskSettings>(
     settings.taskSettings || {
       endOfDayTime: '23:59',
@@ -27,34 +28,41 @@ export default function SettingsPage() {
   )
 
   useEffect(() => {
-    setMounted(true)
-    // Initialize local key state from settings
-    if (settings.openAIKey) {
-      setLocalKey(settings.openAIKey)
+    // Only run initialization once
+    if (initialLoad) {
+      setMounted(true)
+      // Initialize local key state from settings
+      if (settings.openAIKey) {
+        setLocalKey(settings.openAIKey)
+      }
+      setInitialLoad(false)
     }
-  }, [])
+  }, [settings.openAIKey, initialLoad])
 
-  // Update local key when settings change
+  // Handle updates to settings after initial load
   useEffect(() => {
-    if (settings.openAIKey) {
+    if (!initialLoad && settings.openAIKey) {
       setLocalKey(settings.openAIKey)
     }
-  }, [settings.openAIKey])
+  }, [settings.openAIKey, initialLoad])
 
   const handleSave = () => {
     updateSettings({ ...settings, taskSettings })
   }
 
   const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
     if (isEditingKey) {
-      setNewApiKey(e.target.value)
+      setNewApiKey(value)
     } else {
-      updateSettings({ ...settings, openAIKey: e.target.value })
+      setLocalKey(value)
+      updateSettings({ ...settings, openAIKey: value })
     }
   }
 
   const handleSaveKey = () => {
     if (newApiKey) {
+      setLocalKey(newApiKey)
       updateSettings({ ...settings, openAIKey: newApiKey })
     }
     setIsEditingKey(false)
