@@ -5,6 +5,7 @@ const defaultSettings: UserSettings = {
   theme: 'system',
   showCompletedTasks: true,
   autoAnalyze: true,
+  openAIKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
   taskSettings: {
     endOfDayTime: '23:59',
     autoArchiveDelay: 7,
