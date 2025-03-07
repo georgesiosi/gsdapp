@@ -99,6 +99,7 @@ export interface TaskSettings {
 // User settings interface
 export interface UserSettings {
   goal?: string;
+  openAIKey?: string;
   priority?: string;
   theme?: 'light' | 'dark' | 'system';
   showCompletedTasks?: boolean;
