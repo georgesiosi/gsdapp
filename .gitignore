@@ -41,3 +41,5 @@ next-env.d.ts
 # docker
 .docker/
 docker-compose.override.yml
+
+# We're keeping documentation in the repo for reference
