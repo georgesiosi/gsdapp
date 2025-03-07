@@ -21,22 +21,37 @@ export function useSettings() {
   useEffect(() => {
     // Load settings from localStorage on mount
     const savedSettings = localStorage.getItem('user-settings')
+    let parsedSettings: UserSettings | null = null
+
     if (savedSettings) {
       try {
-        const parsed = JSON.parse(savedSettings)
-        setSettings({ ...defaultSettings, ...parsed })
+        parsedSettings = JSON.parse(savedSettings)
       } catch (error) {
         console.error('Error parsing settings:', error)
       }
-    } else {
-      // If no saved settings, initialize with environment variable
-      const envKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
-      if (envKey) {
-        const initialSettings = { ...defaultSettings, openAIKey: envKey }
-        setSettings(initialSettings)
-        localStorage.setItem('user-settings', JSON.stringify(initialSettings))
-      }
     }
+
+    // Handle OpenAI key initialization
+    const envKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
+    const currentKey = parsedSettings?.openAIKey || ''
+
+    // If we have a saved key, use it; otherwise use env key if available
+    const finalKey = currentKey || envKey || ''
+    
+    // Merge settings with proper key handling
+    const mergedSettings = {
+      ...defaultSettings,
+      ...parsedSettings,
+      openAIKey: finalKey
+    }
+
+    setSettings(mergedSettings)
+    
+    // Only save to localStorage if we have changes
+    if (!savedSettings || mergedSettings.openAIKey !== currentKey) {
+      localStorage.setItem('user-settings', JSON.stringify(mergedSettings))
+    }
+
     setInitialized(true)
   }, [])
 
