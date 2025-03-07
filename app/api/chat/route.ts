@@ -71,8 +71,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get user's OpenAI API key
-    const openAIKey = request.headers.get('x-openai-key');
+    // Get user's OpenAI API key or fall back to environment variable
+    const openAIKey = request.headers.get('x-openai-key') || process.env.OPENAI_API_KEY;
     if (!openAIKey) {
       return NextResponse.json(
         { error: 'OpenAI API key is required. Please add your API key in Settings.' },
