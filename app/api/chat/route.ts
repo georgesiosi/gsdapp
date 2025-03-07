@@ -53,8 +53,27 @@ if (!process.env.OPENAI_API_KEY) {
   console.error('[ERROR] OPENAI_API_KEY is not set');
 }
 
+async function validateLicense(licenseKey: string | null): Promise<boolean> {
+  if (!licenseKey) return false;
+  
+  // For now, just check if license exists
+  // TODO: Add proper Polar.sh validation
+  return true;
+}
+
 export async function POST(request: Request) {
   try {
+    // Check license first
+    const licenseKey = request.headers.get('x-license-key');
+    const isValid = await validateLicense(licenseKey);
+    
+    if (!isValid) {
+      return NextResponse.json(
+        { error: 'Invalid or missing license key' },
+        { status: 403 }
+      );
+    }
+
     // Extract and validate the request data
     const { messages, userContext, tasks }: ChatRequest = await request.json();
 
