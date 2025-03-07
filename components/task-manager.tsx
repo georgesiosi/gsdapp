@@ -38,7 +38,7 @@ interface TaskManagerProps {
   tasks: Task[];
 }
 
-const TaskManager: React.FC<TaskManagerProps> = ({ tasks }) => {
+export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
   const router = useRouter();
   const { toast } = useToast();
   const { 
