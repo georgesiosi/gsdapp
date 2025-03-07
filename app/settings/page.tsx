@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSettings } from '@/hooks/use-settings'
 import { TaskSettings } from '@/types/task'
 import { Card } from '@/components/ui/card'
@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const { settings, updateSettings } = useSettings()
   const [isEditingKey, setIsEditingKey] = useState(false)
   const [newApiKey, setNewApiKey] = useState('')
+  const [mounted, setMounted] = useState(false)
   const [taskSettings, setTaskSettings] = useState<TaskSettings>(
     settings.taskSettings || {
       endOfDayTime: '23:59',
@@ -24,8 +25,33 @@ export default function SettingsPage() {
     }
   )
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const handleSave = () => {
     updateSettings({ ...settings, taskSettings })
+  }
+
+  const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isEditingKey) {
+      setNewApiKey(e.target.value)
+    } else {
+      updateSettings({ ...settings, openAIKey: e.target.value })
+    }
+  }
+
+  const handleSaveKey = () => {
+    if (newApiKey) {
+      updateSettings({ ...settings, openAIKey: newApiKey })
+    }
+    setIsEditingKey(false)
+    setNewApiKey('')
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditingKey(false)
+    setNewApiKey('')
   }
 
   return (
@@ -63,8 +89,8 @@ export default function SettingsPage() {
               <Input
                 id="openAIKey"
                 type="password"
-                value={isEditingKey ? newApiKey : settings.openAIKey || ''}
-                onChange={(e) => isEditingKey ? setNewApiKey(e.target.value) : updateSettings({ ...settings, openAIKey: e.target.value })}
+                value={isEditingKey ? newApiKey : (mounted ? (settings.openAIKey || '') : '')}
+                onChange={handleKeyChange}
                 placeholder="sk-..."
                 className="font-mono"
                 disabled={settings.openAIKey && !isEditingKey}
@@ -74,19 +100,14 @@ export default function SettingsPage() {
                   <Button
                     variant="default"
                     size="default"
-                    onClick={() => {
-                      if (newApiKey) {
-                        updateSettings({ ...settings, openAIKey: newApiKey })
-                      }
-                      setIsEditingKey(false)
-                    }}
+                    onClick={handleSaveKey}
                   >
                     Save
                   </Button>
                   <Button
                     variant="outline"
                     size="default"
-                    onClick={() => setIsEditingKey(false)}
+                    onClick={handleCancelEdit}
                   >
                     Cancel
                   </Button>

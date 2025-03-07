@@ -16,6 +16,7 @@ const defaultSettings: UserSettings = {
 
 export function useSettings() {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings)
+  const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
     // Load settings from localStorage on mount
@@ -27,7 +28,16 @@ export function useSettings() {
       } catch (error) {
         console.error('Error parsing settings:', error)
       }
+    } else {
+      // If no saved settings, initialize with environment variable
+      const envKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
+      if (envKey) {
+        const initialSettings = { ...defaultSettings, openAIKey: envKey }
+        setSettings(initialSettings)
+        localStorage.setItem('user-settings', JSON.stringify(initialSettings))
+      }
     }
+    setInitialized(true)
   }, [])
 
   const updateSettings = (newSettings: UserSettings) => {
