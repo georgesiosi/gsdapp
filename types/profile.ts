@@ -7,6 +7,9 @@ export interface UserProfile {
   email: string;
   theme: 'light' | 'dark' | 'system';
   personalContext: string; // Freeform text for AI context
+  licenseKey?: string;
+  isLegacyUser?: boolean; // For existing users before license implementation
+  licenseStatus?: 'legacy' | 'active' | 'inactive';
 }
 
 export interface ProfileFormData {
@@ -14,4 +17,5 @@ export interface ProfileFormData {
   email: string;
   theme: 'light' | 'dark' | 'system';
   personalContext: string;
+  licenseKey?: string;
 }
