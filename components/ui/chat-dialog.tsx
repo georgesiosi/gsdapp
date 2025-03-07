@@ -199,8 +199,16 @@ const MessageBubble = memo(function MessageBubble({
 })
 
 function ChatDialogComponent({ open, onOpenChange, tasks, userContext }: ChatDialogProps) {
-  const { settings } = useSettings()
+  const { settings, updateSettings } = useSettings()
   const [mounted, setMounted] = useState<boolean>(false)
+
+  // Initialize OpenAI key from environment variable if not set
+  useEffect(() => {
+    const envKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
+    if (!settings.openAIKey && envKey) {
+      updateSettings({ ...settings, openAIKey: envKey })
+    }
+  }, [settings.openAIKey])
   const [error, setError] = useState<ChatError | null>(null)
   const [isSystemMessageCollapsed, setIsSystemMessageCollapsed] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
