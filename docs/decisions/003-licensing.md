@@ -15,16 +15,19 @@ The application currently uses a license key system via Polar.sh to manage user 
 ## Options Considered
 
 ### 1. Replace Licensing with Subscription-Only
-- **Pros**: Simpler architecture, standard SaaS model
-- **Cons**: Migration challenges for existing users, potential revenue model shift
+
+* **Pros**: Simpler architecture, standard SaaS model
+* **Cons**: Migration challenges for existing users, potential revenue model shift
 
 ### 2. Maintain Separate Licensing System
-- **Pros**: Familiar to existing users, maintains current business model
-- **Cons**: Two separate systems to maintain, potential user confusion
+
+* **Pros**: Familiar to existing users, maintains current business model
+* **Cons**: Two separate systems to maintain, potential user confusion
 
 ### 3. Integrate Licensing with Authentication
-- **Pros**: Unified user experience, simplified architecture
-- **Cons**: Development work to integrate systems, potential vendor limitations
+
+* **Pros**: Unified user experience, simplified architecture
+* **Cons**: Development work to integrate systems, potential vendor limitations
 
 ## Decision
 We will maintain the Polar.sh licensing/subscription system but integrate it with our new authentication system. Specifically:
@@ -36,6 +39,7 @@ We will maintain the Polar.sh licensing/subscription system but integrate it wit
 
 ## Rationale
 This approach offers several advantages:
+
 1. Maintains continuity for existing users
 2. Preserves current business model
 3. Provides path to cross-device functionality
@@ -47,23 +51,26 @@ By keeping licensing separate from identity, we maintain flexibility in our busi
 ## Consequences
 
 ### Positive
-- Preserves existing revenue model
-- Maintains familiar system for current users
-- Clean separation of concerns
-- Flexibility for future changes
+
+* Preserves existing revenue model
+* Maintains familiar system for current users
+* Clean separation of concerns
+* Flexibility for future changes
 
 ### Negative
-- Two systems to maintain
-- Slightly more complex architecture
-- Integration work required
-- Potential user confusion between accounts and licenses
+
+* Two systems to maintain
+* Slightly more complex architecture
+* Integration work required
+* Potential user confusion between accounts and licenses
 
 ## Implementation Plan
+
 1. Maintain current Polar.sh webhook integration
 2. When adding Clerk authentication:
-   - Add license key field to user profiles in database
-   - Associate existing license keys with new user accounts
-   - Update UI to show both authentication and license status
+   * Add license key field to user profiles in database
+   * Associate existing license keys with new user accounts
+   * Update UI to show both authentication and license status
 3. Update licensing checks to validate against both user identity and license
 4. Provide migration path for legacy users
 

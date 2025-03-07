@@ -112,9 +112,6 @@ export async function POST(request: Request) {
       includeCompleted ? true : task.status === 'active'
     ) || [];
 
-    // Create task index mapping for filtered tasks
-    const taskIndex = new Map(filteredTasks.map((task, index) => [task.id, index + 1]));
-
     // Format filtered tasks
     const formattedTasks = filteredTasks.map(task => 
       `TASK_${task.id}|${task.text}|${task.status}|${task.quadrant || 'unassigned'}|${task.taskType || 'unspecified'}`
@@ -210,7 +207,7 @@ ${userContext ? `CONTEXT: ${userContext}\n` : ''}${includeCompleted ? 'NOTE: Inc
       
       // Create a ReadableStream from the OpenAI stream
       const encoder = new TextEncoder();
-      let streamedResponse = new ReadableStream({
+      const streamedResponse = new ReadableStream({
         async start(controller) {
           try {
             let chunkCount = 0;
