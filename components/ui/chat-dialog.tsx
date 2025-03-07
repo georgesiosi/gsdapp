@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useMemo, useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { useSettings } from "@/hooks/use-settings"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
@@ -198,6 +199,7 @@ const MessageBubble = memo(function MessageBubble({
 })
 
 function ChatDialogComponent({ open, onOpenChange, tasks, userContext }: ChatDialogProps) {
+  const { settings } = useSettings()
   const [mounted, setMounted] = useState<boolean>(false)
   const [error, setError] = useState<ChatError | null>(null)
   const [isSystemMessageCollapsed, setIsSystemMessageCollapsed] = useState(false)
@@ -368,6 +370,15 @@ You have access to real-time task data. Please provide specific, contextual resp
         content: input.trim()
       }
 
+      // Check for OpenAI API key
+      if (!settings.openAIKey) {
+        setError({
+          message: 'OpenAI API key is required. Please add your API key in Settings.',
+          code: 'NO_API_KEY'
+        })
+        return
+      }
+
       setMessages(prev => [...prev, userMessage])
       setInput('')
       setError(null)
@@ -387,7 +398,8 @@ You have access to real-time task data. Please provide specific, contextual resp
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'text/event-stream'
+            'Accept': 'text/event-stream',
+            'x-openai-key': settings.openAIKey || ''
           },
           body: JSON.stringify({
             messages: [...messages, userMessage],
