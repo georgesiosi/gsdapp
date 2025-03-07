@@ -11,6 +11,11 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - EXTERNAL_URL=${EXTERNAL_URL:-http://localhost:3050}
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - NEXT_WEBPACK_USEPOLLING=1
+    tty: true
+    stdin_open: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3050/api/webhooks/polar/health"]
       interval: 30s

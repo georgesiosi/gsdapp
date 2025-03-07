@@ -14,7 +14,13 @@ RUN npm ci
 COPY . .
 
 # Expose the port the app runs on
-EXPOSE 3051
+EXPOSE 3050
 
-# Start the application in development mode
-CMD ["npm", "run", "dev"]
+# Configure Next.js development environment
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=development
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
+
+# Start Next.js in development mode with hot reloading
+CMD ["sh", "-c", "rm -rf .next && npm run dev -- --hostname 0.0.0.0"]
