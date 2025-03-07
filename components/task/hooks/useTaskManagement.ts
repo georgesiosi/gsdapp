@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { v4 as uuidv4 } from "uuid"
 import { TaskOrIdeaType, TaskType, QuadrantType, TaskStatus, Task } from "@/types/task"
+import { getStorage, setStorage } from "@/lib/storage"
 
 // Using types from @/types/task
 
@@ -22,17 +23,16 @@ export function useTaskManagement() {
         console.log(`[DEBUG] deleteTaskInternal - Deleting task ${id}`);
         let taskExists = false;
         
-        // First, delete the task from localStorage to ensure it's completely removed
+        // First, delete the task from storage to ensure it's completely removed
         try {
-          const savedTasks = localStorage.getItem("tasks");
+          const savedTasks = getStorage('TASKS');
           if (savedTasks) {
-            const parsedTasks = JSON.parse(savedTasks);
-            const filteredTasks = parsedTasks.filter((t: any) => t.id !== id);
-            localStorage.setItem("tasks", JSON.stringify(filteredTasks));
-            console.log(`[DEBUG] deleteTaskInternal - Removed task ${id} from localStorage, remaining tasks:`, filteredTasks.length);
+            const filteredTasks = savedTasks.filter((t: any) => t.id !== id);
+            setStorage('TASKS', filteredTasks);
+            console.log(`[DEBUG] deleteTaskInternal - Removed task ${id} from storage, remaining tasks:`, filteredTasks.length);
           }
         } catch (storageError) {
-          console.error(`[ERROR] deleteTaskInternal - Failed to remove task ${id} from localStorage:`, storageError);
+          console.error(`[ERROR] deleteTaskInternal - Failed to remove task ${id} from storage:`, storageError);
         }
         
         // Then update the state to actually remove the task (not just archive it)

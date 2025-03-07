@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
+import { ServiceWorkerWrapper } from "@/components/service-worker-wrapper";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -47,8 +47,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased bg-background text-foreground`}
       >
-        {/* ServiceWorkerRegistration is now only used to unregister service workers */}
-        <ServiceWorkerRegistration />
+        {/* ServiceWorkerRegistration wrapped in a client component */}
+        <ServiceWorkerWrapper />
         <Providers>{children}</Providers>
         <Toaster />
       </body>

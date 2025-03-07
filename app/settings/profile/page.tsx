@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { yupResolver } from "@hookform/resolvers/yup"
 import { useForm } from "react-hook-form"
-import * as z from "zod"
+import * as yup from "yup"
 import { toast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, CheckCircle, AlertCircle } from "lucide-react"
@@ -30,18 +30,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProfileFormData } from "@/types/profile"
 import { useProfile } from "@/hooks/use-profile"
 
-const profileFormSchema = z.object({
-  name: z.string().min(2, {
+const profileSchema = yup.object({
+  name: yup.string().min(2, {
     message: "Name must be at least 2 characters.",
   }),
-  email: z.string().email({
+  email: yup.string().email({
     message: "Please enter a valid email address.",
   }),
-  theme: z.enum(["light", "dark", "system"], {
-    required_error: "Please select a theme.",
+  theme: yup.string().oneOf(["light", "dark", "system"], {
+    message: "Please select a theme.",
   }),
-  personalContext: z.string().optional(),
-  licenseKey: z.string().optional(),
+  personalContext: yup.string().optional(),
+  licenseKey: yup.string().optional(),
 })
 
 export default function ProfilePage() {
@@ -52,10 +52,10 @@ export default function ProfilePage() {
   // Initialize legacy status for existing users
   useEffect(() => {
     initializeProfile()
-  }, [])
+  }, [initializeProfile])
 
-  const form = useForm<ProfileFormData>({
-    resolver: zodResolver(profileFormSchema),
+  const { control, handleSubmit, formState: { errors } } = useForm<ProfileFormData>({
+    resolver: yupResolver(profileSchema),
     defaultValues: {
       name: profile?.name || "",
       email: profile?.email || "",
@@ -73,7 +73,7 @@ export default function ProfilePage() {
       await new Promise(resolve => setTimeout(resolve, 500))
       
       setProfile(data)
-      form.reset(data) // Reset form with new data
+      // form.reset(data) // Reset form with new data
       
       toast({
         title: "Success",
@@ -110,10 +110,10 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Form {...control}>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
               <FormField
-                control={form.control}
+                control={control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
@@ -127,7 +127,7 @@ export default function ProfilePage() {
               />
               
               <FormField
-                control={form.control}
+                control={control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
@@ -141,7 +141,7 @@ export default function ProfilePage() {
               />
               
               <FormField
-                control={form.control}
+                control={control}
                 name="theme"
                 render={({ field }) => (
                   <FormItem>
@@ -164,7 +164,7 @@ export default function ProfilePage() {
               />
               
               <FormField
-                control={form.control}
+                control={control}
                 name="personalContext"
                 render={({ field }) => (
                   <FormItem>
@@ -186,7 +186,7 @@ export default function ProfilePage() {
               />
 
               <FormField
-                control={form.control}
+                control={control}
                 name="licenseKey"
                 render={({ field }) => (
                   <FormItem>

@@ -2,30 +2,35 @@
 
 import { useEffect } from "react"
 
+// Simple helper function that we'll call safely
+const unregisterServiceWorkers = async () => {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return;
+  }
+  
+  try {
+    console.log("Unregistering service workers...");
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    
+    console.log("Found", registrations.length, "service worker registrations");
+    for (const registration of registrations) {
+      await registration.unregister();
+      console.log("ServiceWorker unregistered:", registration.scope);
+    }
+  } catch (error) {
+    console.error("Error unregistering service workers:", error);
+  }
+};
+
 export function ServiceWorkerRegistration() {
   useEffect(() => {
-    console.log("ServiceWorkerRegistration component mounted - Service workers disabled");
+    // Use a small timeout to ensure this doesn't block the main thread
+    // or interfere with initial rendering
+    const timeoutId = setTimeout(() => {
+      unregisterServiceWorkers();
+    }, 2000);
     
-    try {
-      if ("serviceWorker" in navigator) {
-        console.log("Service Worker API is available - Unregistering all service workers");
-        
-        // Unregister any existing service workers
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          console.log("Found", registrations.length, "service worker registrations");
-          for(let registration of registrations) {
-            registration.unregister();
-            console.log("ServiceWorker unregistered:", registration.scope);
-          }
-        }).catch(function(err) {
-          console.error("Error unregistering service workers:", err);
-        });
-      } else {
-        console.log("Service Worker API is not available in this browser");
-      }
-    } catch (error) {
-      console.error("Error in service worker unregistration:", error);
-    }
+    return () => clearTimeout(timeoutId);
   }, []);
 
   return null;

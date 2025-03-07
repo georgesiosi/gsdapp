@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     const event: PolarWebhookEvent = JSON.parse(body);
 
     // Validate Polar signature
-    const headersList = headers();
+    const headersList = await request.headers;
     const signature = headersList.get('x-polar-signature');
     const timestamp = headersList.get('x-polar-timestamp');
     

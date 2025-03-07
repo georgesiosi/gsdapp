@@ -2,22 +2,15 @@ services:
   app:
     build: .
     ports:
-      - "${PORT:-3050}:3050"
+      - "3050:3050"
     volumes:
       - .:/app
       - /app/node_modules
     env_file:
       - .env.local
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - EXTERNAL_URL=${EXTERNAL_URL:-http://localhost:3050}
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
-      - NEXT_WEBPACK_USEPOLLING=1
+      - NODE_ENV=development
+      - PORT=3050
+      - NEXT_TELEMETRY_DISABLED=1
     tty: true
     stdin_open: true
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3050/api/webhooks/polar/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3

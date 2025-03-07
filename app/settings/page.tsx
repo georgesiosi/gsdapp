@@ -213,7 +213,7 @@ export default function SettingsPage() {
             </div>
             <Switch
               id="retainRecurringTasks"
-              checked={taskSettings.retainRecurringTasks}
+              checked={!!taskSettings.retainRecurringTasks}
               onCheckedChange={(checked) => setTaskSettings({ ...taskSettings, retainRecurringTasks: checked })}
             />
           </div>

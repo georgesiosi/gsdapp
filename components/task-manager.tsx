@@ -21,12 +21,28 @@ import IdeaPriorityDialog from "@/components/ideas/idea-priority-dialog"
 import { ScorecardButton } from "@/components/scorecard-button"
 import { EndDayScorecard } from "@/components/end-day-scorecard"
 import { ChatDialog } from "@/components/ui/chat-dialog"
+import { getStorage, setStorage } from "@/lib/storage"
 
-export function TaskManager() {
+interface Task {
+  id: string;
+  text: string;
+  completed: boolean;
+  needsReflection?: boolean;
+  status?: TaskStatus;
+  taskType?: TaskType;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+interface TaskManagerProps {
+  tasks: Task[];
+}
+
+const TaskManager: React.FC<TaskManagerProps> = ({ tasks }) => {
   const router = useRouter();
   const { toast } = useToast();
   const { 
-    tasks, 
+    tasks: taskList, 
     addTask, 
     addTaskWithAIAnalysis, 
     updateTask, 
@@ -51,21 +67,21 @@ export function TaskManager() {
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
-  // Load tasks from localStorage on mount
+  // Load tasks from localStorage using storage utility
   useEffect(() => {
     const loadTasks = () => {
       try {
-        const savedTasks = localStorage.getItem("tasks");
-        if (savedTasks) {
-          const parsedTasks = JSON.parse(savedTasks);
-          
+        // Use our storage utility instead of direct localStorage access
+        const parsedTasks = getStorage('TASKS');
+        
+        if (parsedTasks) {
           // Debug logging for loaded tasks
-          console.log("[DEBUG] Loading tasks from localStorage:", parsedTasks);
-          console.log("[DEBUG] Task types from localStorage:", parsedTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          console.log("[DEBUG] Loading tasks from storage:", parsedTasks);
+          console.log("[DEBUG] Task types from storage:", parsedTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
           
           // Check if any tasks have work or business type
           const workTasks = parsedTasks.filter((t: any) => t.taskType === "work" || t.taskType === "business");
-          console.log("[DEBUG] Work/Business tasks in localStorage:", workTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
+          console.log("[DEBUG] Work/Business tasks in storage:", workTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
           
           // Convert all dates to ISO strings for consistent handling
           const formattedTasks = parsedTasks.map((task: any) => ({
@@ -92,7 +108,7 @@ export function TaskManager() {
         }
         setIsLoadingTasks(false);
       } catch (error) {
-        console.error("Error loading tasks from localStorage:", error);
+        console.error("Error loading tasks from storage:", error);
         setIsLoadingTasks(false);
       }
     };
@@ -100,16 +116,15 @@ export function TaskManager() {
     loadTasks();
   }, [setInitialTasks]);
 
-  // Load ideas from localStorage on mount
+  // Load ideas from storage using our storage utility
   useEffect(() => {
     const loadIdeas = () => {
       try {
-        const savedIdeas = localStorage.getItem("ideas");
-        if (savedIdeas) {
-          const parsedIdeas = JSON.parse(savedIdeas);
-          
+        // Use our storage utility instead of direct localStorage access
+        const parsedIdeas = getStorage('IDEAS');
+        if (parsedIdeas) {
           // Debug logging for loaded ideas
-          console.log("[DEBUG] Loading ideas from localStorage:", parsedIdeas);
+          console.log("[DEBUG] Loading ideas from storage:", parsedIdeas);
           
           // Convert all dates to ISO strings for consistent handling
           const formattedIdeas = parsedIdeas.map((idea: any) => ({
@@ -124,7 +139,7 @@ export function TaskManager() {
         }
         setIsLoadingIdeas(false);
       } catch (error) {
-        console.error("Error loading ideas from localStorage:", error);
+        console.error("Error loading ideas from storage:", error);
         setIsLoadingIdeas(false);
       }
     };
@@ -132,13 +147,13 @@ export function TaskManager() {
     loadIdeas();
   }, [setInitialIdeas]);
 
-  // Save tasks to localStorage whenever they change
+  // Save tasks to storage whenever they change
   useEffect(() => {
-    if (tasks.length > 0) {
+    if (taskList.length > 0) {
       try {
         // Debug logging for tasks before saving
-        console.log("[DEBUG] Saving tasks to localStorage:", tasks);
-        console.log("[DEBUG] Task status:", tasks.map(t => ({
+        console.log("[DEBUG] Saving tasks to storage:", taskList);
+        console.log("[DEBUG] Task status:", taskList.map(t => ({
           id: t.id,
           text: t.text.substring(0, 20),
           status: t.status,
@@ -146,21 +161,20 @@ export function TaskManager() {
         })));
         
         // Ensure all tasks have proper date fields before saving
-        const tasksToSave = tasks.map(task => ({
+        const tasksToSave = taskList.map(task => ({
           ...task,
           createdAt: task.createdAt || new Date().toISOString(),
           updatedAt: task.updatedAt || new Date().toISOString(),
           completedAt: task.status === 'completed' ? (task.completedAt || new Date().toISOString()) : undefined
         }));
         
-        localStorage.setItem("tasks", JSON.stringify(tasksToSave));
+        setStorage('TASKS', tasksToSave);
         
         // Verify what was saved
-        const savedTasks = localStorage.getItem("tasks");
+        const savedTasks = getStorage('TASKS');
         if (savedTasks) {
-          const parsedTasks = JSON.parse(savedTasks);
-          console.log("[DEBUG] Verified saved tasks:", parsedTasks.length);
-          console.log("[DEBUG] Verified task status:", parsedTasks.map((t: any) => ({
+          console.log("[DEBUG] Verified saved tasks:", savedTasks.length);
+          console.log("[DEBUG] Verified task status:", savedTasks.map((t: any) => ({
             id: t.id,
             text: t.text.substring(0, 20),
             status: t.status,
@@ -168,7 +182,7 @@ export function TaskManager() {
           })));
         }
       } catch (error) {
-        console.error("Error saving tasks to localStorage:", error);
+        console.error("Error saving tasks to storage:", error);
         toast({
           title: "Error Saving Tasks",
           description: "There was a problem saving your tasks. Changes may not persist.",
@@ -176,16 +190,16 @@ export function TaskManager() {
         });
       }
     }
-  }, [tasks, toast]);
+  }, [taskList, toast]);
 
-  // Save ideas to localStorage whenever they change
+  // Save ideas to storage whenever they change
   useEffect(() => {
     if (!isLoadingIdeas && ideas.length > 0) {
       try {
-        localStorage.setItem("ideas", JSON.stringify(ideas));
-        console.log("[DEBUG] Saved ideas to localStorage:", ideas.length);
+        setStorage('IDEAS', ideas);
+        console.log("[DEBUG] Saved ideas to storage:", ideas.length);
       } catch (error) {
-        console.error("Error saving ideas to localStorage:", error);
+        console.error("Error saving ideas to storage:", error);
         toast({
           title: "Error Saving Ideas",
           description: "There was a problem saving your ideas. Changes may not persist.",
@@ -252,10 +266,10 @@ export function TaskManager() {
 
   const handleUpdateTaskStatus = (taskId: string, status: TaskStatus) => {
     // Find all tasks in the same quadrant
-    const task = tasks.find(t => t.id === taskId);
+    const task = taskList.find(t => t.id === taskId);
     if (!task) return;
     
-    const quadrantTasks = tasks.filter(t => t.quadrant === task.quadrant);
+    const quadrantTasks = taskList.filter(t => t.quadrant === task.quadrant);
     
     // Calculate new order based on status
     let newOrder = 0; // Default value
@@ -406,7 +420,7 @@ export function TaskManager() {
   };
 
   const handleMoveTask = (taskId: string, newQuadrant: QuadrantType) => {
-    const task = tasks.find(t => t.id === taskId);
+    const task = taskList.find(t => t.id === taskId);
     if (!task) return;
 
     // Update the task's quadrant
@@ -532,14 +546,14 @@ export function TaskManager() {
         {/* Test button removed after debugging was complete */}
         <ScorecardButton
           onClick={() => setScorecardOpen(true)}
-          tasks={tasks.filter(t => t.status === 'active' || t.status === 'completed')}
+          tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed')}
           className="w-auto"
         />
       </div>
 
       <div className="mt-4">
         <EisenhowerMatrix
-          tasks={tasks
+          tasks={taskList
             .filter(t => {
               // Show active tasks and tasks completed today
               if (t.status === 'active') return true;
@@ -557,7 +571,7 @@ export function TaskManager() {
             completedAt: task.completedAt ? String(task.completedAt) : undefined
           }))}
           onToggleTask={(id) => {
-            const task = tasks.find(t => t.id === id);
+            const task = taskList.find(t => t.id === id);
             if (!task) return;
             handleUpdateTaskStatus(id, task.status === 'completed' ? 'active' : 'completed');
           }}
@@ -598,18 +612,18 @@ export function TaskManager() {
         <EndDayScorecard
           isOpen={scorecardOpen}
           onClose={() => setScorecardOpen(false)}
-          tasks={tasks}
+          tasks={taskList}
       />
 
       <ChatDialog
           open={chatOpen}
           onOpenChange={setChatOpen}
-          tasks={tasks}
+          tasks={taskList}
           userContext={useProfile.getState().getPersonalContext()}
       />
 
         <VelocityMeters 
-          tasks={tasks.filter(t => t.status === 'active' || t.status === 'completed').map(task => {
+          tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed').map(task => {
             return {
               ...task,
               createdAt: String(task.createdAt),

@@ -1,10 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Set default port to 3051
-  env: {
-    PORT: '3051',
-  },
   // Configure headers to allow service worker registration
   async headers() {
     return [
@@ -18,6 +14,16 @@ const nextConfig = {
         ],
       },
     ];
+  },
+  // Configure webpack for better hot reloading in Docker
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    return config;
   },
 };
 
