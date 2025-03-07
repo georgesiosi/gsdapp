@@ -132,3 +132,5 @@ const LegacyMigration: React.FC<LegacyMigrationProps> = () => {
     </div>
   )
 }
+
+export default LegacyMigration;

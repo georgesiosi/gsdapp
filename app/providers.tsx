@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from "react"
 import { ClerkProvider } from "@clerk/nextjs"
 import { Toaster } from "@/components/ui/toaster"
-import { LegacyMigration } from "@/components/auth/legacy-migration"
+import LegacyMigration from "@/components/auth/legacy-migration"
 
 interface ProvidersProps {
   children: ReactNode
