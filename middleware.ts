@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "@clerk/nextjs/server";
+import { getAuth, clerkMiddleware } from "@clerk/nextjs/server";
+import { NextFetchEvent } from "next/server";
+
+// Apply Clerk middleware
+const apiRoutePattern = /^\/api(?!\/webhooks\/polar)/;
+const authMiddleware = clerkMiddleware();
 
 // Define our public routes that don't require authentication
 // Using regex patterns to ensure all paths under sign-in and sign-up are public
@@ -13,7 +18,11 @@ const publicPatterns = [
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // The middleware function that Next.js will call for matched routes
-export default function middleware(req: NextRequest) {
+export default async function middleware(req: NextRequest, event: NextFetchEvent) {
+  // Apply Clerk middleware to non-public API routes
+  if (apiRoutePattern.test(req.nextUrl.pathname)) {
+    return authMiddleware(req, event);
+  }
   try {
     // Get the pathname from the request URL
     const { pathname } = req.nextUrl;
