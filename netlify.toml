@@ -7,13 +7,6 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-  # Next.js plugin configuration
-  [plugins.inputs]
-    # Setup for ISR and SSG
-    enable_preview_mode = true
-    # Add debugging information
-    debug = true
-
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "20"
