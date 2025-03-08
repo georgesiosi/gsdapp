@@ -25,6 +25,9 @@ const nextConfig = {
     }
     return config;
   },
+  images: {
+    domains: ['img.clerk.com'],
+  },
 };
 
 module.exports = nextConfig;
