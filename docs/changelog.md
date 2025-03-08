@@ -1,6 +1,7 @@
 ---
-last_updated: 2025-03-07
+last_updated: 2025-03-08
 update_history:
+  - 2025-03-08: Added task creation suggestions feature
   - 2025-03-07: Initial documentation
 ---
 
@@ -52,3 +53,15 @@ All notable changes to this project will be documented in this file.
 * Progressive transition from localStorage to cloud database
 * Cross-device synchronization capability
 
+## [2025-03-08]
+
+### Features
+
+* Added task creation suggestions with real-time validation
+  * Shows three best practices for writing effective tasks
+  * Provides real-time feedback as user types
+
+* Updated Ideas Bank integration
+  * Now requires 'idea:' prefix for automatic idea detection
+  * Added helpful tooltip in task creation modal
+  * Simplified and more predictable behavior

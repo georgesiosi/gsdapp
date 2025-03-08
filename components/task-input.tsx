@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { Plus } from "lucide-react"
+import { TaskCreationSuggestions } from './ui/task-creation-suggestions';
 
 interface TaskInputProps {
   onAddTask: (text: string) => Promise<void>
@@ -27,14 +28,17 @@ export function TaskInput({ onAddTask }: TaskInputProps) {
       <div className="task-input-header">Add New Task</div>
       <div className="task-input-content">
         <form onSubmit={handleSubmit} className="task-input-form">
-          <input
-            type="text"
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-            placeholder="What needs to be done?"
-            className="task-input"
-            disabled={isSubmitting}
-          />
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              placeholder="What needs to be done?"
+              className="task-input"
+              disabled={isSubmitting}
+            />
+            <TaskCreationSuggestions taskText={newTask} />
+          </div>
           <button 
             type="submit" 
             className="add-task-button" 

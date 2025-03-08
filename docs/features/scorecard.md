@@ -55,6 +55,23 @@ Notes are:
 - Editable at any time
 - Preserved when viewing historical scorecards
 
+## Task Creation
+
+### Task Creation Suggestions
+
+When creating a new task, you'll see three suggestions to help write better tasks:
+
+1. **Start with an action verb**.
+   Begin your task with a clear action (e.g., 'Write', 'Review', 'Complete')
+
+2. **Be specific and measurable**.
+   Make your task concrete and quantifiable
+
+3. **Include a clear outcome**.
+   Specify what success looks like
+
+As you type, checkmarks will appear next to each suggestion you've fulfilled.
+
 ## History Management
 
 ### Viewing History

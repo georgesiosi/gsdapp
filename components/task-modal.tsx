@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AIThinkingIndicator } from "@/components/ui/ai-thinking-indicator"
+import { TaskCreationSuggestions } from "@/components/ui/task-creation-suggestions"
 
 interface TaskModalProps {
   open: boolean
@@ -67,15 +68,21 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false 
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Input
-                id="task"
-                placeholder="What needs to be done?"
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                autoFocus
-                disabled={isSubmitting}
-              />
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Input
+                  id="task"
+                  placeholder="What needs to be done? (Start with 'idea:' to save to Ideas Bank)"
+                  value={newTask}
+                  onChange={(e) => setNewTask(e.target.value)}
+                  autoFocus
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-muted-foreground">
+                  💡 Prefix with "idea:" to save to Ideas Bank
+                </p>
+              </div>
+              <TaskCreationSuggestions taskText={newTask} />
             </div>
           </div>
           <DialogFooter>
