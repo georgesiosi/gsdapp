@@ -1,13 +1,34 @@
 [build]
   command = "npm run build"
   publish = ".next"
+  # Add timeout to prevent premature build termination
+  timeout = "30m"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+  # Next.js plugin configuration
+  [plugins.inputs]
+    # Setup for ISR and SSG
+    enable_preview_mode = true
+    # Add debugging information
+    debug = true
+
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "20"
+  # Force production environment for builds
+  NODE_ENV = "production"
+  # Disable source maps in production for smaller bundles
+  GENERATE_SOURCEMAP = "false"
+  # Ensure Next.js optimizations are enabled
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Production context: all deploys from the Production branch set in your site's
+# deploy contexts will inherit these settings.
+[context.production.environment]
+  # Optimize builds for production
+  NEXT_COMPRESS = "true"
 
 # Cache configuration
 [build.processing]
@@ -23,6 +44,30 @@
 [build.processing.images]
   compress = true
 
+# Security and performance headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Enable HTTP Strict Transport Security
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    # Enable caching for static assets
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # Cache settings
 [[plugins]]
   package = "netlify-plugin-cache-nextjs"
+
+  [plugins.inputs]
+    # Specify directories to cache
+    include = [
+      ".next/cache",       # Next.js build cache
+      "node_modules/.cache" # Node modules cache
+    ]
+    # Custom cache key based on lockfile hash
+    build_id_pattern = "[hash]-[branch]-[head]"
+    # Debugging mode for cache issues
+    debug = true
