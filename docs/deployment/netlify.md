@@ -100,17 +100,22 @@ Our optimized `netlify.toml` configuration:
 
 ## Environment Variables
 
-Ensure these environment variables are properly configured in Netlify:
+### Critical Authentication Variables
 
-- `CLERK_SECRET_KEY` - For authentication
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - For authentication
-- `NEXT_PUBLIC_CLERK_SIGN_IN_URL` - For authentication redirects
-- `NEXT_PUBLIC_CLERK_SIGN_UP_URL` - For authentication redirects
-- `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` - For authentication redirects
-- `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` - For authentication redirects
-- `NEXT_PUBLIC_APP_URL` - For proper URL handling
-- `POLAR_API_KEY` - For licensing
-- `OPENAI_API_KEY` - For AI features
+**IMPORTANT:** The following environment variables are REQUIRED for the application to function properly. Missing these will cause the app to show a loading screen indefinitely with `ERR_NAME_NOT_RESOLVED` errors:
+
+- `CLERK_SECRET_KEY` - Your Clerk secret key from the Clerk dashboard
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Your Clerk publishable key
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL` - Should be set to `/sign-in`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL` - Should be set to `/sign-up`
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` - Should be set to `/dashboard` or your main app page
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` - Should be set to `/dashboard` or your main app page
+
+### Additional Important Variables
+
+- `NEXT_PUBLIC_APP_URL` - Set to your Netlify deployment URL (e.g., `https://your-app.netlify.app`)
+- `POLAR_API_KEY` - Your Polar API key for subscription management
+- `OPENAI_API_KEY` - Your OpenAI API key for AI features
 
 ## Deployment Process
 
