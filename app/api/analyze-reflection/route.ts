@@ -20,17 +20,84 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
+    // Check API key first
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[API] OPENAI_API_KEY not configured");
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured' },
+        { status: 500 }
+      );
+    }
+    
     const { task, justification, goal, priority, currentQuadrant, personalContext } = await request.json();
 
     if (!task) {
       return NextResponse.json({ error: 'Task text is required' }, { status: 400 });
     }
 
+    // Check if this is explicitly marked as an idea
+    const isExplicitIdea = task.toLowerCase().trim().startsWith('idea:');
+    const taskText = isExplicitIdea ? task.slice(5).trim() : task;
 
+    // If it's explicitly marked as an idea, analyze only for priority connection
+    if (isExplicitIdea) {
+      // Create a focused prompt for priority analysis
+      const priorityPrompt = `
+Analyze if this idea is connected to the user's stated priority:
+
+IDEA: "${taskText}"
+PRIORITY: "${priority || 'Not specified'}"
+
+Return a JSON object:
+{
+  "connectedToPriority": boolean,
+  "reasoning": string
+}
+`;
+
+      try {
+        const priorityCompletion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          temperature: 0.2,
+          messages: [
+            { role: "system", content: priorityPrompt },
+            { role: "user", content: `Is this idea connected to the priority?` }
+          ],
+        });
+
+        try {
+          const priorityResponse = JSON.parse(
+            priorityCompletion.choices[0]?.message?.content?.match(/\{[\s\S]*\}/)?.[0] || '{"connectedToPriority":false}'
+          );
+
+          return NextResponse.json({
+            isIdea: true,
+            taskType: 'idea',
+            connectedToPriority: Boolean(priorityResponse.connectedToPriority),
+            reasoning: priorityResponse.reasoning || 'User explicitly marked this as an idea'
+          });
+        } catch {
+          return NextResponse.json({
+            isIdea: true,
+            taskType: 'idea',
+            connectedToPriority: false,
+            reasoning: 'User explicitly marked this as an idea'
+          });
+        }
+      } catch (openaiError) {
+        console.error("[API] OpenAI API error during priority analysis:", openaiError);
+        return NextResponse.json({
+          isIdea: true,
+          taskType: 'idea',
+          connectedToPriority: false,
+          reasoning: 'Unable to analyze priority connection due to service error'
+        });
+      }
+    }
 
     // Create a more detailed prompt for the AI
     const prompt = `
-You are an expert task management assistant. Analyze this task or idea based on the following context:
+You are an expert task management assistant. Analyze this task based on the following context:
 
 CONTEXT:
 - Goal: "${goal || 'Not specified'}"
@@ -41,9 +108,8 @@ CONTEXT:
 TASK: "${task}"
 ${justification ? `JUSTIFICATION: "${justification}"` : ''}
 
-Determine if this is an IDEA (abstract, exploratory, needs development) or a TASK (actionable, concrete, clear completion criteria).
+Analyze the task and:
 
-For TASKS:
 1. Assign to a quadrant:
    - Q1 (Urgent & Important): Immediate attention, imminent deadlines
    - Q2 (Important, Not Urgent): Long-term value, no immediate deadline
@@ -57,120 +123,120 @@ For TASKS:
    - Urgency
    - Importance
 
-For IDEAS:
-- Determine if connected to stated priority
-
 Return a JSON object:
 {
-  "isIdea": boolean,
   "suggestedQuadrant": "q1" | "q2" | "q3" | "q4",
-  "taskType": "personal" | "work" | "idea",
-  "connectedToPriority": boolean,
+  "taskType": "personal" | "work",
   "reasoning": string,
-  "alignmentScore": number,
-  "urgencyScore": number,
-  "importanceScore": number
+  "alignmentScore": number (1-10),
+  "urgencyScore": number (1-10),
+  "importanceScore": number (1-10)
 }
 `;
 
     // Call OpenAI API with a lower temperature for more consistent results
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      temperature: 0.2, // Lower temperature for more consistent results
-      messages: [
-        { role: "system", content: prompt },
-        { role: "user", content: `Analyze this task: "${task}"` }
-      ],
-    });
-
-    // Extract the response
-    const responseContent = completion.choices[0]?.message?.content || '';
-
-
     try {
-      const cleanedContent = responseContent.trim();
-      let jsonResponse;
-
-      try {
-        const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          throw new Error('No JSON object found in response');
-        }
-
-        const normalizedJson = jsonMatch[0]
-          .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
-          .replace(/:\s*'([^']*)'\s*([,}])/g, ':"$1"$2')
-          .replace(/:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}])/g, ':"$1"$2');
-
-        jsonResponse = JSON.parse(normalizedJson);
-
-        if (!jsonResponse || typeof jsonResponse !== 'object') {
-          throw new Error('Invalid JSON structure');
-        }
-      } catch (error) {
-        const jsonError = error as Error;
-        throw new Error(`Failed to parse AI response: ${jsonError.message}`);
-      }
-
-      // Validate and normalize the response
-      const normalizedResponse: AIResponse = {
-        isIdea: Boolean(jsonResponse.isIdea),
-        suggestedQuadrant: (!jsonResponse.isIdea && jsonResponse.suggestedQuadrant) 
-          ? jsonResponse.suggestedQuadrant 
-          : (currentQuadrant || 'q4'),
-        taskType: jsonResponse.taskType || (jsonResponse.isIdea ? 'idea' : 'work'),
-        connectedToPriority: jsonResponse.isIdea 
-          ? Boolean(jsonResponse.connectedToPriority) 
-          : undefined,
-        reasoning: jsonResponse.reasoning || 'No reasoning provided',
-        alignmentScore: !jsonResponse.isIdea 
-          ? (Number(jsonResponse.alignmentScore) || 5) 
-          : undefined,
-        urgencyScore: !jsonResponse.isIdea 
-          ? (Number(jsonResponse.urgencyScore) || 5) 
-          : undefined,
-        importanceScore: !jsonResponse.isIdea 
-          ? (Number(jsonResponse.importanceScore) || 5) 
-          : undefined
-      };
-
-      // Validate the quadrant value
-      const validQuadrants = ['q1', 'q2', 'q3', 'q4'] as const;
-      if (!normalizedResponse.suggestedQuadrant || !validQuadrants.includes(normalizedResponse.suggestedQuadrant as any)) {
-        normalizedResponse.suggestedQuadrant = currentQuadrant || 'q4';
-      }
-
-      // Validate the task type
-      const validTaskTypes = ['personal', 'work', 'idea'] as const;
-      if (!normalizedResponse.taskType || !validTaskTypes.includes(normalizedResponse.taskType as any)) {
-        normalizedResponse.taskType = jsonResponse.isIdea ? 'idea' : 'work';
-      }
-
-      // Validate scores are within range
-      (['alignmentScore', 'urgencyScore', 'importanceScore'] as const).forEach(score => {
-        if (normalizedResponse[score] !== undefined) {
-          normalizedResponse[score] = Math.max(1, Math.min(10, normalizedResponse[score] || 5));
-        }
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        temperature: 0.2, // Lower temperature for more consistent results
+        messages: [
+          { role: "system", content: prompt },
+          { role: "user", content: `Analyze this task: "${taskText}"` }
+        ],
       });
 
-      return NextResponse.json(normalizedResponse);
-    } catch (parseError) {
-      console.error("[API] Error parsing AI response:", parseError);
-      console.error("[API] Response content:", responseContent);
-      
-      // Return a fallback response with the current quadrant
+      // Extract the response
+      const responseContent = completion.choices[0]?.message?.content || '';
+
+      try {
+        const cleanedContent = responseContent.trim();
+        let jsonResponse;
+
+        try {
+          const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error('No JSON object found in response');
+          }
+
+          const normalizedJson = jsonMatch[0]
+            .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+            .replace(/:\s*'([^']*)'\s*([,}])/g, ':"$1"$2')
+            .replace(/:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}])/g, ':"$1"$2');
+
+          jsonResponse = JSON.parse(normalizedJson);
+
+          if (!jsonResponse || typeof jsonResponse !== 'object') {
+            throw new Error('Invalid JSON structure');
+          }
+        } catch (error) {
+          const jsonError = error as Error;
+          throw new Error(`Failed to parse AI response: ${jsonError.message}`);
+        }
+
+        // Validate and normalize the response
+        const normalizedResponse: AIResponse = {
+          // Only allow ideas if explicitly marked with prefix
+          isIdea: false,
+          suggestedQuadrant: jsonResponse.suggestedQuadrant || currentQuadrant || 'q4',
+          taskType: jsonResponse.taskType || 'personal', // Default to personal for tasks like "go to gym"
+          reasoning: jsonResponse.reasoning || 'No reasoning provided',
+          alignmentScore: Number(jsonResponse.alignmentScore) || 5,
+          urgencyScore: Number(jsonResponse.urgencyScore) || 5,
+          importanceScore: Number(jsonResponse.importanceScore) || 5
+        };
+
+        // Validate the quadrant value
+        const validQuadrants = ['q1', 'q2', 'q3', 'q4'] as const;
+        if (!normalizedResponse.suggestedQuadrant || !validQuadrants.includes(normalizedResponse.suggestedQuadrant as any)) {
+          normalizedResponse.suggestedQuadrant = currentQuadrant || 'q4';
+        }
+
+        // Validate the task type
+        const validTaskTypes = ['personal', 'work'] as const;
+        if (!normalizedResponse.taskType || !validTaskTypes.includes(normalizedResponse.taskType as any)) {
+          normalizedResponse.taskType = 'personal';
+        }
+
+        // Validate scores are within range
+        (['alignmentScore', 'urgencyScore', 'importanceScore'] as const).forEach(score => {
+          if (normalizedResponse[score] !== undefined) {
+            normalizedResponse[score] = Math.max(1, Math.min(10, normalizedResponse[score] || 5));
+          }
+        });
+
+        return NextResponse.json(normalizedResponse);
+      } catch (parseError) {
+        console.error("[API] Error parsing AI response:", parseError);
+        console.error("[API] Response content:", responseContent);
+        
+        // Return a fallback response with the current quadrant
+        return NextResponse.json({
+          isIdea: false,
+          suggestedQuadrant: currentQuadrant || 'q4',
+          taskType: 'personal',
+          reasoning: 'Could not analyze task. Using default values.',
+          alignmentScore: 5,
+          urgencyScore: 5,
+          importanceScore: 5
+        });
+      }
+    } catch (openaiError) {
+      console.error("[API] Error in OpenAI API call:", openaiError);
       return NextResponse.json({
         isIdea: false,
         suggestedQuadrant: currentQuadrant || 'q4',
-        taskType: 'work',
-        reasoning: 'Could not analyze task. Using default values.',
+        taskType: 'personal',
+        reasoning: 'Error occurred during analysis. Using default values.',
         alignmentScore: 5,
         urgencyScore: 5,
         importanceScore: 5
       });
     }
   } catch (error) {
-    console.error("[API] Error in analyze-reflection route:", error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error("[API] Unexpected error in analyze-reflection route:", error);
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

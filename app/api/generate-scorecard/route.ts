@@ -38,20 +38,45 @@ export async function POST(request: Request) {
 
 // Calculate metrics from tasks
 function calculateMetrics(tasks: Task[], goal: string, priority: string): ScorecardMetrics {
-  // Filter tasks for today (using createdAt or updatedAt)
-  const today = new Date().toISOString().split('T')[0];
+  // Get today's date range (start and end of day)
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   
-  // Count tasks by quadrant
-  const q1Tasks = tasks.filter(task => task.quadrant === 'q1');
-  const q2Tasks = tasks.filter(task => task.quadrant === 'q2');
-  const q3Tasks = tasks.filter(task => task.quadrant === 'q3');
-  const q4Tasks = tasks.filter(task => task.quadrant === 'q4');
+  // Filter tasks for today
+  const todaysTasks = tasks.filter(task => {
+    const createdDate = new Date(task.createdAt);
+    const completedDate = task.completedAt ? new Date(task.completedAt) : null;
+    
+    // Include tasks that were:
+    // 1. Created today, or
+    // 2. Completed today
+    return (
+      (createdDate >= startOfDay && createdDate < endOfDay) ||
+      (completedDate && completedDate >= startOfDay && completedDate < endOfDay)
+    );
+  });
   
-  // Count completed tasks by quadrant
-  const q1Completed = q1Tasks.filter(task => task.completed);
-  const q2Completed = q2Tasks.filter(task => task.completed);
-  const q3Completed = q3Tasks.filter(task => task.completed);
-  const q4Completed = q4Tasks.filter(task => task.completed);
+  console.log(`[DEBUG] Total tasks: ${tasks.length}, Today's tasks: ${todaysTasks.length}`);
+  
+  // Helper function to check if a task is completed today
+  const isCompletedToday = (task: Task): boolean => {
+    if (task.status !== 'completed' || !task.completedAt) return false;
+    const completedDate = new Date(task.completedAt);
+    return completedDate >= startOfDay && completedDate < endOfDay;
+  };
+  
+  // Count tasks by quadrant (only today's tasks)
+  const q1Tasks = todaysTasks.filter(task => task.quadrant === 'q1');
+  const q2Tasks = todaysTasks.filter(task => task.quadrant === 'q2');
+  const q3Tasks = todaysTasks.filter(task => task.quadrant === 'q3');
+  const q4Tasks = todaysTasks.filter(task => task.quadrant === 'q4');
+  
+  // Count tasks completed today by quadrant
+  const q1Completed = q1Tasks.filter(isCompletedToday);
+  const q2Completed = q2Tasks.filter(isCompletedToday);
+  const q3Completed = q3Tasks.filter(isCompletedToday);
+  const q4Completed = q4Tasks.filter(isCompletedToday);
   
   // Calculate completion rates
   const q1CompletionRate = q1Tasks.length > 0 ? q1Completed.length / q1Tasks.length : 0;
@@ -66,10 +91,20 @@ function calculateMetrics(tasks: Task[], goal: string, priority: string): Scorec
     ? highValueCompleted.length / highValueTasks.length 
     : 0;
   
-  // Calculate overall completion rate
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(task => task.completed).length;
+  // Calculate overall completion rate for today's tasks
+  const totalTasks = todaysTasks.length;
+  const completedTasks = todaysTasks.filter(isCompletedToday).length;
   const completionRate = totalTasks > 0 ? completedTasks / totalTasks : 0;
+  
+  console.log(`[DEBUG] Today's completion metrics:`, {
+    total: totalTasks,
+    completed: completedTasks,
+    rate: completionRate,
+    q1: { total: q1Tasks.length, completed: q1Completed.length },
+    q2: { total: q2Tasks.length, completed: q2Completed.length },
+    q3: { total: q3Tasks.length, completed: q3Completed.length },
+    q4: { total: q4Tasks.length, completed: q4Completed.length },
+  });
   
   // Calculate priority alignment score (0-10)
   // This is a simplified calculation - in a real implementation, you might
@@ -77,7 +112,7 @@ function calculateMetrics(tasks: Task[], goal: string, priority: string): Scorec
   const priorityAlignmentScore = calculatePriorityAlignment(tasks, priority);
   
   return {
-    date: today,
+    date: now.toISOString().split('T')[0],
     totalTasks,
     completedTasks,
     completionRate,
@@ -114,18 +149,29 @@ function calculatePriorityAlignment(tasks: Task[], priority: string): number {
     return 5; // Default middle score if no priority is set
   }
   
-  // Get completed high-value tasks
+  // Get today's date range
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  
+  // Helper function to check if a task is completed today
+  const isCompletedToday = (task: Task): boolean => {
+    if (task.status !== 'completed' || !task.completedAt) return false;
+    const completedDate = new Date(task.completedAt);
+    return completedDate >= startOfDay && completedDate < endOfDay;
+  };
+  
+  // Get high-value tasks completed today
   const completedHighValueTasks = tasks.filter(
-    task => task.completed && (task.quadrant === 'q1' || task.quadrant === 'q2')
+    task => isCompletedToday(task) && (task.quadrant === 'q1' || task.quadrant === 'q2')
   );
   
   if (completedHighValueTasks.length === 0) {
-    return 3; // Lower score if no high-value tasks were completed
+    return 3; // Lower score if no high-value tasks were completed today
   }
   
-  // For a simple implementation, we'll use the ratio of completed high-value tasks
-  // to total completed tasks as a base for the score
-  const completedTasks = tasks.filter(task => task.completed);
+  // Calculate ratio of completed high-value tasks to total completed tasks (today only)
+  const completedTasks = tasks.filter(isCompletedToday);
   const highValueRatio = completedHighValueTasks.length / completedTasks.length;
   
   // Scale to 0-10 range, with a minimum of 2 and maximum of 10

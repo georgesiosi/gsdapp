@@ -43,3 +43,6 @@ next-env.d.ts
 docker-compose.override.yml
 
 # We're keeping documentation in the repo for reference
+
+# backup files
+*.bak

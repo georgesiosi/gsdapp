@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Target, Flag, Calendar, Pencil, CheckCircle2, Download } from "lucide-react"
+import { Target, Flag, Calendar, Pencil, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { exportGoalsToCSV } from "@/lib/export-utils"
 
 interface SavedData {
   goal: string
@@ -22,10 +21,16 @@ export function GoalSetter() {
   const [isEditingGoal, setIsEditingGoal] = useState(false)
   const [isEditingPriority, setIsEditingPriority] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const { toast } = useToast()
 
-  // Load saved data on mount
+  // Load saved data and preferences on mount
   useEffect(() => {
+    // Load collapse state
+    const savedCollapsed = localStorage.getItem("goalSectionCollapsed")
+    if (savedCollapsed !== null) {
+      setIsCollapsed(JSON.parse(savedCollapsed))
+    }
     try {
       const savedData = localStorage.getItem("goalData")
       if (savedData) {
@@ -141,158 +146,155 @@ export function GoalSetter() {
     })
   }
 
-  const handleExportGoals = () => {
-    exportGoalsToCSV()
-    toast({
-      title: "Goals Exported",
-      description: "Your goals have been exported to CSV",
-    })
+  const toggleCollapse = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    localStorage.setItem("goalSectionCollapsed", JSON.stringify(newState))
   }
 
   return (
-    <div className="goal-setter-container">
-      <div className="goal-setter-header">
+    <div className="goal-setter-container border rounded-lg overflow-hidden">
+      <div 
+        className="goal-setter-header flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+        onClick={toggleCollapse}
+      >
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-gray-500" />
           <h3 className="text-sm font-medium text-gray-900">Focus & Priority</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={toggleCompletion}
-            className="text-xs text-gray-500 hover:text-gray-900"
-          >
-            <CheckCircle2 className="h-4 w-4 mr-1" />
-            Mark Complete
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleExportGoals} 
-            className="text-xs text-gray-500 hover:text-gray-900"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
+          {isCollapsed ? (
+            <ChevronDown className="h-4 w-4 text-gray-500" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-gray-500" />
+          )}
         </div>
       </div>
-      <div className="goal-setter-content">
-        <div className="grid grid-cols-2 gap-4">
+
+      <div 
+        className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'} overflow-hidden`}
+      >
+        <div className="space-y-3 p-3">
           {/* Main Goal Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Flag className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-500">I want to...</span>
-              </div>
-              {savedGoal && !isEditingGoal && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleStartEditingGoal} 
-                  className="text-xs text-gray-500 hover:text-gray-900"
-                >
-                  <Pencil className="h-4 w-4 mr-1" />
-                  Edit Goal
-                </Button>
+          <div className="relative group rounded-lg border bg-blue-50/30 border-blue-100 p-3 transition-all duration-200">
+            <div className="flex items-center gap-2 mb-1">
+              <Flag className="h-4 w-4 text-blue-500" />
+              <span className="text-xs font-medium text-blue-600">Main Goal</span>
+              {isCompleted && (
+                <span className="inline-flex items-center rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700">
+                  <CheckCircle2 className="h-3 w-3 mr-0.5" />
+                  Done
+                </span>
               )}
             </div>
 
-            {!savedGoal || isEditingGoal ? (
+            {isEditingGoal ? (
               <div className="space-y-2">
                 <Input
-                  placeholder="e.g., Launch my startup's MVP by next month"
                   value={tempGoal}
                   onChange={(e) => setTempGoal(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      saveGoal()
-                    }
-                  }}
-                  className="text-sm bg-gray-50"
+                  onKeyDown={(e) => e.key === "Enter" && saveGoal()}
+                  className="text-sm h-8 border-blue-200"
+                  placeholder="Enter your main goal"
+                  autoFocus
                 />
-                <div className="flex gap-2">
+                <div className="flex justify-end gap-1">
                   <Button 
-                    onClick={saveGoal} 
-                    className="flex-1 text-xs bg-gray-900 hover:bg-gray-800"
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={handleCancelEditingGoal}
+                    className="h-7 text-xs"
                   >
-                    Set Goal
+                    Cancel
                   </Button>
-                  {savedGoal && (
-                    <Button 
-                      variant="outline" 
-                      onClick={handleCancelEditingGoal} 
-                      className="text-xs"
-                    >
-                      Cancel
-                    </Button>
-                  )}
+                  <Button 
+                    size="sm" 
+                    onClick={saveGoal}
+                    className="h-7 text-xs"
+                  >
+                    Save
+                  </Button>
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <p className={`text-sm ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
-                  {savedGoal}
-                </p>
+              <div className="group-hover:pr-16">
+                <p className="text-sm text-gray-800">{savedGoal || "Set your main goal"}</p>
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleStartEditingGoal}
+                    className="h-7 w-7 p-0"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleCompletion}
+                    className={`h-7 w-7 p-0 ${isCompleted ? 'text-green-600' : 'text-gray-400'}`}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Today's Priority Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-500">To achieve this, today I will...</span>
-              </div>
-              {savedPriority && !isEditingPriority && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleStartEditingPriority} 
-                  className="text-xs text-gray-500 hover:text-gray-900"
-                >
-                  <Pencil className="h-4 w-4 mr-1" />
-                  Edit Priority
-                </Button>
-              )}
+          {/* Daily Priority Section */}
+          <div className="relative group rounded-lg border bg-amber-50/30 border-amber-100 p-3 transition-all duration-200">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="h-4 w-4 text-amber-500" />
+              <span className="text-xs font-medium text-amber-600">Today's Priority</span>
             </div>
 
-            {!savedPriority || isEditingPriority ? (
+            {isEditingPriority ? (
               <div className="space-y-2">
                 <Input
-                  placeholder="e.g., Complete the landing page design"
                   value={tempPriority}
                   onChange={(e) => setTempPriority(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      savePriority()
-                    }
-                  }}
-                  className="text-sm bg-gray-50"
+                  onKeyDown={(e) => e.key === "Enter" && savePriority()}
+                  className="text-sm h-8 border-amber-200"
+                  placeholder="Enter today's priority"
+                  autoFocus
                 />
-                <div className="flex gap-2">
+                <div className="flex justify-end gap-1">
                   <Button 
-                    onClick={savePriority} 
-                    className="flex-1 text-xs bg-gray-900 hover:bg-gray-800"
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={handleCancelEditingPriority}
+                    className="h-7 text-xs"
                   >
-                    Set Priority
+                    Cancel
                   </Button>
-                  {savedPriority && (
-                    <Button 
-                      variant="outline" 
-                      onClick={handleCancelEditingPriority} 
-                      className="text-xs"
-                    >
-                      Cancel
-                    </Button>
-                  )}
+                  <Button 
+                    size="sm" 
+                    onClick={savePriority}
+                    className="h-7 text-xs"
+                  >
+                    Save
+                  </Button>
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="text-sm text-gray-700">{savedPriority}</p>
+              <div className="group-hover:pr-16">
+                <p className="text-sm text-gray-800">{savedPriority || "Set your daily priority"}</p>
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleStartEditingPriority}
+                    className="h-7 w-7 p-0"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleCompletion}
+                    className={`h-7 w-7 p-0 ${isCompleted ? 'text-green-600' : 'text-gray-400'}`}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>

@@ -100,6 +100,7 @@ export interface TaskSettings {
 export interface UserSettings {
   goal?: string;
   openAIKey?: string;
+  licenseKey?: string;
   priority?: string;
   theme?: 'light' | 'dark' | 'system';
   showCompletedTasks?: boolean;

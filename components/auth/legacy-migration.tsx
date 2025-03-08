@@ -10,8 +10,8 @@ import { useToast } from '@/components/ui/use-toast'
 const DATA_TYPES = ['TASKS', 'IDEAS', 'LICENSE', 'USER_PREFERENCES'] as const
 
 interface LegacyMigrationProps {
-  userId: string;
-  legacyLicense: string;
+  userId?: string;
+  legacyLicense?: string;
 }
 
 interface UserPreferences {
@@ -34,7 +34,7 @@ const LegacyMigration: React.FC<LegacyMigrationProps> = () => {
 
     // Only run this check when user auth state is loaded
     const hasLocalData = checkForLocalData()
-    const userPrefs = getStorage('USER_PREFERENCES')
+    const userPrefs = getStorage('USER_PREFERENCES') as UserPreferences | null
     const needsMigration = hasLocalData && isSignedIn && user && !userPrefs?.userId
 
     setShowMigration(needsMigration)
@@ -63,7 +63,13 @@ const LegacyMigration: React.FC<LegacyMigrationProps> = () => {
       setIsMigrating(true)
 
       // 1. Associate all existing data with the Clerk user ID
-      const userPrefs: UserPreferences = getStorage('USER_PREFERENCES') || {}
+      const userPrefs: UserPreferences = getStorage('USER_PREFERENCES') as UserPreferences || {
+        userId: '',
+        email: '',
+        migrationTimestamp: '',
+        legacyLicense: '',
+        migratedData: {} as { [key in typeof DATA_TYPES[number]]: boolean }
+      }
       
       // Update user preferences with Clerk user ID and data migration timestamp
       setStorage('USER_PREFERENCES', {
