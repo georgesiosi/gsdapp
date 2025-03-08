@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.4
+
 # Build stage
 FROM node:20-alpine AS builder
 
@@ -7,15 +9,16 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat python3 make g++
 
 # Copy package files first for better caching
-COPY package*.json ./
+COPY --link package*.json ./
 
-# Install ALL dependencies (including devDependencies)
-RUN npm install
+# Install dependencies with cache mount
+RUN --mount=type=cache,target=/root/.npm \
+    npm install
 
 # Copy the rest of the application
-COPY . .
+COPY --link . .
 
-# Build the application
+# Build the application (skipping linting)
 RUN npm run build
 
 # Production stage
@@ -26,20 +29,33 @@ WORKDIR /app
 # Install system dependencies
 RUN apk add --no-cache libc6-compat
 
-# Copy package files
-COPY package*.json ./
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Install only production dependencies
-RUN npm install --production
+# Set permissions
+RUN mkdir .next && \
+    chown nextjs:nodejs .next
+
+# Copy package files
+COPY --link package*.json ./
+
+# Install only production dependencies with cache mount
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --production
 
 # Copy built application from builder stage
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.js ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./
 
 # Set environment variables
-ENV NODE_ENV=production
-ENV PORT=3050
+ENV NODE_ENV=production \
+    PORT=3050 \
+    NEXT_TELEMETRY_DISABLED=1
+
+# Switch to non-root user
+USER nextjs
 
 # Expose port
 EXPOSE 3050

@@ -1,32 +1,32 @@
-version: '3.8'
-
 services:
   app:
-    # Use development stage from Dockerfile
     build:
       context: .
-      target: builder
+      target: runner # Use production-ready image
     ports:
       - "3050:3050"
     volumes:
-      # Mount the source code for hot reloading
-      - .:/app
-      # Prevent overwriting node_modules with host directory
+      # Mount source code for hot reloading, excluding node_modules and .next
+      - .:/app:delegated
       - /app/node_modules
-      # Prevent overwriting .next with host directory
       - /app/.next
     env_file:
       - .env.local
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=3050
       - NEXT_TELEMETRY_DISABLED=1
-      # Enable React Fast Refresh
-      - WATCHPACK_POLLING=true
-    # Use development command instead of production
-    command: npm run dev
-    # Enable terminal interaction
-    tty: true
-    stdin_open: true
-    # Automatically restart on crash
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    # Health check to ensure container is running properly
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:3050"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped

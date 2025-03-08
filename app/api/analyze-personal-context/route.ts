@@ -48,7 +48,7 @@ Format the response as a JSON object with q1, q2, q3, and q4 properties, each co
       throw new Error('No response from OpenAI');
     }
 
-    let analysis = JSON.parse(response);
+    const analysis = JSON.parse(response);
 
     // Ensure proper structure
     const formattedAnalysis = {
