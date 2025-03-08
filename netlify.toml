@@ -50,17 +50,4 @@
     # Enable caching for static assets
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Cache settings
-[[plugins]]
-  package = "netlify-plugin-cache-nextjs"
-
-  [plugins.inputs]
-    # Specify directories to cache
-    include = [
-      ".next/cache",       # Next.js build cache
-      "node_modules/.cache" # Node modules cache
-    ]
-    # Custom cache key based on lockfile hash
-    build_id_pattern = "[hash]-[branch]-[head]"
-    # Debugging mode for cache issues
-    debug = true
+# Cache is automatically handled by the official Next.js plugin
