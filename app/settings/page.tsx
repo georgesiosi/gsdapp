@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/use-toast'
 import { ChevronLeft, Download, History } from 'lucide-react'
 import Link from 'next/link'
 import { SettingsNav } from '@/components/settings/settings-nav'
@@ -15,6 +16,8 @@ import { recoverFromBackup } from '@/lib/storage'
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings()
+  const { toast } = useToast()
+  const [isSaving, setIsSaving] = useState(false)
   const [isEditingKey, setIsEditingKey] = useState(false)
   const [newApiKey, setNewApiKey] = useState('')
   const [mounted, setMounted] = useState(false)
@@ -48,8 +51,24 @@ export default function SettingsPage() {
     }
   }, [settings.openAIKey, initialLoad])
 
-  const handleSave = () => {
-    updateSettings({ ...settings, taskSettings })
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      await updateSettings({ ...settings, taskSettings })
+      toast({
+        title: "Settings Saved",
+        description: "Your changes have been saved successfully.",
+        duration: 2000
+      })
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      toast({
+        title: "Error Saving Settings",
+        description: "There was a problem saving your changes. Please try again.",
+        variant: "destructive"
+      })
+    }
+    setIsSaving(false)
   }
 
   const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,8 +245,29 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <Button onClick={handleSave} className="w-full">
-                Save Changes
+              <Button 
+                onClick={handleSave} 
+                className="w-full relative" 
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <span className="inline-flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center">
+                    Save Changes
+                    {settings.taskSettings !== taskSettings && (
+                      <span className="ml-2 text-xs bg-primary/20 px-1.5 py-0.5 rounded">
+                        Unsaved changes
+                      </span>
+                    )}
+                  </span>
+                )}
               </Button>
             </div>
           </Card>
