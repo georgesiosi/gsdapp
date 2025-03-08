@@ -54,12 +54,25 @@ function validateMessage(message: ChatMessage): asserts message is ChatMessage {
 
 
 import { LicenseService } from '@/services/license/licenseService';
+import { PolarLicenseProvider } from '@/services/license/polarProvider';
+
+// Initialize LicenseService with PolarProvider if not already initialized
+function initializeLicenseService() {
+  try {
+    return LicenseService.getInstance();
+  } catch {
+    // Service not initialized, initialize it with PolarProvider
+    const polarProvider = new PolarLicenseProvider(process.env.POLAR_API_KEY || 'default-key');
+    return LicenseService.initialize(polarProvider);
+  }
+}
 
 export async function POST(request: Request) {
   try {
     // Check license first
     const licenseKey = request.headers.get('x-license-key');
-    const licenseValidation = await LicenseService.getInstance().validateLicense(licenseKey);
+    const licenseService = initializeLicenseService();
+    const licenseValidation = await licenseService.validateLicense(licenseKey);
     
     if (!licenseValidation.isValid) {
       return NextResponse.json(

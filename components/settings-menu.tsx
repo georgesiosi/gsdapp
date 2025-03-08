@@ -70,7 +70,7 @@ export function SettingsMenu() {
             <DropdownMenuSeparator />
           </>
         )}
-        <DropdownMenuLabel>Menu</DropdownMenuLabel>
+        <DropdownMenuLabel>Features</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
         <DropdownMenuItem asChild>
@@ -87,6 +87,15 @@ export function SettingsMenu() {
           </Link>
         </DropdownMenuItem>
 
+        <DropdownMenuItem asChild>
+          <Link href="/ai-logs" className="flex w-full cursor-pointer items-center">
+            <Brain className="mr-2 h-4 w-4" />
+            <span>AI Logs</span>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuLabel className="mt-2">Data</DropdownMenuLabel>
+        <DropdownMenuSeparator />
 
         <DropdownMenuItem
           onClick={() => {
@@ -98,14 +107,10 @@ export function SettingsMenu() {
           <Download className="mr-2 h-4 w-4" />
           <span>Export Tasks</span>
         </DropdownMenuItem>
-        
-        <DropdownMenuItem asChild>
-          <Link href="/ai-logs" className="flex w-full cursor-pointer items-center">
-            <Brain className="mr-2 h-4 w-4" />
-            <span>AI Logs</span>
-          </Link>
-        </DropdownMenuItem>
-        
+
+        <DropdownMenuLabel className="mt-2">Help & Resources</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+
         <DropdownMenuItem asChild>
           <a 
             href="https://github.com/georgesiosi/etodoapp" 
@@ -116,20 +121,6 @@ export function SettingsMenu() {
             <Github className="mr-2 h-4 w-4" />
             <span>GitHub</span>
           </a>
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem asChild>
-          <Link href="/settings/profile" className="flex w-full cursor-pointer items-center">
-            <UserCircle className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem asChild>
-          <Link href="/settings" className="flex w-full cursor-pointer items-center">
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-          </Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
@@ -146,6 +137,23 @@ export function SettingsMenu() {
           </a>
         </DropdownMenuItem>
         
+        <DropdownMenuLabel className="mt-2">Account</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuItem asChild>
+          <Link href="/settings/profile" className="flex w-full cursor-pointer items-center">
+            <UserCircle className="mr-2 h-4 w-4" />
+            <span>Profile</span>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link href="/settings" className="flex w-full cursor-pointer items-center">
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </Link>
+        </DropdownMenuItem>
+
         {isSignedIn ? (
           <DropdownMenuItem
             onClick={handleSignOut}

@@ -7,27 +7,19 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { ChevronDown, ChevronUp } from "lucide-react"
-import { Task, TaskStatus } from "@/types/task"
+import { Task } from "@/types/task"
 import { cn } from "@/lib/utils"
 import { v4 as uuidv4 } from 'uuid'
 import * as Tooltip from '@radix-ui/react-tooltip'
 
-// Task ID to number mapping
-const taskNumberMap = new Map<string, number>()
-let nextTaskNumber = 1
-
-// Get or create task number
-function getTaskNumber(taskId: string): number {
-  if (!taskNumberMap.has(taskId)) {
-    taskNumberMap.set(taskId, nextTaskNumber++)
-  }
-  return taskNumberMap.get(taskId)!
-}
-
-// Reset task numbers
-function resetTaskNumbers() {
-  taskNumberMap.clear()
-  nextTaskNumber = 1
+// Generate a consistent reference number from task ID
+function getTaskReference(taskId: string): string {
+  // Take first 8 chars of UUID and convert to a number
+  const shortId = taskId.slice(0, 8)
+  // Convert to number (base 16) and take modulo to keep it reasonable
+  const refNumber = parseInt(shortId, 16) % 1000
+  // Ensure it's always 3 digits with leading zeros
+  return refNumber.toString().padStart(3, '0')
 }
 
 // Task reference component with tooltip
@@ -38,7 +30,7 @@ const TaskReference = memo(function TaskReference({
   taskId: string
   task: Task
 }) {
-  const taskNumber = getTaskNumber(taskId)
+  const taskRef = getTaskReference(taskId)
   
   return (
     <Tooltip.Provider delayDuration={200}>
@@ -48,7 +40,7 @@ const TaskReference = memo(function TaskReference({
             className="inline-flex items-center font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors px-1.5 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950"
             style={{ textDecoration: 'underline', textDecorationStyle: 'dotted' }}
           >
-            T{taskNumber}
+            T{taskRef}
           </button>
         </Tooltip.Trigger>
         <Tooltip.Portal>
@@ -94,7 +86,9 @@ type ChatError = {
 }
 
 type TaskStatusCount = {
-  [K in TaskStatus]: number
+  [key: string]: number
+  active: number
+  completed: number
 }
 
 const MessageBubble = memo(function MessageBubble({ 
@@ -113,9 +107,6 @@ const MessageBubble = memo(function MessageBubble({
     if (message.role !== 'assistant') {
       return message.displayContent ?? message.content
     }
-
-    // Reset task numbers for each new assistant message
-    resetTaskNumbers()
 
     const content = message.displayContent ?? message.content
     // Find all task references with their display format
@@ -136,8 +127,6 @@ const MessageBubble = memo(function MessageBubble({
       const task = tasks.find(t => t.id === taskId);
       
       if (task) {
-        // Get task number for display
-        const taskNumber = getTaskNumber(taskId);
         parts.push(<TaskReference key={`task-${taskId}-${match.index}`} taskId={taskId} task={task} />);
       } else {
         // Keep original text for unknown tasks
@@ -208,7 +197,7 @@ function ChatDialogComponent({ open, onOpenChange, tasks, userContext }: ChatDia
     if (!settings.openAIKey && envKey) {
       updateSettings({ ...settings, openAIKey: envKey })
     }
-  }, [settings.openAIKey])
+  }, [settings, updateSettings])
   const [error, setError] = useState<ChatError | null>(null)
   const [isSystemMessageCollapsed, setIsSystemMessageCollapsed] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -218,12 +207,13 @@ function ChatDialogComponent({ open, onOpenChange, tasks, userContext }: ChatDia
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const isFirstMount = useRef(true)
 
-  // Memoize task status counts
+  // Task status counts used in systemMessage
   const taskStatusCounts = useMemo<TaskStatusCount>(() => {
-    return tasks.reduce<TaskStatusCount>((acc, task) => {
+    const counts = tasks.reduce<TaskStatusCount>((acc, task) => {
       acc[task.status] = (acc[task.status] || 0) + 1
       return acc
     }, { active: 0, completed: 0 })
+    return counts
   }, [tasks])
 
   // Memoize system context message
@@ -238,13 +228,14 @@ function ChatDialogComponent({ open, onOpenChange, tasks, userContext }: ChatDia
       return acc;
     }, {} as Record<string, Record<string, Task[]>>);
 
-    // Create detailed task summary
+    // Create detailed task summary using taskStatusCounts for totals
     const taskSummary = Object.entries(tasksByStatus)
       .map(([status, typeGroups]) => {
         const typeDetails = Object.entries(typeGroups)
           .map(([type, tasks]) => `${type}: ${tasks.length}`)
           .join(', ');
-        return `${status} tasks (${typeDetails})`;
+        const totalForStatus = taskStatusCounts[status] || 0;
+        return `${status} tasks (${typeDetails}, total: ${totalForStatus})`;
       })
       .join('\n');
 
@@ -270,29 +261,36 @@ You have access to real-time task data. Please provide specific, contextual resp
       content: fullContent,
       displayContent: displayContent
     }
-  }, [userContext, tasks])
+  }, [userContext, tasks, taskStatusCounts])
+
+  // Keep track of previous system message for comparison
+  const prevSystemMessageRef = useRef(systemMessage)
 
   // Initialize messages with system context and handle real-time updates
   useEffect(() => {
-    // Only update system message on first mount or when tasks/context actually change
-    if (isFirstMount.current || messages.length === 0) {
-      setMessages([systemMessage])
+    const systemMessageChanged = prevSystemMessageRef.current !== systemMessage
+    prevSystemMessageRef.current = systemMessage
+
+    // Only update if it's first mount, no messages, or system message changed
+    if (isFirstMount.current || messages.length === 0 || systemMessageChanged) {
+      if (messages.length === 0) {
+        setMessages([systemMessage])
+      } else if (messages[0].role === 'system') {
+        setMessages(prev => [systemMessage, ...prev.slice(1)])
+      }
       isFirstMount.current = false
-    } else if (messages[0].role === 'system') {
-      // Update the existing system message
-      setMessages(prev => [systemMessage, ...prev.slice(1)])
     }
-  }, [systemMessage, tasks, userContext])
+  }, [systemMessage, messages, tasks, userContext])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
+      if (scrollContainer && messages.length > 0) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [messages, isLoading])
+  }, [messages])
 
   // Handle streaming chat response
   const processStream = async (response: Response) => {
@@ -407,7 +405,8 @@ You have access to real-time task data. Please provide specific, contextual resp
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'text/event-stream',
-            'x-openai-key': settings.openAIKey || ''
+            'x-openai-key': settings.openAIKey || '',
+            'x-license-key': settings.licenseKey || 'LEGACY_ACCESS' // Use LEGACY_ACCESS as fallback
           },
           body: JSON.stringify({
             messages: [...messages, userMessage],
@@ -441,7 +440,7 @@ You have access to real-time task data. Please provide specific, contextual resp
         abortController.current = null
       }
     },
-    [input, isLoading, messages, tasks, userContext, isSystemMessageCollapsed]
+    [input, isLoading, messages, tasks, userContext, isSystemMessageCollapsed, settings]
   )
 
   // Handle initial mount and system message collapse

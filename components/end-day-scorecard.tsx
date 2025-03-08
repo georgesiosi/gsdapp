@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScorecardMetrics } from "@/components/ui/scorecard-metrics";
 import type { Scorecard } from "@/types/scorecard";
 import { ScorecardService } from "@/services/scorecard/scorecardService";
 import type { Task } from "@/types/task";
 import { useToast } from "@/components/ui/use-toast";
-import { LightbulbIcon, XCircleIcon } from "lucide-react";
+import { LightbulbIcon, XCircleIcon, AlertCircleIcon } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface EndDayScorecardProps {
   isOpen: boolean;
@@ -20,6 +22,9 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
   const [isLoading, setIsLoading] = useState(false);
   const [scorecard, setScorecard] = useState<Scorecard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string>("");
+  const [existingScorecard, setExistingScorecard] = useState<Scorecard | null>(null);
+  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
   const { toast } = useToast();
 
   // Get user goal and priority from localStorage
@@ -67,7 +72,8 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
       // Create and save the scorecard
       const newScorecard = ScorecardService.createScorecard(
         data.metrics,
-        data.insights
+        data.insights,
+        notes // Include any existing notes
       );
 
       setScorecard(newScorecard);
@@ -86,22 +92,62 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
     } finally {
       setIsLoading(false);
     }
-  }, [tasks, toast]);
+  }, [tasks, toast, notes]);
 
-  // Generate scorecard when dialog opens
+  // Check for existing scorecard and handle generation when dialog opens
   useEffect(() => {
-    if (isOpen && !scorecard && !isLoading) {
-      generateScorecard();
+    if (isOpen && !scorecard && !isLoading && !showOverwriteConfirm) {
+      // First check if a scorecard for today already exists
+      const todayScorecard = ScorecardService.getTodayScorecard();
+      
+      if (todayScorecard) {
+        // If a scorecard already exists for today, ask for confirmation
+        setExistingScorecard(todayScorecard);
+        setShowOverwriteConfirm(true);
+        // If there are notes in the existing scorecard, populate the notes field
+        if (todayScorecard.notes) {
+          setNotes(todayScorecard.notes);
+        }
+      } else {
+        // No existing scorecard, proceed with generation
+        generateScorecard();
+      }
     }
-  }, [isOpen, scorecard, isLoading, generateScorecard]);
+  }, [isOpen, scorecard, isLoading, showOverwriteConfirm, generateScorecard]);
 
   // Reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
       setScorecard(null);
       setError(null);
+      setNotes("");
+      setExistingScorecard(null);
+      setShowOverwriteConfirm(false);
     }
   }, [isOpen]);
+
+  // Handle notes change
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNotes(e.target.value);
+    
+    // If we have a scorecard, update its notes
+    if (scorecard) {
+      ScorecardService.updateScorecardNotes(scorecard.id, e.target.value);
+    }
+  };
+  
+  // Handle confirmation to overwrite existing scorecard
+  const handleOverwriteConfirm = () => {
+    setShowOverwriteConfirm(false);
+    generateScorecard();
+  };
+  
+  // Handle decision not to overwrite
+  const handleOverwriteCancel = () => {
+    setShowOverwriteConfirm(false);
+    setScorecard(existingScorecard);
+    onClose();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -110,7 +156,35 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
           <DialogTitle className="text-xl font-semibold">End of Day Scorecard</DialogTitle>
         </DialogHeader>
 
-        {isLoading ? (
+        {/* Overwrite Confirmation Dialog */}
+        {showOverwriteConfirm && existingScorecard ? (
+          <div className="py-6">
+            <div className="flex items-start mb-4">
+              <AlertCircleIcon className="h-6 w-6 text-amber-500 mr-3 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-medium text-gray-900">Scorecard Already Exists</h3>
+                <DialogDescription className="mt-1 text-sm text-gray-500">
+                  You already have a scorecard for today. Would you like to overwrite it with a new one?
+                </DialogDescription>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button 
+                variant="outline" 
+                onClick={handleOverwriteCancel}
+              >
+                No, Keep Existing
+              </Button>
+              <Button 
+                onClick={handleOverwriteConfirm}
+                className="bg-gray-900 hover:bg-gray-800"
+              >
+                Yes, Generate New
+              </Button>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="flex flex-col items-center justify-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
             <p className="mt-4 text-sm text-gray-500">Generating your scorecard...</p>
@@ -153,15 +227,31 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
               </ul>
             </div>
 
+            {/* Notes Section */}
+            <div className="mt-6 border-t border-gray-200 pt-6">
+              <div className="mb-3">
+                <Label htmlFor="scorecard-notes" className="text-sm font-medium text-gray-700">Personal Reflections</Label>
+                <div className="mt-1">
+                  <Textarea
+                    id="scorecard-notes"
+                    value={notes}
+                    onChange={handleNotesChange}
+                    placeholder="Add your personal reflections, thoughts, or insights about today..."
+                    className="min-h-[100px] w-full border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Actions */}
-            <div className="mt-6 flex justify-end">
+            <DialogFooter className="mt-6">
               <Button 
                 onClick={onClose}
                 className="bg-gray-900 hover:bg-gray-800"
               >
                 Close
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         ) : null}
       </DialogContent>

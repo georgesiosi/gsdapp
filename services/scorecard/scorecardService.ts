@@ -33,6 +33,23 @@ export class ScorecardService {
     )[0];
   }
 
+  // Check if a scorecard exists for today
+  static getTodayScorecard(): Scorecard | null {
+    const scorecards = this.getAllScorecards();
+    if (scorecards.length === 0) return null;
+    
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Find a scorecard that was created today
+    const todayScorecard = scorecards.find(scorecard => {
+      const scorecardDate = new Date(scorecard.createdAt).toISOString().split('T')[0];
+      return scorecardDate === today;
+    });
+    
+    return todayScorecard || null;
+  }
+
   // Get scorecards for the last n days
   static getRecentScorecards(days: number = 7): Scorecard[] {
     const scorecards = this.getAllScorecards();
@@ -112,7 +129,8 @@ export class ScorecardService {
   // Create a new scorecard with the given data
   static createScorecard(
     metrics: ScorecardMetrics,
-    insights: { analysis: string; suggestions: string[] }
+    insights: { analysis: string; suggestions: string[] },
+    notes?: string
   ): Scorecard {
     // Calculate trends
     const trends = this.calculateTrends(metrics);
@@ -123,13 +141,35 @@ export class ScorecardService {
       createdAt: new Date().toISOString(),
       metrics,
       trends,
-      insights
+      insights,
+      notes
     };
     
     // Save the scorecard
     this.saveScorecard(scorecard);
     
     return scorecard;
+  }
+
+  // Update notes for an existing scorecard
+  static updateScorecardNotes(scorecardId: string, notes: string): boolean {
+    try {
+      const scorecards = this.getAllScorecards();
+      const scorecardIndex = scorecards.findIndex(s => s.id === scorecardId);
+      
+      if (scorecardIndex === -1) return false;
+      
+      // Update the notes
+      scorecards[scorecardIndex].notes = notes;
+      
+      // Save back to localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(scorecards));
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating scorecard notes:", error);
+      return false;
+    }
   }
 }
 

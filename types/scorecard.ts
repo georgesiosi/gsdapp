@@ -47,4 +47,5 @@ export interface Scorecard {
   metrics: ScorecardMetrics;
   trends: ScorecardTrends;
   insights: ScorecardInsights;
+  notes?: string; // Optional user notes/reflections on the scorecard
 }
