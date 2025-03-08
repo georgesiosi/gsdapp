@@ -5,9 +5,27 @@ interface TaskCreationSuggestionsProps {
 }
 
 export function TaskCreationSuggestions({ taskText }: TaskCreationSuggestionsProps) {
-  const startsWithVerb = /^[A-Za-z]+(ing|ed|s)\b/.test(taskText);
+  // Common action verbs in task management
+  const actionVerbs = [
+    'buy', 'make', 'create', 'call', 'write', 'read', 'send', 'meet', 'talk', 'prepare',
+    'organize', 'schedule', 'review', 'analyze', 'plan', 'design', 'build', 'develop',
+    'research', 'contact', 'update', 'finalize', 'complete', 'submit', 'present', 'draft', 
+    'edit', 'check', 'follow', 'arrange', 'book', 'reserve', 'pay', 'order', 'print', 'fix'
+  ];
+  
+  // Match both common action verbs and verbs with standard endings (ing, ed, s)
+  const firstWord = taskText.trim().split(/\s+/)[0].toLowerCase();
+  const startsWithVerb = /^[A-Za-z]+(ing|ed|s)\b/.test(taskText) || actionVerbs.includes(firstWord);
   const isSpecific = taskText.split(' ').length >= 5;
-  const hasOutcome = /(complete|finish|achieve|produce|create|deliver)/i.test(taskText);
+  // Words that indicate a clear outcome or completion
+  const outcomeIndicators = [
+    'complete', 'finish', 'achieve', 'produce', 'create', 'deliver', 'buy', 'make', 
+    'obtain', 'acquire', 'reach', 'generate', 'establish', 'implement', 'build',
+    'prepare', 'get', 'set up', 'organize', 'submit', 'finalize', 'publish'
+  ];
+  
+  // Check for either regex pattern OR if any outcome indicator word is in the text
+  const hasOutcome = outcomeIndicators.some(indicator => taskText.toLowerCase().includes(indicator));
 
   return (
     <div className="space-y-2 text-sm">
