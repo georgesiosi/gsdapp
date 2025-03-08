@@ -54,7 +54,7 @@ export default function ProfilePage() {
     initializeProfile()
   }, [initializeProfile])
 
-  const { control, handleSubmit, formState: { errors } } = useForm<ProfileFormData>({
+  const { control, handleSubmit } = useForm<ProfileFormData>({
     resolver: yupResolver(profileSchema),
     defaultValues: {
       name: profile?.name || "",
