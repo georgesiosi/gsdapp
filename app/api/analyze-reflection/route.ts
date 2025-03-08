@@ -20,6 +20,15 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
+    // Check API key first
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[API] OPENAI_API_KEY not configured");
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured' },
+        { status: 500 }
+      );
+    }
+    
     const { task, justification, goal, priority, currentQuadrant, personalContext } = await request.json();
 
     if (!task) {
@@ -46,37 +55,45 @@ Return a JSON object:
 }
 `;
 
-      const priorityCompletion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: priorityPrompt },
-          { role: "user", content: `Is this idea connected to the priority?` }
-        ],
-      });
-
       try {
-        const priorityResponse = JSON.parse(
-          priorityCompletion.choices[0]?.message?.content?.match(/\{[\s\S]*\}/)?.[0] || '{"connectedToPriority":false}'
-        );
-
-        return NextResponse.json({
-          isIdea: true,
-          taskType: 'idea',
-          connectedToPriority: Boolean(priorityResponse.connectedToPriority),
-          reasoning: priorityResponse.reasoning || 'User explicitly marked this as an idea'
+        const priorityCompletion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          temperature: 0.2,
+          messages: [
+            { role: "system", content: priorityPrompt },
+            { role: "user", content: `Is this idea connected to the priority?` }
+          ],
         });
-      } catch {
+
+        try {
+          const priorityResponse = JSON.parse(
+            priorityCompletion.choices[0]?.message?.content?.match(/\{[\s\S]*\}/)?.[0] || '{"connectedToPriority":false}'
+          );
+
+          return NextResponse.json({
+            isIdea: true,
+            taskType: 'idea',
+            connectedToPriority: Boolean(priorityResponse.connectedToPriority),
+            reasoning: priorityResponse.reasoning || 'User explicitly marked this as an idea'
+          });
+        } catch {
+          return NextResponse.json({
+            isIdea: true,
+            taskType: 'idea',
+            connectedToPriority: false,
+            reasoning: 'User explicitly marked this as an idea'
+          });
+        }
+      } catch (openaiError) {
+        console.error("[API] OpenAI API error during priority analysis:", openaiError);
         return NextResponse.json({
           isIdea: true,
           taskType: 'idea',
           connectedToPriority: false,
-          reasoning: 'User explicitly marked this as an idea'
+          reasoning: 'Unable to analyze priority connection due to service error'
         });
       }
     }
-
-
 
     // Create a more detailed prompt for the AI
     const prompt = `
@@ -118,93 +135,108 @@ Return a JSON object:
 `;
 
     // Call OpenAI API with a lower temperature for more consistent results
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      temperature: 0.2, // Lower temperature for more consistent results
-      messages: [
-        { role: "system", content: prompt },
-        { role: "user", content: `Analyze this task: "${taskText}"` }
-      ],
-    });
-
-    // Extract the response
-    const responseContent = completion.choices[0]?.message?.content || '';
-
-
     try {
-      const cleanedContent = responseContent.trim();
-      let jsonResponse;
-
-      try {
-        const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          throw new Error('No JSON object found in response');
-        }
-
-        const normalizedJson = jsonMatch[0]
-          .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
-          .replace(/:\s*'([^']*)'\s*([,}])/g, ':"$1"$2')
-          .replace(/:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}])/g, ':"$1"$2');
-
-        jsonResponse = JSON.parse(normalizedJson);
-
-        if (!jsonResponse || typeof jsonResponse !== 'object') {
-          throw new Error('Invalid JSON structure');
-        }
-      } catch (error) {
-        const jsonError = error as Error;
-        throw new Error(`Failed to parse AI response: ${jsonError.message}`);
-      }
-
-      // Validate and normalize the response
-      const normalizedResponse: AIResponse = {
-        // Only allow ideas if explicitly marked with prefix
-        isIdea: false,
-        suggestedQuadrant: jsonResponse.suggestedQuadrant || currentQuadrant || 'q4',
-        taskType: 'personal', // Default to personal for tasks like "go to gym"
-        reasoning: jsonResponse.reasoning || 'No reasoning provided',
-        alignmentScore: Number(jsonResponse.alignmentScore) || 5,
-        urgencyScore: Number(jsonResponse.urgencyScore) || 5,
-        importanceScore: Number(jsonResponse.importanceScore) || 5
-      };
-
-      // Validate the quadrant value
-      const validQuadrants = ['q1', 'q2', 'q3', 'q4'] as const;
-      if (!normalizedResponse.suggestedQuadrant || !validQuadrants.includes(normalizedResponse.suggestedQuadrant as any)) {
-        normalizedResponse.suggestedQuadrant = currentQuadrant || 'q4';
-      }
-
-      // Validate the task type
-      const validTaskTypes = ['personal', 'work'] as const;
-      if (!normalizedResponse.taskType || !validTaskTypes.includes(normalizedResponse.taskType as any)) {
-        normalizedResponse.taskType = 'personal';
-      }
-
-      // Validate scores are within range
-      (['alignmentScore', 'urgencyScore', 'importanceScore'] as const).forEach(score => {
-        if (normalizedResponse[score] !== undefined) {
-          normalizedResponse[score] = Math.max(1, Math.min(10, normalizedResponse[score] || 5));
-        }
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        temperature: 0.2, // Lower temperature for more consistent results
+        messages: [
+          { role: "system", content: prompt },
+          { role: "user", content: `Analyze this task: "${taskText}"` }
+        ],
       });
 
-      return NextResponse.json(normalizedResponse);
-    } catch (parseError) {
-      console.error("[API] Error parsing AI response:", parseError);
-      console.error("[API] Response content:", responseContent);
-      
-      // Return a fallback response with the current quadrant
+      // Extract the response
+      const responseContent = completion.choices[0]?.message?.content || '';
+
+      try {
+        const cleanedContent = responseContent.trim();
+        let jsonResponse;
+
+        try {
+          const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error('No JSON object found in response');
+          }
+
+          const normalizedJson = jsonMatch[0]
+            .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+            .replace(/:\s*'([^']*)'\s*([,}])/g, ':"$1"$2')
+            .replace(/:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}])/g, ':"$1"$2');
+
+          jsonResponse = JSON.parse(normalizedJson);
+
+          if (!jsonResponse || typeof jsonResponse !== 'object') {
+            throw new Error('Invalid JSON structure');
+          }
+        } catch (error) {
+          const jsonError = error as Error;
+          throw new Error(`Failed to parse AI response: ${jsonError.message}`);
+        }
+
+        // Validate and normalize the response
+        const normalizedResponse: AIResponse = {
+          // Only allow ideas if explicitly marked with prefix
+          isIdea: false,
+          suggestedQuadrant: jsonResponse.suggestedQuadrant || currentQuadrant || 'q4',
+          taskType: jsonResponse.taskType || 'personal', // Default to personal for tasks like "go to gym"
+          reasoning: jsonResponse.reasoning || 'No reasoning provided',
+          alignmentScore: Number(jsonResponse.alignmentScore) || 5,
+          urgencyScore: Number(jsonResponse.urgencyScore) || 5,
+          importanceScore: Number(jsonResponse.importanceScore) || 5
+        };
+
+        // Validate the quadrant value
+        const validQuadrants = ['q1', 'q2', 'q3', 'q4'] as const;
+        if (!normalizedResponse.suggestedQuadrant || !validQuadrants.includes(normalizedResponse.suggestedQuadrant as any)) {
+          normalizedResponse.suggestedQuadrant = currentQuadrant || 'q4';
+        }
+
+        // Validate the task type
+        const validTaskTypes = ['personal', 'work'] as const;
+        if (!normalizedResponse.taskType || !validTaskTypes.includes(normalizedResponse.taskType as any)) {
+          normalizedResponse.taskType = 'personal';
+        }
+
+        // Validate scores are within range
+        (['alignmentScore', 'urgencyScore', 'importanceScore'] as const).forEach(score => {
+          if (normalizedResponse[score] !== undefined) {
+            normalizedResponse[score] = Math.max(1, Math.min(10, normalizedResponse[score] || 5));
+          }
+        });
+
+        return NextResponse.json(normalizedResponse);
+      } catch (parseError) {
+        console.error("[API] Error parsing AI response:", parseError);
+        console.error("[API] Response content:", responseContent);
+        
+        // Return a fallback response with the current quadrant
+        return NextResponse.json({
+          isIdea: false,
+          suggestedQuadrant: currentQuadrant || 'q4',
+          taskType: 'personal',
+          reasoning: 'Could not analyze task. Using default values.',
+          alignmentScore: 5,
+          urgencyScore: 5,
+          importanceScore: 5
+        });
+      }
+    } catch (openaiError) {
+      console.error("[API] Error in OpenAI API call:", openaiError);
       return NextResponse.json({
         isIdea: false,
         suggestedQuadrant: currentQuadrant || 'q4',
-        taskType: 'work',
-        reasoning: 'Could not analyze task. Using default values.',
+        taskType: 'personal',
+        reasoning: 'Error occurred during analysis. Using default values.',
         alignmentScore: 5,
         urgencyScore: 5,
         importanceScore: 5
       });
     }
   } catch (error) {
-    console.error("[API] Error in analyze-reflection route:", error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error("[API] Unexpected error in analyze-reflection route:", error);
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
