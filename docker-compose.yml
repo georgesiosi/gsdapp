@@ -1,16 +1,32 @@
+version: '3.8'
+
 services:
   app:
-    build: .
+    # Use development stage from Dockerfile
+    build:
+      context: .
+      target: builder
     ports:
       - "3050:3050"
     volumes:
+      # Mount the source code for hot reloading
       - .:/app
+      # Prevent overwriting node_modules with host directory
       - /app/node_modules
+      # Prevent overwriting .next with host directory
+      - /app/.next
     env_file:
       - .env.local
     environment:
       - NODE_ENV=development
       - PORT=3050
       - NEXT_TELEMETRY_DISABLED=1
+      # Enable React Fast Refresh
+      - WATCHPACK_POLLING=true
+    # Use development command instead of production
+    command: npm run dev
+    # Enable terminal interaction
     tty: true
     stdin_open: true
+    # Automatically restart on crash
+    restart: unless-stopped
