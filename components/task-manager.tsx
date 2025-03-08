@@ -6,7 +6,7 @@ import { ReasoningLogService } from "@/services/ai/reasoningLogService"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
-import type { TaskOrIdeaType, Task, TaskStatus, TaskType, QuadrantType } from "@/types/task"
+import type { Task, TaskStatus, TaskType, QuadrantType } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Plus, MessageCircle } from "lucide-react"
@@ -23,22 +23,11 @@ import { EndDayScorecard } from "@/components/end-day-scorecard"
 import { ChatDialog } from "@/components/ui/chat-dialog"
 import { getStorage, setStorage } from "@/lib/storage"
 
-interface Task {
-  id: string;
-  text: string;
-  completed: boolean;
-  needsReflection?: boolean;
-  status?: TaskStatus;
-  taskType?: TaskType;
-  createdAt?: number;
-  updatedAt?: number;
-}
-
 interface TaskManagerProps {
   tasks: Task[];
 }
 
-export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
+export const TaskManager: React.FC<TaskManagerProps> = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { 
@@ -47,7 +36,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
     addTaskWithAIAnalysis, 
     updateTask, 
     deleteTask, 
-    toggleTask, 
     reorderTasks,
     setInitialTasks,
     showConfetti,
@@ -59,9 +47,8 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [isAIThinking, setIsAIThinking] = useState(false)
   const [ideaDialogOpen, setIdeaDialogOpen] = useState(false)
-  const [currentIdea, setCurrentIdea] = useState({ text: "", taskType: "personal" as TaskType, connectedToPriority: false });
+  const [currentIdea, setCurrentIdea] = useState<{ text: string } | null>(null);
 
-  // Flag to track if tasks are being loaded from localStorage
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
   const [scorecardOpen, setScorecardOpen] = useState(false);
@@ -75,14 +62,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
         const parsedTasks = getStorage('TASKS');
         
         if (parsedTasks) {
-          // Debug logging for loaded tasks
-          console.log("[DEBUG] Loading tasks from storage:", parsedTasks);
-          console.log("[DEBUG] Task types from storage:", parsedTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
-          
-          // Check if any tasks have work or business type
-          const workTasks = parsedTasks.filter((t: any) => t.taskType === "work" || t.taskType === "business");
-          console.log("[DEBUG] Work/Business tasks in storage:", workTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
-          
           // Convert all dates to ISO strings for consistent handling
           const formattedTasks = parsedTasks.map((task: any) => ({
             ...task,
@@ -95,14 +74,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
                 task.completedAt : new Date(task.completedAt).toISOString()) : 
               undefined
           }));
-          
-          // Debug logging for formatted tasks
-          console.log("[DEBUG] Formatted tasks after loading:", formattedTasks);
-          console.log("[DEBUG] Task types after formatting:", formattedTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
-          
-          // Check if any tasks have work or business type after formatting
-          const formattedWorkTasks = formattedTasks.filter((t: any) => t.taskType === "work" || t.taskType === "business");
-          console.log("[DEBUG] Work/Business tasks after formatting:", formattedWorkTasks.map((t: any) => ({ id: t.id, text: t.text.substring(0, 20), type: t.taskType })));
           
           setInitialTasks(formattedTasks);
         }
@@ -124,7 +95,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
         const parsedIdeas = getStorage('IDEAS');
         if (parsedIdeas) {
           // Debug logging for loaded ideas
-          console.log("[DEBUG] Loading ideas from storage:", parsedIdeas);
+  
           
           // Convert all dates to ISO strings for consistent handling
           const formattedIdeas = parsedIdeas.map((idea: any) => ({
@@ -151,15 +122,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
   useEffect(() => {
     if (taskList.length > 0) {
       try {
-        // Debug logging for tasks before saving
-        console.log("[DEBUG] Saving tasks to storage:", taskList);
-        console.log("[DEBUG] Task status:", taskList.map(t => ({
-          id: t.id,
-          text: t.text.substring(0, 20),
-          status: t.status,
-          completedAt: t.completedAt
-        })));
-        
         // Ensure all tasks have proper date fields before saving
         const tasksToSave = taskList.map(task => ({
           ...task,
@@ -169,18 +131,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
         }));
         
         setStorage('TASKS', tasksToSave);
-        
-        // Verify what was saved
-        const savedTasks = getStorage('TASKS');
-        if (savedTasks) {
-          console.log("[DEBUG] Verified saved tasks:", savedTasks.length);
-          console.log("[DEBUG] Verified task status:", savedTasks.map((t: any) => ({
-            id: t.id,
-            text: t.text.substring(0, 20),
-            status: t.status,
-            completedAt: t.completedAt
-          })));
-        }
       } catch (error) {
         console.error("Error saving tasks to storage:", error);
         toast({
@@ -197,7 +147,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
     if (!isLoadingIdeas && ideas.length > 0) {
       try {
         setStorage('IDEAS', ideas);
-        console.log("[DEBUG] Saved ideas to storage:", ideas.length);
+
       } catch (error) {
         console.error("Error saving ideas to storage:", error);
         toast({
@@ -438,17 +388,17 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
 
   const handleSendToIdeasBank = () => {
     console.log('[DEBUG] handleSendToIdeasBank called with:', {
-      text: currentIdea.text.substring(0, 30),
-      taskType: currentIdea.taskType,
-      connectedToPriority: currentIdea.connectedToPriority
+      text: currentIdea?.text.substring(0, 30),
+      taskType: currentIdea?.taskType,
+      connectedToPriority: currentIdea?.connectedToPriority
     });
     
     // Add the idea to the Ideas Bank
     try {
       const idea = addIdea({
-        text: currentIdea.text,
-        taskType: currentIdea.taskType,
-        connectedToPriority: currentIdea.connectedToPriority
+        text: currentIdea?.text,
+        taskType: currentIdea?.taskType,
+        connectedToPriority: currentIdea?.connectedToPriority
       });
       
       console.log('[DEBUG] addIdea returned:', idea ? idea.id : 'null');
@@ -493,7 +443,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
 
   const handleConvertToTask = async () => {
     // Convert the idea to a task
-    const { task } = await addTaskWithAIAnalysis(currentIdea.text);
+    const { task } = await addTaskWithAIAnalysis(currentIdea?.text);
     
     if (task) {
       setIdeaDialogOpen(false);
@@ -513,7 +463,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks = [] }) => {
       {/* Idea priority dialog */}
       <IdeaPriorityDialog
         isOpen={ideaDialogOpen}
-        ideaText={currentIdea.text}
+        ideaText={currentIdea?.text || ''}
         onClose={() => setIdeaDialogOpen(false)}
         onSendToIdeasBank={handleSendToIdeasBank}
         onConvertToTask={handleConvertToTask}
