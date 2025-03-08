@@ -1,13 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef } from "react"
 import { v4 as uuidv4 } from "uuid"
-import { TaskOrIdeaType, TaskType, QuadrantType, TaskStatus, Task } from "@/types/task"
+import { TaskType, QuadrantType, TaskStatus, Task } from "@/types/task"
 import { getStorage, setStorage } from "@/lib/storage"
 
-// Using types from @/types/task
-
 export type NewTask = Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
-
-// NewTask is now defined above as an interface
 
 export function useTaskManagement() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -20,7 +16,6 @@ export function useTaskManagement() {
   }>({
     deleteTaskInternal: (id: string): boolean => {
       try {
-        console.log(`[DEBUG] deleteTaskInternal - Deleting task ${id}`);
         let taskExists = false;
         
         // First, delete the task from storage to ensure it's completely removed
@@ -29,22 +24,19 @@ export function useTaskManagement() {
           if (savedTasks) {
             const filteredTasks = savedTasks.filter((t: any) => t.id !== id);
             setStorage('TASKS', filteredTasks);
-            console.log(`[DEBUG] deleteTaskInternal - Removed task ${id} from storage, remaining tasks:`, filteredTasks.length);
           }
         } catch (storageError) {
-          console.error(`[ERROR] deleteTaskInternal - Failed to remove task ${id} from storage:`, storageError);
+          console.error(`Failed to remove task ${id} from storage:`, storageError);
         }
         
         // Then update the state to actually remove the task (not just archive it)
         setTasks(prevTasks => {
           const taskIndex = prevTasks.findIndex(task => task.id === id);
           if (taskIndex === -1) {
-            console.log(`[DEBUG] deleteTaskInternal - Task ${id} not found in state`);
             return prevTasks;
           }
           
           taskExists = true;
-          console.log(`[DEBUG] deleteTaskInternal - Removing task ${id} from state`);
           const filteredTasks = prevTasks.filter(task => task.id !== id);
           return filteredTasks;
         });
@@ -57,15 +49,11 @@ export function useTaskManagement() {
     },
     updateTaskInternal: (id: string, updates: Partial<Task>): boolean => {
       try {
-        // Debug logging for task updates
-        console.log(`[DEBUG] updateTaskInternal - Updating task ${id} with:`, updates);
-        
         let updateSuccessful = false;
         
         setTasks(prevTasks => {
           const taskIndex = prevTasks.findIndex(task => task.id === id)
           if (taskIndex === -1) {
-            console.log(`[DEBUG] updateTaskInternal - Task ${id} not found`);
             return prevTasks;
           }
 
@@ -78,15 +66,6 @@ export function useTaskManagement() {
             ...updates,
             updatedAt: new Date().toISOString(),
           };
-          
-          // Debug logging for the task after update
-          console.log(`[DEBUG] updateTaskInternal - Task ${id} after update:`, {
-            id: updatedTasks[taskIndex].id,
-            text: updatedTasks[taskIndex].text.substring(0, 20),
-            quadrant: updatedTasks[taskIndex].quadrant,
-            taskType: updatedTasks[taskIndex].taskType,
-            completed: updatedTasks[taskIndex].completed
-          });
           
           updateSuccessful = true;
           return updatedTasks;
@@ -144,8 +123,16 @@ export function useTaskManagement() {
   // Add a new task
   const addTask = useCallback((newTask: NewTask): Task | null => {
     try {
-      // Generate a single UUID to be used for both the state update and the returned task
       const taskId = uuidv4();
+      const now = new Date().toISOString();
+      
+      const baseTask: Omit<Task, 'order'> = {
+        id: taskId,
+        ...newTask,
+        createdAt: now,
+        updatedAt: now,
+        status: newTask.status || 'active',
+      };
       
       setTasks(prevTasks => {
         // Find the highest order in this quadrant
@@ -154,29 +141,10 @@ export function useTaskManagement() {
           ? Math.max(...quadrantTasks.map(t => t.order || 0)) 
           : -1;
         
-        const task: Task = {
-          id: taskId, // Use the pre-generated ID
-          ...newTask,
-          order: maxOrder + 1, // Place at the end of the quadrant
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          status: newTask.status || 'active', // Ensure status is set
-        };
-        
-        return [...prevTasks, task];
+        return [...prevTasks, { ...baseTask, order: maxOrder + 1 }];
       });
       
-      // Return a task with the same ID as the one added to state
-      const createdTask: Task = {
-        id: taskId, // Use the same ID
-        ...newTask,
-        order: 0, // This will be different in the state update, but it doesn't matter for the returned task
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        status: newTask.status || 'active', // Ensure status is set
-      };
-      
-      return createdTask;
+      return { ...baseTask, order: 0 };
     } catch (error) {
       console.error("Error adding task:", error);
       return null;
@@ -195,7 +163,7 @@ export function useTaskManagement() {
     updatedAt?: number
   }): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
     try {
-      console.log("[DEBUG] Starting AI analysis for task:", taskData.text.substring(0, 30));
+
       
       // Add the task with provided or default values
       const task = addTask({
