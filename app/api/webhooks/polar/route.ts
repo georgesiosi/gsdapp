@@ -3,7 +3,7 @@
  * Handles license events and updates
  */
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
+
 import { createHmac } from 'crypto';
 import { PolarWebhookEvent, PolarEventType, WebhookValidation } from '@/services/license/types';
 
