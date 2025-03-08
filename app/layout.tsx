@@ -49,9 +49,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased bg-background text-foreground`}
       >
-        {/* ServiceWorkerRegistration wrapped in a client component */}
-        <ServiceWorkerWrapper />
-        <Providers>{children}</Providers>
+        <Providers>
+          <ServiceWorkerWrapper />
+          {children}
+        </Providers>
         <Toaster />
       </body>
     </html>
