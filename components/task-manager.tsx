@@ -171,6 +171,30 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         description: "Your tasks have been exported to CSV",
       });
     };
+
+    // Handle tasks restored from backup
+    const handleTasksRestored = () => {
+      const restoredTasks = getStorage('TASKS');
+      if (restoredTasks) {
+        const formattedTasks = restoredTasks.map((task: any) => ({
+          ...task,
+          createdAt: typeof task.createdAt === 'string' ? 
+            task.createdAt : new Date(task.createdAt).toISOString(),
+          updatedAt: typeof task.updatedAt === 'string' ? 
+            task.updatedAt : new Date(task.updatedAt).toISOString(),
+          completedAt: task.completedAt ? 
+            (typeof task.completedAt === 'string' ? 
+              task.completedAt : new Date(task.completedAt).toISOString()) : 
+            undefined
+        }));
+        
+        setInitialTasks(formattedTasks);
+        toast({
+          title: "Tasks Restored",
+          description: "Your tasks have been restored from backup",
+        });
+      }
+    };
     
     // Ideas Bank event listener - listen for addToIdeasBank events from useTaskManagement
     const handleAddToIdeasBank = (event: Event) => {
@@ -191,7 +215,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
                 Added to Ideas Bank.{" "}
                 <button 
                   onClick={() => router.push("/ideas-bank")} 
-                  className="font-medium underline hover:text-primary"
+                  className="font-medium underline hover:text-primary ml-1"
                 >
                   View Ideas Bank
                 </button>
@@ -204,13 +228,15 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     };
     
     window.addEventListener('exportTasks', handleExport);
+    window.addEventListener('tasksRestored', handleTasksRestored);
     window.addEventListener('addToIdeasBank', handleAddToIdeasBank);
     
     return () => {
       window.removeEventListener('exportTasks', handleExport);
-      window.removeEventListener('addToIdeasBank', handleAddToIdeasBank);
+      window.removeEventListener('addToIdeasBank', handleAddToIdeasBank as EventListener);
+      window.removeEventListener('tasksRestored', handleTasksRestored);
     };
-  }, [addIdea, router, toast]);
+  }, [addIdea, router, toast, setInitialTasks]);
 
 
 
@@ -472,7 +498,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       {/* Export tasks event listener is set up in a useEffect at the component level */}
 
       {/* Floating Action Buttons */}
-      <div className="fixed bottom-4 right-4 flex flex-col gap-2">
+      <div className="fixed bottom-4 right-8 flex flex-col gap-2">
         <Button 
           variant="default" 
           onClick={() => setChatOpen(true)}
