@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScorecardMetrics } from "@/components/ui/scorecard-metrics";
@@ -38,7 +38,7 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
   };
 
   // Generate scorecard
-  const generateScorecard = async () => {
+  const generateScorecard = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -86,7 +86,7 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tasks, toast]);
 
   // Generate scorecard when dialog opens
   useEffect(() => {
