@@ -4,8 +4,11 @@ export type QuadrantType = "q1" | "q2" | "q3" | "q4";
 // Task types
 export type TaskType = "personal" | "work" | "business";
 
+// Idea type
+export type IdeaType = "idea";
+
 // Combined task and idea type
-export type TaskOrIdeaType = TaskType | "idea";
+export type TaskOrIdeaType = TaskType | IdeaType;
 
 /**
  * Represents the possible states of a task.
@@ -47,7 +50,7 @@ export interface Task {
 export interface Idea {
   id: string;
   text: string;
-  taskType: TaskType;
+  taskType: TaskOrIdeaType;
   connectedToPriority: boolean;
   createdAt: string;
   updatedAt: string;
@@ -70,7 +73,7 @@ export interface ReasoningLog {
   taskText: string;
   timestamp: number;
   suggestedQuadrant: QuadrantType;
-  taskType: TaskType;
+  taskType: TaskOrIdeaType;
   reasoning: string;
   alignmentScore?: number;
   urgencyScore?: number;
@@ -112,7 +115,7 @@ export interface UserSettings {
 export interface AIAnalysisResult {
   isIdea: boolean;
   suggestedQuadrant?: QuadrantType;
-  taskType?: TaskType;
+  taskType?: TaskOrIdeaType;
   connectedToPriority?: boolean;
   reasoning?: string;
   alignmentScore?: number;
