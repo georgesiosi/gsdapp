@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useIdeasManagement, Idea } from '@/components/ideas/hooks/useIdeasManagement'
+import { useIdeasManagement } from '@/components/ideas/hooks/useIdeasManagement'
 import { useTaskManagement } from '@/components/task/hooks/useTaskManagement'
 import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
