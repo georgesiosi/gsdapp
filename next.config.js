@@ -9,7 +9,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   // Configure headers to allow service worker registration
-  async headers() {
+  headers: async () => {
     return [
       {
         source: "/sw.js",
