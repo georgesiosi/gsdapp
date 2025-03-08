@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Target, Flag, Calendar, Pencil, CheckCircle2, Download } from "lucide-react"
+import { Target, Flag, Calendar, Pencil, CheckCircle2, Download, ChevronDown, ChevronUp } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { exportGoalsToCSV } from "@/lib/export-utils"
 
@@ -22,10 +22,17 @@ export function GoalSetter() {
   const [isEditingGoal, setIsEditingGoal] = useState(false)
   const [isEditingPriority, setIsEditingPriority] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const { toast } = useToast()
 
   // Load saved data on mount
   useEffect(() => {
+    // Load collapse state
+    const savedCollapsed = localStorage.getItem("goalSectionCollapsed")
+    if (savedCollapsed !== null) {
+      setIsCollapsed(JSON.parse(savedCollapsed))
+    }
+
     try {
       const savedData = localStorage.getItem("goalData")
       if (savedData) {
@@ -149,12 +156,24 @@ export function GoalSetter() {
     })
   }
 
+  // Save collapse state
+  const toggleCollapse = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    localStorage.setItem("goalSectionCollapsed", JSON.stringify(newState))
+  }
+
   return (
-    <div className="goal-setter-container">
+    <div className="goal-setter-container space-y-2">
       <div className="goal-setter-header">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={toggleCollapse}>
           <Target className="h-4 w-4 text-gray-500" />
           <h3 className="text-sm font-medium text-gray-900">Focus & Priority</h3>
+          {isCollapsed ? (
+            <ChevronDown className="h-4 w-4 text-gray-500" />
+          ) : (
+            <ChevronUp className="h-4 w-4 text-gray-500" />
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button 
@@ -177,7 +196,9 @@ export function GoalSetter() {
           </Button>
         </div>
       </div>
-      <div className="goal-setter-content">
+      <div 
+        className={`goal-setter-content transition-all duration-200 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}
+      >
         <div className="grid grid-cols-2 gap-4">
           {/* Main Goal Section */}
           <div className="space-y-3">
