@@ -14,7 +14,6 @@ import {
   Github, 
   Menu, 
   Lightbulb, 
-  Download, 
   BarChart2, 
   Settings, 
   UserCircle, 
@@ -24,6 +23,7 @@ import {
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useClerk, useUser } from "@clerk/nextjs"
+
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
@@ -31,7 +31,6 @@ export function SettingsMenu() {
   const { signOut } = useClerk()
   const { user, isSignedIn } = useUser()
   const router = useRouter()
-
   const handleSignOut = async () => {
     await signOut()
     router.push("/sign-in")
@@ -94,19 +93,6 @@ export function SettingsMenu() {
           </Link>
         </DropdownMenuItem>
 
-        <DropdownMenuLabel className="mt-2">Data</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem
-          onClick={() => {
-            const event = new CustomEvent('exportTasks');
-            window.dispatchEvent(event);
-          }}
-          className="flex w-full cursor-pointer items-center"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          <span>Export Tasks</span>
-        </DropdownMenuItem>
 
         <DropdownMenuLabel className="mt-2">Help & Resources</DropdownMenuLabel>
         <DropdownMenuSeparator />
