@@ -24,7 +24,7 @@ import { ChatDialog } from "@/components/ui/chat-dialog"
 import { getStorage, setStorage } from "@/lib/storage"
 
 interface TaskManagerProps {
-  tasks: Task[];
+  tasks?: Task[];
 }
 
 export const TaskManager: React.FC<TaskManagerProps> = () => {
