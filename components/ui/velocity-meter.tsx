@@ -70,15 +70,14 @@ export function VelocityMeter({
   })));
   
   // Get all active and completed tasks in the matrix (excluding archived/deleted)
-  const nonArchivedTasks = typeTasks.filter(task => !task.archivedAt)
+  const nonArchivedTasks = typeTasks.filter(task => task.status === 'active' || task.status === 'completed')
   const activeTasks = nonArchivedTasks.filter(task => task.status === 'active')
   const completedTasksArray = nonArchivedTasks.filter(task => task.status === 'completed')
   const completedTasksCount = completedTasksArray.length
   const totalTasks = activeTasks.length + completedTasksCount
 
   // Create stable task references
-  const tasksString = JSON.stringify(tasks);
-  const stableTasks = useMemo(() => tasks, [tasksString]);
+  const stableTasks = useMemo(() => tasks, [tasks]);
   
   // Check if a task was just completed and trigger pulse animation
   useEffect(() => {
@@ -146,7 +145,7 @@ export function VelocityMeter({
   return (
     <div 
       className={cn(
-        "velocity-meter fixed top-0 bottom-0 w-5 flex flex-col items-center justify-end transition-all duration-300 z-50",
+        "velocity-meter fixed top-0 bottom-0 w-5 flex flex-col items-center justify-end transition-all duration-300 z-10",
         position === "left" ? "left-0 rounded-r-md" : "right-0 rounded-l-md",
         isExpanded ? "w-16" : "hover:w-8",
         isPulsing && "pulse",

@@ -153,7 +153,7 @@ export function GoalSetter() {
   }
 
   return (
-    <div className="goal-setter-container border rounded-lg overflow-hidden">
+    <div className="goal-setter-container border rounded-lg overflow-hidden relative" style={{ zIndex: 20 }}>
       <div 
         className="goal-setter-header flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
         onClick={toggleCollapse}
@@ -172,9 +172,9 @@ export function GoalSetter() {
       <div 
         className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'} overflow-hidden`}
       >
-        <div className="space-y-3 p-3">
+        <div className="space-y-8 p-3 relative">
           {/* Main Goal Section */}
-          <div className="relative group rounded-lg border bg-blue-50/30 border-blue-100 p-3 transition-all duration-200">
+          <div className="relative group rounded-lg border bg-blue-50/30 border-blue-100 p-3 transition-all duration-200 mb-8">
             <div className="flex items-center gap-2 mb-1">
               <Flag className="h-4 w-4 text-blue-500" />
               <span className="text-xs font-medium text-blue-600">Main Goal</span>
@@ -215,14 +215,14 @@ export function GoalSetter() {
                 </div>
               </div>
             ) : (
-              <div className="group-hover:pr-16">
-                <p className="text-sm text-gray-800">{savedGoal || "Set your main goal"}</p>
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="group-hover:pr-16 relative">
+                <p className="text-sm text-gray-800 mb-2">{savedGoal || "Set your main goal"}</p>
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-md px-1.5 py-1 shadow-sm" style={{ zIndex: 30 }}>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleStartEditingGoal}
-                    className="h-7 w-7 p-0"
+                    className="h-7 w-7 p-0 relative z-50"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -240,7 +240,7 @@ export function GoalSetter() {
           </div>
 
           {/* Daily Priority Section */}
-          <div className="relative group rounded-lg border bg-amber-50/30 border-amber-100 p-3 transition-all duration-200">
+          <div className="relative group rounded-lg border bg-amber-50/30 border-amber-100 p-3 transition-all duration-200 mb-8">
             <div className="flex items-center gap-2 mb-1">
               <Calendar className="h-4 w-4 text-amber-500" />
               <span className="text-xs font-medium text-amber-600">Today's Priority</span>
@@ -275,9 +275,9 @@ export function GoalSetter() {
                 </div>
               </div>
             ) : (
-              <div className="group-hover:pr-16">
-                <p className="text-sm text-gray-800">{savedPriority || "Set your daily priority"}</p>
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="group-hover:pr-16 relative">
+                <p className="text-sm text-gray-800 mb-2">{savedPriority || "Set your daily priority"}</p>
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-md px-1.5 py-1 shadow-sm" style={{ zIndex: 30 }}>
                   <Button
                     variant="ghost"
                     size="sm"

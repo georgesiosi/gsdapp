@@ -38,7 +38,7 @@ export default function HomePage() {
     <main className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold tracking-tight">GSDapp</h1>
-        <SettingsMenu />
+        <SettingsMenu key="settings-menu" />
       </div>
       <div className="space-y-6">
         <GoalSetter />
