@@ -11,38 +11,29 @@ import { useEffect } from "react"
  */
 export function ServiceWorkerRegistration() {
   useEffect(() => {
-    // Safely execute in a non-blocking way
-    const safelyUnregisterServiceWorkers = () => {
-      // Use a small timeout to ensure this doesn't block the main thread
-      // or interfere with initial rendering
-      setTimeout(() => {
-        if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
-          return;
+    // Immediately unregister service workers in development
+    const unregisterServiceWorkers = async () => {
+      if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+        return;
+      }
+
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        if (registrations.length > 0) {
+          console.log('Unregistering', registrations.length, 'service workers...');
+          await Promise.all(registrations.map(r => r.unregister()));
+          console.log('Service workers unregistered');
+          window.location.reload(); // Force reload after unregistration
         }
-        
-        // Use Promise-based approach with proper error handling
-        navigator.serviceWorker.getRegistrations()
-          .then(registrations => {
-            if (registrations.length > 0) {
-              console.log("Found", registrations.length, "service worker registrations");
-              return Promise.all(registrations.map(registration => registration.unregister()));
-            }
-          })
-          .then(results => {
-            if (results && results.length > 0) {
-              console.log("All service workers unregistered");
-            }
-          })
-          .catch(error => {
-            console.error("Error unregistering service workers:", error);
-          });
-      }, 3000); // Increase timeout to further reduce chances of interfering with initial load
+      } catch (error) {
+        console.error('Error unregistering service workers:', error);
+      }
     };
 
-    // Execute the function
-    safelyUnregisterServiceWorkers();
-    
-    // No cleanup needed as we're using a self-contained approach
+    // Execute immediately in development
+    if (process.env.NODE_ENV === 'development') {
+      unregisterServiceWorkers();
+    }
   }, []);
 
   return null;
