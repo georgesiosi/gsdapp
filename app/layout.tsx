@@ -16,20 +16,22 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-export const metadata: Metadata = {
-  title: "GSD App",
-  description: "A modern task management app for getting things done",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "GSD App",
-  },
-};
-
 export const viewport = {
   themeColor: "#000000",
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "GSD App",
+    description: "A modern task management app for getting things done",
+    manifest: "/manifest.json",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: "GSD App",
+    },
+  };
+}
 
 export default function RootLayout({
   children,
