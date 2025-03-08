@@ -40,59 +40,32 @@ function Quadrant({
 }: QuadrantProps) {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
-  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
-
   
   // Sort tasks by status (active first) and then by order
   const sortedTasks = [...tasks].sort((a, b) => {
-    // First sort by status (active tasks first)
     if (a.status !== b.status) {
       return a.status === 'active' ? -1 : 1;
     }
-    // Then sort by order within each status group
     return (a.order || 0) - (b.order || 0);
   });
   
-  // Unified drag and drop handling
+  // Drag and drop handlers
   const handleDragStart = (e: DragEvent, taskId: string) => {
     e.stopPropagation();
     setDraggedTaskId(taskId);
-    
-    // Store both task ID and current quadrant
-    const dragData = {
-      taskId,
-      sourceQuadrant: quadrantId
-    };
-    e.dataTransfer.setData('application/json', JSON.stringify(dragData));
+    e.dataTransfer.setData('application/json', JSON.stringify({ taskId, sourceQuadrant: quadrantId }));
     e.dataTransfer.effectAllowed = 'move';
   };
   
-  const handleDragOver = (e: DragEvent, taskId?: string) => {
+  const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (taskId && draggedTaskId === taskId) return;
-    
     try {
-      const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
-      const isFromSameQuadrant = dragData.sourceQuadrant === quadrantId;
-      
-      // Set visual feedback based on whether it's reordering or moving
-      e.currentTarget.classList.add(
-        isFromSameQuadrant ? 'reorder-target' : 'move-target'
-      );
-      
-      if (taskId) {
-        setDragOverTaskId(taskId);
-      }
-      
+      const { sourceQuadrant } = JSON.parse(e.dataTransfer.getData('application/json'));
+      e.currentTarget.classList.add(sourceQuadrant === quadrantId ? 'reorder-target' : 'move-target');
       e.dataTransfer.dropEffect = 'move';
-    } catch (error) {
-      // Handle first dragover when data is not yet available
-      if (taskId) {
-        setDragOverTaskId(taskId);
-      }
-    }
+    } catch {}
   };
   
   const handleDrop = (e: DragEvent, targetTaskId?: string) => {
@@ -100,12 +73,10 @@ function Quadrant({
     e.stopPropagation();
     
     try {
-      const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
-      const { taskId: draggedId, sourceQuadrant } = dragData;
+      const { taskId: draggedId, sourceQuadrant } = JSON.parse(e.dataTransfer.getData('application/json'));
       
       if (!draggedId) return;
       
-      // If dropping on a task in the same quadrant, reorder
       if (sourceQuadrant === quadrantId && targetTaskId) {
         const sourceIndex = sortedTasks.findIndex(t => t.id === draggedId);
         const targetIndex = sortedTasks.findIndex(t => t.id === targetTaskId);
@@ -113,31 +84,22 @@ function Quadrant({
         if (sourceIndex !== -1 && targetIndex !== -1 && sourceIndex !== targetIndex) {
           onReorderTasks(quadrantId, sourceIndex, targetIndex);
         }
-      }
-      // If dropping in a different quadrant, move the task
-      else if (sourceQuadrant !== quadrantId) {
+      } else if (sourceQuadrant !== quadrantId) {
         onMoveTask(draggedId, quadrantId);
       }
     } catch (error) {
       console.error('Error handling drop:', error);
     }
     
-    // Reset states
     setDraggedTaskId(null);
-    setDragOverTaskId(null);
     e.currentTarget.classList.remove('reorder-target', 'move-target');
   };
   
-  const handleDragEnd = (e: DragEvent) => {
+  const handleDragEnd = () => {
     setDraggedTaskId(null);
-    setDragOverTaskId(null);
-    // Remove any lingering drag feedback classes
-    document.querySelectorAll('.reorder-target, .move-target').forEach(el => {
-      el.classList.remove('reorder-target', 'move-target');
-    });
+    document.querySelectorAll('.reorder-target, .move-target')
+      .forEach(el => el.classList.remove('reorder-target', 'move-target'));
   };
-  
-  console.log('[Quadrant] Rendering with tasks:', tasks.length, 'needsReflection:', tasks.filter(t => t.needsReflection).length);
   return (
     <div 
       className={cn(
@@ -147,7 +109,7 @@ function Quadrant({
       )}
       onDragOver={(e: DragEvent) => handleDragOver(e)}
       onDragLeave={(e: DragEvent) => {
-        e.currentTarget.classList.remove('reorder-target', 'move-target');
+        (e.currentTarget as HTMLElement).classList.remove('reorder-target', 'move-target');
       }}
       onDrop={(e: DragEvent) => handleDrop(e)}
     >
@@ -176,7 +138,6 @@ function Quadrant({
                 key={task.id} 
                 className={cn(
                   "task-item",
-                  dragOverTaskId === task.id && "ring-2 ring-primary",
                   draggedTaskId === task.id && "opacity-50"
                 )}
                 draggable={editingTaskId !== task.id}
