@@ -22,6 +22,10 @@ All notable changes to this project will be documented in this file.
 
 * Updated environment configuration to support webhook endpoints
 * Refactored Docker setup to properly load environment variables
+* Moved UI dependencies from devDependencies to dependencies for production builds
+* Fixed PostCSS dependencies configuration for Netlify deployment
+* Removed deprecated Netlify cache plugin in favor of official Next.js plugin
+* Optimized Netlify configuration with improved security headers and build settings
 
 ### Planned
 
