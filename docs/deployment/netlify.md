@@ -98,6 +98,39 @@ Our optimized `netlify.toml` configuration:
 - **Official Next.js Plugin**: The official `@netlify/plugin-nextjs` plugin already includes caching functionality
 - **Plugin Configuration**: Only use supported configuration options for plugins
 
+## DNS Configuration for Clerk Authentication
+
+**CRITICAL STEP:** The application will not function properly without proper DNS configuration for Clerk.
+
+### Required DNS Records
+
+When setting up Clerk authentication, you must configure your DNS records to allow Clerk to serve its JavaScript files from your domain. Without this configuration, you will see `ERR_NAME_NOT_RESOLVED` errors and the app will be stuck on a loading screen.
+
+1. **In your Clerk dashboard**:
+   - Find the "Domain Configuration" section
+   - Locate your Frontend API URL (typically in the format `clerk.yourdomain.com`)
+   - Note the CNAME target value provided by Clerk
+
+2. **In your DNS provider's dashboard**:
+   - Add a CNAME record:
+     - Name/Host: `clerk` (or the subdomain specified in Clerk's dashboard)
+     - Target/Value: The CNAME target provided by Clerk
+     - TTL: Default (typically 3600 seconds)
+
+3. **Wait for DNS propagation**:
+   - DNS changes can take anywhere from a few minutes to 48 hours to propagate
+   - Use a tool like [dnschecker.org](https://dnschecker.org) to verify propagation
+
+### Frontend API Configuration
+
+Once DNS is configured, set the Frontend API environment variable in Netlify:
+
+```bash
+NEXT_PUBLIC_CLERK_FRONTEND_API=https://clerk.yourdomain.com
+```
+
+Replace `clerk.yourdomain.com` with your actual Clerk domain.
+
 ## Environment Variables
 
 ### Critical Authentication Variables
@@ -106,6 +139,7 @@ Our optimized `netlify.toml` configuration:
 
 - `CLERK_SECRET_KEY` - Your Clerk secret key from the Clerk dashboard
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Your Clerk publishable key
+- `NEXT_PUBLIC_CLERK_FRONTEND_API` - Your Clerk Frontend API URL (e.g., `https://clerk.yourdomain.com`)
 - `NEXT_PUBLIC_CLERK_SIGN_IN_URL` - Should be set to `/sign-in`
 - `NEXT_PUBLIC_CLERK_SIGN_UP_URL` - Should be set to `/sign-up`
 - `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` - Should be set to `/dashboard` or your main app page
@@ -128,6 +162,6 @@ Our optimized `netlify.toml` configuration:
 ## Troubleshooting
 
 - **Check build logs**: Most errors are clearly indicated in the build logs
-- **Dependency issues**: Look for "Cannot find module" errors 
+- **Dependency issues**: Look for "Cannot find module" errors
 - **Plugin errors**: Check for unsupported configuration in `netlify.toml`
 - **Environment variables**: Ensure all required environment variables are set
