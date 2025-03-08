@@ -6,7 +6,7 @@ import { ReasoningLogService } from "@/services/ai/reasoningLogService"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
-import type { Task, TaskStatus, TaskType, QuadrantType } from "@/types/task"
+import type { Task, TaskStatus, TaskType, QuadrantType, IdeaType } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Plus, MessageCircle } from "lucide-react"
@@ -47,7 +47,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [isAIThinking, setIsAIThinking] = useState(false)
   const [ideaDialogOpen, setIdeaDialogOpen] = useState(false)
-  const [currentIdea, setCurrentIdea] = useState<{ text: string } | null>(null);
+  const [currentIdea, setCurrentIdea] = useState<{ text: string; taskType?: TaskType | IdeaType; connectedToPriority: boolean } | null>(null);
 
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
@@ -422,9 +422,9 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     // Add the idea to the Ideas Bank
     try {
       const idea = addIdea({
-        text: currentIdea?.text,
-        taskType: currentIdea?.taskType,
-        connectedToPriority: currentIdea?.connectedToPriority
+        text: currentIdea?.text || '',
+        taskType: (currentIdea?.taskType || 'idea') as IdeaType,
+        connectedToPriority: currentIdea?.connectedToPriority ?? false
       });
       
       console.log('[DEBUG] addIdea returned:', idea ? idea.id : 'null');
@@ -498,11 +498,11 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       {/* Export tasks event listener is set up in a useEffect at the component level */}
 
       {/* Floating Action Buttons */}
-      <div className="fixed bottom-4 right-8 flex flex-col gap-2">
+      <div id="floating-action-buttons" className="fixed bottom-4 right-8 flex flex-col gap-2" style={{ zIndex: 100 }}>
         <Button 
           variant="default" 
           onClick={() => setChatOpen(true)}
-          className="rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-200"
+          className="rounded-full p-3 shadow-lg hover:shadow-2xl hover:scale-110 hover:-translate-y-1.5 hover:bg-primary/90 transition-all duration-300 ease-out active:scale-95 active:shadow-lg"
           aria-label="Open chat assistant"
         >
           <MessageCircle className="h-6 w-6" />
@@ -510,7 +510,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         <Button 
           variant="default" 
           onClick={() => setTaskModalOpen(true)}
-          className="rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-200"
+          className="rounded-full p-3 shadow-lg hover:shadow-2xl hover:scale-110 hover:-translate-y-1.5 hover:bg-primary/90 transition-all duration-300 ease-out active:scale-95 active:shadow-lg"
           aria-label="Add new task"
         >
           <Plus className="h-6 w-6" />
