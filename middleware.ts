@@ -21,11 +21,11 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 export default async function middleware(req: NextRequest, event: NextFetchEvent) {
   // Apply Clerk middleware to ALL routes first to enable getAuth()
   // This doesn't enforce authentication yet, just sets up the auth context
-  await clerkAuth(req, event);
+  const response = await clerkAuth(req, event);
   
   // For API routes, we just use Clerk's default handling
   if (apiRoutePattern.test(req.nextUrl.pathname)) {
-    return NextResponse.next();
+    return response || NextResponse.next();
   }
   try {
     // Get the pathname from the request URL
@@ -50,7 +50,9 @@ export default async function middleware(req: NextRequest, event: NextFetchEvent
     if (isDevelopment) {
       try {
         // Try to get auth, but don't block if it fails
-        const { userId } = getAuth(req);
+        // Use await for getAuth to ensure proper handling of headers
+        const auth = await getAuth(req);
+        const { userId } = auth;
         if (!userId) {
           console.log(`[Dev Mode] Would redirect to sign-in for: ${pathname}`);
           // In development, we'll just allow access anyway
@@ -63,7 +65,9 @@ export default async function middleware(req: NextRequest, event: NextFetchEvent
       }
     } else {
       // Production authentication flow
-      const { userId } = getAuth(req);
+      // Use await for getAuth to ensure proper handling of headers
+      const auth = await getAuth(req);
+      const { userId } = auth;
       
       // If the user is not authenticated and trying to access a protected route,
       // redirect them to the sign-in page
