@@ -1,101 +1,81 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth, clerkMiddleware } from "@clerk/nextjs/server";
 import { NextFetchEvent } from "next/server";
+import { getAuth } from "@clerk/nextjs/server";
 
-// Apply Clerk middleware
-const apiRoutePattern = /^\/api(?!\/webhooks\/polar)/;
-const clerkAuth = clerkMiddleware();
-
-// Define our public routes that don't require authentication
-// Using regex patterns to ensure all paths under sign-in and sign-up are public
-const publicPaths = ["/", "/api/webhooks/polar/health"];
-const publicPatterns = [
-  /^\/sign-in(\/.*)?$/,  // All paths under /sign-in
-  /^\/sign-up(\/.*)?$/   // All paths under /sign-up
-];
-
-// Development mode detection - could be set by Docker or Next.js
+// Development mode detection
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-// The middleware function that Next.js will call for matched routes
-export default async function middleware(req: NextRequest, event: NextFetchEvent) {
-  // Apply Clerk middleware to ALL routes first to enable getAuth()
-  // This doesn't enforce authentication yet, just sets up the auth context
-  const response = await clerkAuth(req, event);
-  
-  // For API routes, we just use Clerk's default handling
-  if (apiRoutePattern.test(req.nextUrl.pathname)) {
-    return response || NextResponse.next();
-  }
-  try {
-    // Get the pathname from the request URL
-    const { pathname } = req.nextUrl;
-    
-    // Check if the path is in our public paths list
-    const isPublicPath = publicPaths.some(path => 
-      pathname === path || pathname.startsWith(`${path}/`)
-    );
-    
-    // Check if the path matches any of our public regex patterns
-    const matchesPublicPattern = publicPatterns.some(pattern => 
-      pattern.test(pathname)
-    );
+// Define public routes that don't require authentication
+const publicRoutes = [
+  "/",                          // Homepage
+  "/sign-in",                   // Sign in page
+  "/sign-in/*",                 // Any sign-in subpaths
+  "/sign-up",                   // Sign up page
+  "/sign-up/*",                 // Any sign-up subpaths
+  "/api/webhooks/polar/health", // Polar webhook health check
+  "/api/webhooks/polar"         // Polar webhook endpoint
+];
 
-    // If the path is public (either in paths list or matches pattern), allow access without authentication
-    if (isPublicPath || matchesPublicPattern) {
+// Create a middleware function using Clerk's authentication
+export default async function middleware(req: NextRequest, _event: NextFetchEvent) {
+
+  try {
+    const { pathname } = req.nextUrl;
+
+    // Check if the path is in our public routes
+    const isPublicRoute = publicRoutes.some(route => {
+      // Handle wildcard routes like /sign-in/*
+      if (route.endsWith('*')) {
+        const baseRoute = route.replace('*', '');
+        return pathname.startsWith(baseRoute);
+      }
+      return pathname === route;
+    });
+
+    // If public route, allow access
+    if (isPublicRoute) {
       return NextResponse.next();
     }
 
-    // In development mode, make authentication optional to help with debugging
-    if (isDevelopment) {
-      try {
-        // Try to get auth, but don't block if it fails
-        // Use await for getAuth to ensure proper handling of headers
-        const auth = await getAuth(req);
-        const { userId } = auth;
-        if (!userId) {
-          console.log(`[Dev Mode] Would redirect to sign-in for: ${pathname}`);
-          // In development, we'll just allow access anyway
-          return NextResponse.next();
-        }
-      } catch (authError) {
-        console.error("[Dev Mode] Auth error:", authError);
-        // Continue in dev mode even if auth fails
+    try {
+      // Get auth state
+      const { userId } = await getAuth(req);
+      
+      // If authenticated or in development, allow access
+      if (userId || isDevelopment) {
         return NextResponse.next();
       }
-    } else {
-      // Production authentication flow
-      // Use await for getAuth to ensure proper handling of headers
-      const auth = await getAuth(req);
-      const { userId } = auth;
       
-      // If the user is not authenticated and trying to access a protected route,
-      // redirect them to the sign-in page
-      if (!userId) {
-        const signInUrl = new URL('/sign-in', req.url);
-        signInUrl.searchParams.set('redirect_url', encodeURI(req.url));
-        return NextResponse.redirect(signInUrl);
+      // In production, redirect unauthenticated users to sign-in
+      const signInUrl = new URL('/sign-in', req.url);
+      signInUrl.searchParams.set('redirect_url', encodeURI(req.url));
+      return NextResponse.redirect(signInUrl);
+    } catch (authError) {
+      // Handle auth errors
+      console.error("Auth error:", authError);
+      
+      // In development, still allow access
+      if (isDevelopment) {
+        console.log(`[Dev Mode] Auth error for: ${pathname}`);
+        return NextResponse.next();
       }
+      
+      // In production, redirect to sign-in
+      const signInUrl = new URL('/sign-in', req.url);
+      return NextResponse.redirect(signInUrl);
     }
-
-    // If the user is authenticated or we're in dev mode, allow access
-    return NextResponse.next();
   } catch (error) {
-    // Catch any unexpected errors to prevent the app from crashing
+    // Catch general errors
     console.error("Middleware error:", error);
-    
-    // In case of any error, we'll allow the request to continue
-    // This prevents the middleware from completely blocking the app
     return NextResponse.next();
   }
 }
 
 export const config = {
   matcher: [
-    // Skip static files and important assets
-    "/((?!.+\\.[\\w]+$|_next/static|_next/image|favicon.ico|.*\\.svg).*)",
-    
-    // Skip health check API
-    "/api/((?!webhooks/polar/health).*)",
+    // Match all paths except static assets, API health check, and public assets
+    "/((?!.*\\..*|_next).*)",
+    "/",
+    "/(api|trpc)(.*)"
   ],
 };
