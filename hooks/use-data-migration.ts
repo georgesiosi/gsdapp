@@ -65,6 +65,7 @@ export function useDataMigration() {
 
       if (data.tasks?.length) {
         for (const task of data.tasks) {
+          const now = new Date().toISOString();
           await addTaskMutation({
             text: task.text,
             quadrant: task.quadrant,
@@ -73,6 +74,8 @@ export function useDataMigration() {
             status: task.status ?? "active",
             description: task.description,
             ...(task.reflection && { reflection: task.reflection }),
+            createdAt: task._creationTime ? new Date(task._creationTime).toISOString() : now,
+            updatedAt: now
           });
           completedItems++;
           setProgress(Math.floor((completedItems / totalItems) * 100));

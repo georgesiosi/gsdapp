@@ -10,14 +10,17 @@ export const testConnection = mutation({
       const userId = await getAuthenticatedUser(ctx);
       
       // Create a test task to verify database write
+      const now = new Date().toISOString();
       const testTaskId = await ctx.db.insert("tasks", {
-        text: "Convex Test Task - " + new Date().toISOString(),
+        text: "Convex Test Task - " + now,
         quadrant: "q4",
         taskType: "personal",
         needsReflection: false,
         status: "active",
         userId,
         order: 9999, // High order to appear at the bottom
+        createdAt: now,
+        updatedAt: now
       });
       
       // Get all user tasks to verify database read
@@ -63,6 +66,8 @@ export const addTask = mutation({
     needsReflection: v.optional(v.boolean()),
     status: v.optional(v.string()),
     description: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -78,6 +83,7 @@ export const addTask = mutation({
       ? Math.max(...existingTasks.map(t => t.order ?? 0))
       : -1;
 
+    const now = new Date().toISOString();
     return await ctx.db.insert("tasks", {
       text: args.text,
       quadrant: args.quadrant,
@@ -87,6 +93,8 @@ export const addTask = mutation({
       description: args.description,
       userId,
       order: maxOrder + 1,
+      createdAt: now,
+      updatedAt: now
     });
   },
 });
@@ -114,6 +122,8 @@ export const updateTask = mutation({
     ),
     completedAt: v.optional(v.string()),
     order: v.optional(v.number()),
+    createdAt: v.optional(v.string()),
+    updatedAt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -126,7 +136,11 @@ export const updateTask = mutation({
 
     // Create update object with only provided fields
     const { id, ...updates } = args;
-    return await ctx.db.patch(args.id, updates);
+    const now = new Date().toISOString();
+    return await ctx.db.patch(args.id, {
+      ...updates,
+      updatedAt: now
+    });
   },
 });
 
@@ -183,8 +197,10 @@ export const reorderTasks = mutation({
 
     // Update order values for all tasks
     for (let i = 0; i < sortedTasks.length; i++) {
+      const now = new Date().toISOString();
       await ctx.db.patch(sortedTasks[i]._id, {
         order: i,
+        updatedAt: now
       });
     }
 
