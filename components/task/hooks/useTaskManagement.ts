@@ -126,6 +126,12 @@ export function useTaskManagement() {
 
       // Return immediately to show the task in Q4 and start AI analysis
       const analyzeTask = async () => {
+        // Ensure we're in analyzing state
+        const toast = (window as any).toast;
+        const dispatchAIThinking = (thinking: boolean) => {
+          window.dispatchEvent(new CustomEvent('aiThinkingChanged', { detail: { thinking } }));
+        };
+        dispatchAIThinking(true);
         // Get OpenAI API key from localStorage
         const openAIKey = localStorage.getItem('openai-api-key');
         
@@ -140,6 +146,21 @@ export function useTaskManagement() {
         }
 
         try {
+          // Get user preferences for analysis
+          const userPrefs = localStorage.getItem('user-preferences');
+          let goal = "";
+          let priority = "";
+          
+          if (userPrefs) {
+            try {
+              const prefs = JSON.parse(userPrefs);
+              goal = prefs.goal || "";
+              priority = prefs.priority || "";
+            } catch (e) {
+              console.warn("Failed to parse user preferences:", e);
+            }
+          }
+
           const response = await fetch("/api/analyze-reflection", {
             method: "POST",
             headers: {
@@ -149,9 +170,10 @@ export function useTaskManagement() {
             body: JSON.stringify({
               task: taskData.text,
               justification: "",
-              goal: "",
-              priority: "",
-              currentQuadrant: "q4" // Always start in Q4 during analysis
+              goal,
+              priority,
+              currentQuadrant: "q4", // Always start in Q4 during analysis
+              personalContext: goal || priority ? `Working towards: ${goal}. Current priority: ${priority}` : undefined
             }),
           });
           
@@ -186,14 +208,18 @@ export function useTaskManagement() {
           });
 
           // Show success toast if quadrant changed
-          if (targetQuadrant !== "q4") {
+          if (targetQuadrant !== "q4" || taskType !== "personal") {
             const toast = (window as any).toast;
             if (toast) {
               toast.success(
-                `Task analyzed and moved to ${targetQuadrant.toUpperCase()}: ${result.reasoning?.split('.')[0] || 'Based on AI analysis'}`
+                `Task analyzed: ${result.reasoning?.split('.')[0] || 'Based on AI analysis'}. ` +
+                `Moved to ${targetQuadrant.toUpperCase()} as ${taskType} task.`
               );
             }
           }
+          
+          // Analysis complete
+          dispatchAIThinking(false);
         } catch (analysisError) {
           console.error("Error analyzing task:", analysisError);
           const toast = (window as any).toast;
@@ -203,6 +229,7 @@ export function useTaskManagement() {
               `Task will remain in Q4. AI analysis failed: ${errorMessage}. Please check your API key and try again.`
             );
           }
+          dispatchAIThinking(false);
         }
       };
 

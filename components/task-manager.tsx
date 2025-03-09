@@ -142,20 +142,30 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     }
   }, [router, toast]);
   
+  // Handle AI thinking state changes
+  const handleAIThinkingChanged = useCallback((event: Event) => {
+    const { detail } = event as CustomEvent;
+    if (detail?.thinking !== undefined) {
+      setIsAIThinking(detail.thinking);
+    }
+  }, []);
+
   // Set up event listeners
   useEffect(() => {
     // Add event listeners
     window.addEventListener('taskUpdated', handleTaskUpdated);
     window.addEventListener('exportTasks', handleExport);
     window.addEventListener('addToIdeasBank', handleAddToIdeasBank);
+    window.addEventListener('aiThinkingChanged', handleAIThinkingChanged);
     
     // Cleanup event listeners
     return () => {
       window.removeEventListener('taskUpdated', handleTaskUpdated);
       window.removeEventListener('exportTasks', handleExport);
       window.removeEventListener('addToIdeasBank', handleAddToIdeasBank);
+      window.removeEventListener('aiThinkingChanged', handleAIThinkingChanged);
     };
-  }, [handleTaskUpdated, handleExport, handleAddToIdeasBank]); // Include all event handlers in deps
+  }, [handleTaskUpdated, handleExport, handleAddToIdeasBank, handleAIThinkingChanged]); // Include all event handlers in deps
 
   const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus) => {
     const task = taskList.find(t => t.id === taskId);
@@ -180,9 +190,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     
     try {
       setTaskModalOpen(false);
-      setIsAIThinking(true);
       
-      const { task, isAnalyzing } = await addTaskWithAIAnalysis({
+      const { task } = await addTaskWithAIAnalysis({
         text,
         quadrant: 'q4',
         status: 'active',
@@ -193,9 +202,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       if (!task) {
         throw new Error('Failed to add task');
       }
-      
-      // isAnalyzing will be true if the AI analysis is running in the background
-      setIsAIThinking(isAnalyzing);
     } catch (error) {
       console.error('Error adding task:', error);
       toast({
