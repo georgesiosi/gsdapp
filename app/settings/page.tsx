@@ -16,14 +16,16 @@ import { recoverFromBackup } from '@/lib/storage'
 import { ConvexTest } from '@/components/convex-test'
 
 export default function SettingsPage() {
-  const { settings, updateSettings } = useSettings()
+  const { settings, updateSettings } = useSettings() as { settings: UserSettings, updateSettings: (newSettings: UserSettings) => Promise<any> }
   const { toast } = useToast()
-  const [isSaving, setIsSaving] = useState(false)
+  const [isTaskSettingsSaving, setIsTaskSettingsSaving] = useState(false)
+  const [isApiKeySaving, setIsApiKeySaving] = useState(false)
   const [isEditingKey, setIsEditingKey] = useState(false)
   const [newApiKey, setNewApiKey] = useState('')
   const [mounted, setMounted] = useState(false)
   const [localKey, setLocalKey] = useState('')
-  const [initialLoad, setInitialLoad] = useState(true)
+  const [taskSettingsSaveSuccess, setTaskSettingsSaveSuccess] = useState(false)
+  const [apiKeySaveSuccess, setApiKeySaveSuccess] = useState(false)
   const defaultTaskSettings: TaskSettings = {
     endOfDayTime: '23:59',
     autoArchiveDelay: 7,
@@ -36,46 +38,50 @@ export default function SettingsPage() {
   )
 
   useEffect(() => {
-    // Only run initialization once
-    if (initialLoad) {
-      setMounted(true)
-      
-      // Try to load API key from localStorage first (it's used for API calls)
-      if (typeof window !== 'undefined') {
-        const storedKey = localStorage.getItem('openai-api-key')
-        if (storedKey) {
-          console.log('Loaded API key from localStorage')
-          setLocalKey(storedKey)
-        } else if (settings.openAIKey) {
-          // If not in localStorage but in settings, set both
-          setLocalKey(settings.openAIKey)
-          localStorage.setItem('openai-api-key', settings.openAIKey)
-          console.log('Synced API key from settings to localStorage')
-        }
-      } else if (settings.openAIKey) {
-        // Fallback to just settings if window is undefined (SSR)
-        setLocalKey(settings.openAIKey)
-      }
-      
-      setInitialLoad(false)
-    }
-  }, [settings.openAIKey, initialLoad])
+    setMounted(true)
+  }, [])
 
-  // Handle updates to settings after initial load
+  // Handle API key initialization and updates
   useEffect(() => {
-    if (!initialLoad && settings.openAIKey) {
-      setLocalKey(settings.openAIKey)
+    if (!mounted) return;
+
+    // Check environment variable first
+    const envKey = process.env.OPENAI_API_KEY;
+    if (envKey) {
+      console.log('[DEBUG-SETTINGS] Using environment API key');
+      setLocalKey(envKey);
+      localStorage.setItem('openai-api-key', envKey);
+      return;
     }
-  }, [settings.openAIKey, initialLoad])
+
+    // Try to load API key from localStorage
+    const storedKey = localStorage.getItem('openai-api-key')
+    if (storedKey && storedKey.startsWith('sk-')) {
+      console.log('[DEBUG-SETTINGS] Using API key from localStorage')
+      setLocalKey(storedKey)
+    } else if (settings.openAIKey && settings.openAIKey.startsWith('sk-')) {
+      // If not in localStorage but in settings, set both
+      setLocalKey(settings.openAIKey)
+      localStorage.setItem('openai-api-key', settings.openAIKey)
+      console.log('[DEBUG-SETTINGS] Synced API key from settings to localStorage')
+    } else {
+      // Clear invalid keys
+      setLocalKey('')
+      localStorage.removeItem('openai-api-key')
+      console.log('[DEBUG-SETTINGS] Cleared invalid API key')
+    }
+  }, [mounted, settings.openAIKey])
+
+
 
   const handleSave = async () => {
-    if (isSaving) {
-      console.log('Save already in progress')
+    if (isTaskSettingsSaving) {
+      console.log('[DEBUG-SETTINGS] Task settings save already in progress')
       return
     }
 
-    console.log('Starting save operation...')
-    setIsSaving(true)
+    console.log('[DEBUG-SETTINGS] Starting task settings save...')
+    setIsTaskSettingsSaving(true)
     
     try {
       // Validate taskSettings before saving
@@ -86,21 +92,28 @@ export default function SettingsPage() {
         throw new Error('Invalid task settings')
       }
 
-      console.log('Creating settings object with:', { taskSettings })
+      console.log('[DEBUG-SETTINGS] Creating settings object with:', { taskSettings })
+      // Filter out Convex metadata fields and only include valid UserSettings fields
       const updatedSettings: UserSettings = {
         goal: settings.goal,
-        openAIKey: settings.openAIKey,
+        openAIKey: localKey || settings.openAIKey,
         licenseKey: settings.licenseKey,
         priority: settings.priority,
-        theme: settings.theme as 'light' | 'dark' | 'system' | undefined,
-        showCompletedTasks: settings.showCompletedTasks,
-        autoAnalyze: settings.autoAnalyze,
-        taskSettings
+        theme: settings.theme as 'light' | 'dark' | 'system',
+        showCompletedTasks: settings.showCompletedTasks ?? true,
+        autoAnalyze: settings.autoAnalyze ?? false,
+        syncApiKey: settings.syncApiKey ?? false,
+        taskSettings: {
+          endOfDayTime: taskSettings.endOfDayTime,
+          autoArchiveDelay: taskSettings.autoArchiveDelay,
+          gracePeriod: taskSettings.gracePeriod,
+          retainRecurringTasks: taskSettings.retainRecurringTasks
+        }
       }
       
-      console.log('Calling updateSettings...')
+      console.log('[DEBUG-SETTINGS] Calling updateSettings...')
       const result = await updateSettings(updatedSettings)
-      console.log('Update result:', result)
+      console.log('[DEBUG-SETTINGS] Update result:', result)
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to save settings')
@@ -111,8 +124,12 @@ export default function SettingsPage() {
         description: "Your changes have been saved successfully.",
         duration: 2000
       })
+      
+      // Show success indicator
+      setTaskSettingsSaveSuccess(true)
+      setTimeout(() => setTaskSettingsSaveSuccess(false), 3000)
     } catch (error) {
-      console.error('Error saving settings:', error)
+      console.error('[DEBUG-SETTINGS] Error saving settings:', error)
       toast({
         title: "Error Saving Settings",
         description: error instanceof Error ? error.message : "Failed to save settings",
@@ -120,8 +137,8 @@ export default function SettingsPage() {
         duration: 4000
       })
     } finally {
-      console.log('Save operation complete')
-      setIsSaving(false)
+      console.log('[DEBUG-SETTINGS] Task settings save complete')
+      setIsTaskSettingsSaving(false)
     }
   }
 
@@ -135,15 +152,27 @@ export default function SettingsPage() {
   }
 
   const handleSaveKey = async () => {
-    if (isSaving) {
-      console.log('Key save already in progress')
+    if (isApiKeySaving) {
+      console.log('[DEBUG-SETTINGS] Key save already in progress')
       return
     }
 
-    console.log('Starting key save operation...')
-    setIsSaving(true)
+    console.log('[DEBUG-SETTINGS] Starting key save operation...')
+    setIsApiKeySaving(true)
     
     try {
+      // Check if we're using an environment variable
+      const envKey = process.env.OPENAI_API_KEY;
+      if (envKey) {
+        toast({
+          title: "Environment Variable Used",
+          description: "OpenAI API key is set via environment variable. This cannot be changed in settings.",
+          duration: 4000
+        });
+        setIsApiKeySaving(false);
+        return;
+      }
+
       const keyToSave = isEditingKey ? newApiKey : localKey
       if (!keyToSave) {
         throw new Error('Please enter an API key')
@@ -153,43 +182,55 @@ export default function SettingsPage() {
         throw new Error('Invalid API key format. Key should start with sk-')
       }
 
-      console.log('Creating settings object for key save...')
+      console.log('[DEBUG-SETTINGS] Creating settings object for key save...')
+      // Preserve all existing settings and only update the openAIKey
+      // Filter out Convex metadata fields and only include valid UserSettings fields
       const updatedSettings: UserSettings = {
         goal: settings.goal,
         openAIKey: keyToSave,
         licenseKey: settings.licenseKey,
         priority: settings.priority,
-        theme: settings.theme as 'light' | 'dark' | 'system' | undefined,
-        showCompletedTasks: settings.showCompletedTasks,
-        autoAnalyze: settings.autoAnalyze,
-        taskSettings: settings.taskSettings || defaultTaskSettings
+        theme: settings.theme as 'light' | 'dark' | 'system',
+        showCompletedTasks: settings.showCompletedTasks ?? true,
+        autoAnalyze: settings.autoAnalyze ?? false,
+        syncApiKey: settings.syncApiKey ?? false,
+        taskSettings: settings.taskSettings ? {
+          endOfDayTime: settings.taskSettings.endOfDayTime,
+          autoArchiveDelay: settings.taskSettings.autoArchiveDelay,
+          gracePeriod: settings.taskSettings.gracePeriod,
+          retainRecurringTasks: settings.taskSettings.retainRecurringTasks
+        } : defaultTaskSettings
       }
       
       // Save to localStorage for API requests
       if (typeof window !== 'undefined') {
         localStorage.setItem('openai-api-key', keyToSave)
-        console.log('Saved API key to localStorage')
+        console.log('[DEBUG-SETTINGS] Saved API key to localStorage')
       }
       
-      console.log('Calling updateSettings for key...')
+      console.log('[DEBUG-SETTINGS] Calling updateSettings for key...')
       const result = await updateSettings(updatedSettings)
-      console.log('Key update result:', result)
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to save API key')
       }
 
+      console.log('[DEBUG-SETTINGS] Save successful')
       setLocalKey(keyToSave)
       setIsEditingKey(false)
       setNewApiKey('')
-
+      
       toast({
         title: "API Key Saved",
         description: "Your OpenAI API key has been saved successfully.",
         duration: 2000
       })
+      
+      // Show success indicator
+      setApiKeySaveSuccess(true)
+      setTimeout(() => setApiKeySaveSuccess(false), 3000)
     } catch (error) {
-      console.error('Error saving API key:', error)
+      console.error('[DEBUG-SETTINGS] Error saving API key:', error)
       toast({
         title: "Error Saving API Key",
         description: error instanceof Error ? error.message : "Failed to save API key",
@@ -197,8 +238,8 @@ export default function SettingsPage() {
         duration: 4000
       })
     } finally {
-      console.log('Key save operation complete')
-      setIsSaving(false)
+      console.log('[DEBUG-SETTINGS] Key save operation complete')
+      setIsApiKeySaving(false)
     }
   }
 
@@ -231,7 +272,7 @@ export default function SettingsPage() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="openAIKey">OpenAI API Key</Label>
-                  {settings.openAIKey && !isEditingKey && (
+                  {mounted && localKey && localKey.startsWith('sk-') && !isEditingKey && (
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -248,11 +289,11 @@ export default function SettingsPage() {
                   <Input
                     id="openAIKey"
                     type="password"
-                    value={isEditingKey ? newApiKey : (mounted ? localKey : '')}
+                    value={!mounted ? '' : (isEditingKey ? newApiKey : localKey)}
                     onChange={handleKeyChange}
                     placeholder="sk-..."
-                    className="font-mono"
-                    disabled={!!(localKey && !isEditingKey)}
+                    className={`font-mono ${(!localKey || !localKey.startsWith('sk-') || isEditingKey) ? 'border-yellow-500' : ''}`}
+                    disabled={!!(localKey && localKey.startsWith('sk-') && !isEditingKey)}
                   />
                   {isEditingKey && (
                     <div className="flex gap-2">
@@ -260,9 +301,9 @@ export default function SettingsPage() {
                         variant="default"
                         size="default"
                         onClick={handleSaveKey}
-                        disabled={isSaving}
+                        disabled={isApiKeySaving}
                       >
-                        {isSaving ? (
+                        {isApiKeySaving ? (
                           <span className="inline-flex items-center">
                             <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -278,15 +319,15 @@ export default function SettingsPage() {
                         variant="outline"
                         size="default"
                         onClick={handleCancelEdit}
-                        disabled={isSaving}
+                        disabled={isApiKeySaving}
                       >
                         Cancel
                       </Button>
                     </div>
                   )}
                 </div>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  {settings.openAIKey ? (
+                <div className="text-sm text-muted-foreground space-y-2">
+                  {localKey ? (
                     <p>Your API key is securely stored. Click "Change Key" to update it.</p>
                   ) : (
                     <>
@@ -303,6 +344,29 @@ export default function SettingsPage() {
                       </p>
                     </>
                   )}
+                  <div className="pt-2 border-t">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="syncApiKey">Cloud Sync</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Sync your API key across devices (less secure)
+                        </p>
+                      </div>
+                      <Switch
+                        id="syncApiKey"
+                        checked={settings.syncApiKey || false}
+                        onCheckedChange={(checked) => {
+                          const updatedSettings = {
+                            ...settings,
+                            syncApiKey: checked,
+                            // Only include API key in cloud if sync is enabled
+                            openAIKey: checked ? localKey : undefined
+                          };
+                          updateSettings(updatedSettings);
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -372,9 +436,9 @@ export default function SettingsPage() {
               <Button 
                 onClick={handleSave} 
                 className="w-full relative" 
-                disabled={isSaving}
+                disabled={isTaskSettingsSaving}
               >
-                {isSaving ? (
+                {isTaskSettingsSaving ? (
                   <span className="inline-flex items-center">
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -384,11 +448,22 @@ export default function SettingsPage() {
                   </span>
                 ) : (
                   <span className="inline-flex items-center">
-                    Save Changes
-                    {settings.taskSettings !== taskSettings && (
-                      <span className="ml-2 text-xs bg-primary/20 px-1.5 py-0.5 rounded">
-                        Unsaved changes
+                    {taskSettingsSaveSuccess ? (
+                      <span className="text-green-500 flex items-center">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Saved Successfully
                       </span>
+                    ) : (
+                      <>
+                        Save Changes
+                        {JSON.stringify(settings.taskSettings) !== JSON.stringify(taskSettings) && (
+                          <span className="ml-2 text-xs bg-primary/20 px-1.5 py-0.5 rounded">
+                            Unsaved Changes
+                          </span>
+                        )}
+                      </>
                     )}
                   </span>
                 )}
