@@ -16,13 +16,25 @@ import { TaskCreationSuggestions } from "@/components/ui/task-creation-suggestio
 interface TaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddTask: (text: string, quadrant: string) => void
+  onAddTask: (text: string) => void
   isAIThinking?: boolean
+  aiReasoning?: string
+  targetQuadrant?: string
 }
 
-export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false }: TaskModalProps) {
+export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false, aiReasoning, targetQuadrant }: TaskModalProps) {
   const [newTask, setNewTask] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Debug log props
+  useEffect(() => {
+    console.log('[DEBUG TaskModal] Props received:', { 
+      isOpen: open, 
+      isAIThinking, 
+      aiReasoning, 
+      targetQuadrant 
+    });
+  }, [open, isAIThinking, aiReasoning, targetQuadrant]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -36,10 +48,11 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false 
     e.preventDefault()
     if (newTask.trim() && !isSubmitting) {
       setIsSubmitting(true)
-      onAddTask(newTask.trim(), "q4") // Default to quadrant 4 (not urgent, not important)
+      console.log('[DEBUG] Submitting task:', newTask.trim());
+      onAddTask(newTask.trim()) // The quadrant will be determined by AI
+      // Note: We don't close the modal here - it will be closed after AI analysis
       setNewTask("")
       setIsSubmitting(false)
-      onOpenChange(false)
     }
   }
 
@@ -65,6 +78,14 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false 
             Add New Task
             {isAIThinking && <AIThinkingIndicator isThinking={isAIThinking} className="ml-2" />}
           </DialogTitle>
+          {aiReasoning && (
+            <div className="mt-2 text-sm text-muted-foreground">
+              <p>AI Analysis: {aiReasoning}</p>
+              {targetQuadrant && (
+                <p className="mt-1">Suggested Quadrant: {targetQuadrant.toUpperCase()}</p>
+              )}
+            </div>
+          )}
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -76,10 +97,10 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false 
                   value={newTask}
                   onChange={(e) => setNewTask(e.target.value)}
                   autoFocus
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isAIThinking}
                 />
                 <p className="text-xs text-muted-foreground">
-                  💡 Prefix with "idea:" to save to Ideas Bank
+                  {isAIThinking ? '🤔 AI is analyzing your task...' : '💡 Prefix with "idea:" to save to Ideas Bank'}
                 </p>
               </div>
               <TaskCreationSuggestions taskText={newTask} />
