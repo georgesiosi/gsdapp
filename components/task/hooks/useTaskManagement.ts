@@ -124,8 +124,8 @@ export function useTaskManagement() {
         order: 0 // Default order for new tasks
       };
 
-      // Return immediately to show the task in Q4
-      setTimeout(async () => {
+      // Return immediately to show the task in Q4 and start AI analysis
+      const analyzeTask = async () => {
         // Get OpenAI API key from localStorage
         const openAIKey = localStorage.getItem('openai-api-key');
         
@@ -170,16 +170,18 @@ export function useTaskManagement() {
           const targetQuadrant = result.suggestedQuadrant || "q4";
           const taskType = result.taskType || taskData.taskType || "personal";
           
+          const now = new Date().toISOString();
           await updateTaskMutation({
             id: toConvexId(taskId),
             quadrant: targetQuadrant,
             taskType: taskType,
+            updatedAt: now,
             reflection: result.reasoning ? {
               justification: result.reasoning,
               aiAnalysis: JSON.stringify(result),
               suggestedQuadrant: targetQuadrant,
               finalQuadrant: targetQuadrant,
-              reflectedAt: new Date().toISOString(),
+              reflectedAt: now,
             } : undefined,
           });
 
@@ -202,7 +204,10 @@ export function useTaskManagement() {
             );
           }
         }
-      }, 100);
+      };
+
+      // Start AI analysis in the background
+      analyzeTask();
 
       return { task, isAnalyzing: true };
     } catch (error) {
