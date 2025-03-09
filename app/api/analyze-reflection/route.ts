@@ -23,12 +23,21 @@ function createOpenAIClient(apiKey: string | null) {
 
 export async function POST(request: Request) {
   try {
-    // Get user's OpenAI API key from headers
+    // Get user's OpenAI API key from headers or environment
     const openAIKey = request.headers.get('x-openai-key') || process.env.OPENAI_API_KEY;
     if (!openAIKey) {
       console.error("[API] OpenAI API key not provided");
       return NextResponse.json(
         { error: 'OpenAI API key is required. Please add your API key in Settings.' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate API key format
+    if (!openAIKey.startsWith('sk-')) {
+      console.error("[API] Invalid API key format");
+      return NextResponse.json(
+        { error: 'Invalid OpenAI API key format. API keys should start with "sk-"' },
         { status: 400 }
       );
     }

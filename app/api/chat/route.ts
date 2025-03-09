@@ -6,8 +6,17 @@ type MessageRole = 'system' | 'user' | 'assistant';
 // Create OpenAI client with user's API key
 function createOpenAIClient(apiKey: string | null) {
   if (!apiKey) {
+    console.error('[API-CHAT] Missing OpenAI API key');
     throw new ChatError('OpenAI API key is required', 400);
   }
+  
+  // Validate API key format
+  if (!apiKey.startsWith('sk-')) {
+    console.error('[API-CHAT] Invalid OpenAI API key format');
+    throw new ChatError('Invalid OpenAI API key format. API keys should start with "sk-"', 400);
+  }
+  
+  console.log('[API-CHAT] Creating OpenAI client with valid API key, length:', apiKey.length);
   return new OpenAI({ apiKey });
 }
 
@@ -89,11 +98,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get user's OpenAI API key or fall back to environment variable
-    const openAIKey = headers.get('x-openai-key') || process.env.OPENAI_API_KEY;
+    // Get user's OpenAI API key from request header (sent by frontend)
+    let openAIKey = headers.get('x-openai-key');
+    
+    console.log('[API-CHAT] Checking API key sources:', {
+      fromHeader: !!openAIKey,
+      headerLength: openAIKey?.length,
+      fromEnv: !!(process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPEN_API_KEY)
+    });
+    
+    // If not in header, try environment variables
     if (!openAIKey) {
+      openAIKey = process.env.OPENAI_API_KEY || null;
+      
+      if (openAIKey) {
+        console.log('[API-CHAT] Using API key from environment');
+      } else {
+        console.log('[API-CHAT] No API key found in environment variables');
+      }
+    }
+    
+    if (!openAIKey) {
+      console.error('[API-CHAT] No OpenAI API key available from any source');
       return NextResponse.json(
         { error: 'OpenAI API key is required. Please add your API key in Settings.' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate API key format
+    if (!openAIKey.startsWith('sk-')) {
+      console.error('[API-CHAT] Invalid API key format');
+      return NextResponse.json(
+        { error: 'Invalid OpenAI API key format. API keys should start with "sk-"' },
         { status: 400 }
       );
     }
