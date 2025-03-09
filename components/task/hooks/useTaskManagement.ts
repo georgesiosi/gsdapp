@@ -75,9 +75,8 @@ export function useTaskManagement() {
         status: newTask.status || 'active',
         description: newTask.description,
         createdAt: now,
-        updatedAt: now,
-        order: 0 // Default order for new tasks
-      } as ConvexTask);
+        updatedAt: now
+      });
 
       return taskId.toString();
     } catch (error) {

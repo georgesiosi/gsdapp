@@ -65,6 +65,7 @@ export function useDataMigration() {
 
       if (data.tasks?.length) {
         for (const task of data.tasks) {
+          const now = new Date().toISOString();
           await addTaskMutation({
             text: task.text,
             quadrant: task.quadrant,
@@ -72,6 +73,8 @@ export function useDataMigration() {
             needsReflection: task.needsReflection ?? false,
             status: task.status ?? "active",
             description: task.description,
+            createdAt: task.createdAt || task._creationTime?.toString() || now,
+            updatedAt: task.updatedAt || now,
             ...(task.reflection && { reflection: task.reflection })
           });
           completedItems++;

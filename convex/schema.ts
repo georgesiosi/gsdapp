@@ -22,8 +22,8 @@ export default defineSchema({
     completedAt: v.optional(v.string()),
     order: v.optional(v.float64()),
     userId: v.string(),
-    createdAt: v.optional(v.string()), // ISO string of when the task was created
-    updatedAt: v.optional(v.string()), // ISO string of when the task was last updated
+    createdAt: v.string(), // ISO string of when the task was created
+    updatedAt: v.string(), // ISO string of when the task was last updated
   }).index("by_user", ["userId"]),
   
   // Ideas table
