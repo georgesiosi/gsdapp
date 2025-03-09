@@ -1,92 +1,88 @@
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { v4 as uuidv4 } from "uuid"
 import { TaskType, QuadrantType, TaskStatus, Task } from "@/types/task"
 import { getStorage, setStorage } from "@/lib/storage"
 
-export type NewTask = Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
+export type NewTask = {
+  text: string;
+  quadrant: QuadrantType;
+  taskType?: TaskType;
+  needsReflection?: boolean;
+  status?: TaskStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export function useTaskManagement() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [showConfetti, setShowConfetti] = useState(false)
   
+  // Load tasks from storage on mount
+  useEffect(() => {
+    const savedTasks = getStorage('TASKS') as Task[] | null
+    if (savedTasks?.length) {
+      setTasks(savedTasks)
+    }
+  }, [])
+  
   // Use a ref to store the internal update function
+  type TaskResult = { success: boolean; error?: string };
+
+  // Internal functions for task operations
   const internalFunctions = useRef<{
-    updateTaskInternal: (id: string, updates: Partial<Task>) => boolean;
-    deleteTaskInternal: (id: string) => boolean;
+    updateTaskInternal: (id: string, updates: Partial<Task>) => TaskResult;
+    deleteTaskInternal: (id: string) => TaskResult;
   }>({
-    deleteTaskInternal: (id: string): boolean => {
+    deleteTaskInternal: (id: string): TaskResult => {
       try {
-        let taskExists = false;
-        
-        // First, delete the task from storage to ensure it's completely removed
-        try {
-          const savedTasks = getStorage('TASKS');
-          if (savedTasks) {
-            const filteredTasks = savedTasks.filter((t: any) => t.id !== id);
-            setStorage('TASKS', filteredTasks);
-          }
-        } catch (storageError) {
-          console.error(`Failed to remove task ${id} from storage:`, storageError);
-        }
-        
-        // Then update the state to actually remove the task (not just archive it)
         setTasks(prevTasks => {
-          const taskIndex = prevTasks.findIndex(task => task.id === id);
-          if (taskIndex === -1) {
-            return prevTasks;
-          }
-          
-          taskExists = true;
-          const filteredTasks = prevTasks.filter(task => task.id !== id);
-          return filteredTasks;
-        });
-        
-        return taskExists;
+          const filteredTasks = prevTasks.filter(task => task.id !== id)
+          setStorage('TASKS', filteredTasks)
+          return filteredTasks
+        })
+        return { success: true }
       } catch (error) {
-        console.error(`[ERROR] deleteTaskInternal - Error deleting task ${id}:`, error);
-        return false;
+        console.error(`Error deleting task ${id}:`, error)
+        return { success: false, error: 'Failed to delete task' }
       }
     },
-    updateTaskInternal: (id: string, updates: Partial<Task>): boolean => {
+    updateTaskInternal: (id: string, updates: Partial<Task>): TaskResult => {
       try {
-        let updateSuccessful = false;
-        
         setTasks(prevTasks => {
           const taskIndex = prevTasks.findIndex(task => task.id === id)
-          if (taskIndex === -1) {
-            return prevTasks;
-          }
-
-          // Create a new array to ensure React detects the change
-          const updatedTasks = [...prevTasks];
+          if (taskIndex === -1) return prevTasks
           
-          // Update the specific task
-          updatedTasks[taskIndex] = {
-            ...updatedTasks[taskIndex],
+          const updatedTask = {
+            ...prevTasks[taskIndex],
             ...updates,
-            updatedAt: new Date().toISOString(),
-          };
+            updatedAt: new Date().toISOString()
+          }
           
-          updateSuccessful = true;
-          return updatedTasks;
-        });
+          const updatedTasks = [...prevTasks]
+          updatedTasks[taskIndex] = updatedTask
+          
+          // Update storage and notify listeners
+          setStorage('TASKS', updatedTasks)
+          window.dispatchEvent(new CustomEvent('taskUpdated', { 
+            detail: { taskId: id, updates: updatedTask } 
+          }))
+          
+          return updatedTasks
+        })
         
-        return updateSuccessful;
+        return { success: true }
       } catch (error) {
-        console.error("Error updating task:", error);
-        return false;
+        console.error('Error updating task:', error)
+        return { success: false, error: 'Failed to update task' }
       }
     }
   });
 
-  // Migrate task data to include new fields and handle legacy completed flag
-  const migrateTask = (task: Partial<Task> & { completed?: boolean }): Task => {
+  // Ensure task has all required fields with defaults
+  const migrateTask = (task: Partial<Task>): Task => {
     if (!task.id || !task.text || !task.quadrant) {
-      throw new Error('Missing required task fields');
+      throw new Error('Missing required task fields')
     }
-    
-    // Determine status from either status field or legacy completed flag
-    const status = task.status || (task.completed ? 'completed' : 'active');
     
     return {
       id: task.id,
@@ -95,12 +91,13 @@ export function useTaskManagement() {
       taskType: task.taskType || 'personal',
       needsReflection: task.needsReflection || false,
       createdAt: task.createdAt || new Date().toISOString(),
-      completedAt: status === 'completed' ? (task.completedAt || new Date().toISOString()) : undefined,
+      completedAt: task.completedAt,
       updatedAt: task.updatedAt || new Date().toISOString(),
       order: task.order || 0,
-      status
-    };
-  };
+      status: task.status || 'active',
+      description: task.description
+    }
+  }
 
   // Set initial tasks
   const setInitialTasks = useCallback((initialTasks: Task[]) => {
@@ -128,23 +125,31 @@ export function useTaskManagement() {
       
       const baseTask: Omit<Task, 'order'> = {
         id: taskId,
-        ...newTask,
+        text: newTask.text,
+        quadrant: newTask.quadrant,
+        taskType: newTask.taskType ?? 'personal',
+        needsReflection: newTask.needsReflection ?? false,
+        status: newTask.status ?? 'active',
         createdAt: now,
         updatedAt: now,
-        status: newTask.status || 'active',
       };
       
       setTasks(prevTasks => {
         // Find the highest order in this quadrant
         const quadrantTasks = prevTasks.filter(t => t.quadrant === newTask.quadrant);
         const maxOrder = quadrantTasks.length > 0 
-          ? Math.max(...quadrantTasks.map(t => t.order || 0)) 
+          ? Math.max(...quadrantTasks.map(t => t.order ?? 0)) 
           : -1;
         
-        return [...prevTasks, { ...baseTask, order: maxOrder + 1 }];
+        const newTask: Task = { ...baseTask, order: maxOrder + 1 };
+        return [...prevTasks, newTask];
       });
       
-      return { ...baseTask, order: 0 };
+      const task: Task = {
+        ...baseTask,
+        order: 0
+      };
+      return task;
     } catch (error) {
       console.error("Error adding task:", error);
       return null;
@@ -159,8 +164,8 @@ export function useTaskManagement() {
     needsReflection?: boolean,
     status?: TaskStatus,
     taskType?: TaskType,
-    createdAt?: number,
-    updatedAt?: number
+    createdAt?: string,
+    updatedAt?: string
   }): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
     try {
 
@@ -172,8 +177,8 @@ export function useTaskManagement() {
         needsReflection: taskData.needsReflection || false,
         status: taskData.status || 'active',
         taskType: taskData.taskType || 'personal',
-        createdAt: taskData.createdAt || Date.now(),
-        updatedAt: taskData.updatedAt || Date.now()
+        createdAt: taskData.createdAt || new Date().toISOString(),
+        updatedAt: taskData.updatedAt || new Date().toISOString()
       });
       
       if (!task) {
@@ -290,17 +295,17 @@ export function useTaskManagement() {
   }, [addTask]);
 
   // Update a task (exposed function)
-  const updateTask = useCallback((id: string, updates: Partial<Task>): boolean => {
+  const updateTask = useCallback((id: string, updates: Partial<Task>): TaskResult => {
     return internalFunctions.current.updateTaskInternal(id, updates);
   }, []);
 
   // Delete a task
-  const deleteTask = useCallback((id: string): boolean => {
+  const deleteTask = useCallback((id: string): TaskResult => {
     return internalFunctions.current.deleteTaskInternal(id);
   }, [])
 
   // Toggle task completion
-  const toggleTask = useCallback((id: string): boolean => {
+  const toggleTask = useCallback((id: string): { success: boolean; error?: string } => {
     try {
       let isQ1Task = false;
       let wasCompleted = false;
@@ -338,15 +343,15 @@ export function useTaskManagement() {
         setShowConfetti(true);
       }
       
-      return true;
+      return { success: true };
     } catch (error) {
       console.error("Error toggling task:", error);
-      return false;
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
     }
   }, [])
 
   // Reorder tasks within a quadrant
-  const reorderTasks = useCallback((quadrant: QuadrantType, sourceIndex: number, destinationIndex: number): boolean => {
+  const reorderTasks = useCallback((quadrant: QuadrantType, sourceIndex: number, destinationIndex: number): TaskResult => {
     try {
       setTasks(prevTasks => {
         // Get tasks in this quadrant
@@ -378,10 +383,10 @@ export function useTaskManagement() {
           .concat(updatedQuadrantTasks); // Add updated quadrant tasks
       });
       
-      return true;
+      return { success: true };
     } catch (error) {
       console.error("Error reordering tasks:", error);
-      return false;
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
     }
   }, []);
 
