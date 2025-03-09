@@ -66,6 +66,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
 
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [isAIThinking, setIsAIThinking] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState<string>();
+  const [targetQuadrant, setTargetQuadrant] = useState<string>();
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -145,10 +147,76 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   // Handle AI thinking state changes
   const handleAIThinkingChanged = useCallback((event: Event) => {
     const { detail } = event as CustomEvent;
+    console.log('[DEBUG] AI thinking changed event received:', detail);
     if (detail?.thinking !== undefined) {
+      console.log('[DEBUG] Setting isAIThinking state to:', detail.thinking);
       setIsAIThinking(detail.thinking);
+      if (detail.message) {
+        toast({
+          description: detail.message,
+          className: 'bg-card text-card-foreground'
+        });
+      }
+    } else {
+      console.log('[DEBUG] Thinking state undefined in event detail');
     }
-  }, []);
+  }, [toast]);
+
+  // Handle AI analysis errors
+  const handleAIAnalysisError = useCallback((event: Event) => {
+    const { detail } = event as CustomEvent;
+    console.log('[DEBUG] AI analysis error event received:', detail);
+    if (detail?.message) {
+      toast({
+        title: 'AI Analysis Error',
+        description: detail.message,
+        variant: 'destructive'
+      });
+    }
+  }, [toast]);
+
+  // Handle AI analysis completion
+  const handleAIAnalysisComplete = useCallback((event: Event) => {
+    // Extract the details from the event
+    const customEvent = event as CustomEvent;
+    const detail = customEvent.detail;
+    
+    console.log('[DEBUG] AI analysis complete raw event:', event);
+    console.log('[DEBUG] AI analysis complete event detail:', detail);
+    
+    if (detail) {
+      // Log all the properties we're interested in
+      console.log('[DEBUG] Detail properties:', {
+        message: detail.message,
+        reasoning: detail.reasoning,
+        targetQuadrant: detail.targetQuadrant,
+        taskType: detail.taskType,
+        result: detail.result
+      });
+      
+      // Update state with AI analysis results
+      if (detail.reasoning) {
+        console.log('[DEBUG] Setting AI reasoning from event:', detail.reasoning);
+        setAiReasoning(detail.reasoning);
+      }
+      
+      if (detail.targetQuadrant) {
+        console.log('[DEBUG] Setting target quadrant from event:', detail.targetQuadrant);
+        setTargetQuadrant(detail.targetQuadrant);
+      }
+      
+      // Show toast notification
+      if (detail.message) {
+        toast({
+          title: 'AI Analysis Complete',
+          description: detail.message,
+          className: 'bg-card text-card-foreground'
+        });
+      }
+    } else {
+      console.log('[DEBUG] Missing detail in aiAnalysisComplete event');
+    }
+  }, [toast]);
 
   // Set up event listeners
   useEffect(() => {
@@ -157,6 +225,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     window.addEventListener('exportTasks', handleExport);
     window.addEventListener('addToIdeasBank', handleAddToIdeasBank);
     window.addEventListener('aiThinkingChanged', handleAIThinkingChanged);
+    window.addEventListener('aiAnalysisError', handleAIAnalysisError);
+    window.addEventListener('aiAnalysisComplete', handleAIAnalysisComplete);
     
     // Cleanup event listeners
     return () => {
@@ -164,8 +234,18 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       window.removeEventListener('exportTasks', handleExport);
       window.removeEventListener('addToIdeasBank', handleAddToIdeasBank);
       window.removeEventListener('aiThinkingChanged', handleAIThinkingChanged);
+      window.removeEventListener('aiAnalysisError', handleAIAnalysisError);
+      window.removeEventListener('aiAnalysisComplete', handleAIAnalysisComplete);
     };
-  }, [handleTaskUpdated, handleExport, handleAddToIdeasBank, handleAIThinkingChanged]); // Include all event handlers in deps
+  }, [handleTaskUpdated, handleExport, handleAddToIdeasBank, handleAIThinkingChanged, handleAIAnalysisError, handleAIAnalysisComplete]);
+
+  // Reset AI analysis state when modal closes
+  useEffect(() => {
+    if (!taskModalOpen) {
+      setAiReasoning(undefined);
+      setTargetQuadrant(undefined);
+    }
+  }, [taskModalOpen]); // Include all event handlers in deps
 
   const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus) => {
     const task = taskList.find(t => t.id === taskId);
@@ -188,9 +268,15 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   const handleAddTask = async (text: string) => {
     if (!text.trim()) return;
     
+    console.log('[DEBUG handleAddTask] Starting task creation:', text);
+    
     try {
-      setTaskModalOpen(false);
+      // Keep modal open while AI is thinking
+      console.log('[DEBUG handleAddTask] Setting isAIThinking to true');
+      setIsAIThinking(true);
       
+      // We'll keep the modal open to show the AI analysis in progress
+      console.log('[DEBUG handleAddTask] Calling addTaskWithAIAnalysis');
       const { task } = await addTaskWithAIAnalysis({
         text,
         quadrant: 'q4',
@@ -199,17 +285,41 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         needsReflection: false
       });
       
+      console.log('[DEBUG handleAddTask] Task creation result:', task);
+      
       if (!task) {
         throw new Error('Failed to add task');
       }
-    } catch (error) {
-      console.error('Error adding task:', error);
+
+      // Only close the modal when AI analysis is complete
+      // The aiAnalysisComplete event handler will have already updated
+      // the aiReasoning and targetQuadrant state values
+      console.log('[DEBUG handleAddTask] Current AI reasoning:', aiReasoning);
+      console.log('[DEBUG handleAddTask] Current target quadrant:', targetQuadrant);
+      
+      // Don't close the modal immediately - let user see the analysis first
+      setTimeout(() => {
+        console.log('[DEBUG handleAddTask] Closing modal after timeout');
+        setTaskModalOpen(false);
+      }, 1500); // Give user 1.5 seconds to see results
+
+      // Show success message
       toast({
+        description: 'Task added successfully',
+        className: 'bg-card text-card-foreground'
+      });
+    } catch (error) {
+      console.error('[DEBUG handleAddTask] Error adding task:', error);
+      toast({
+        title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to add task',
         variant: 'destructive'
       });
+      // Close modal on error
+      setTaskModalOpen(false);
     } finally {
-      setIsAIThinking(false);
+      // Don't reset AI thinking state here - let the event handlers handle it
+      console.log('[DEBUG handleAddTask] Task addition function completed');
     }
   };
 
@@ -317,7 +427,15 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         />
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 relative">
+        {isAIThinking && (
+          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center">
+            <div className="flex flex-col items-center space-y-4 p-6 rounded-lg bg-card shadow-lg">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-muted-foreground">AI is analyzing your task...</p>
+            </div>
+          </div>
+        )}
         <EisenhowerMatrix
           tasks={taskList
             .filter(t => t.status === 'active' || 
@@ -347,6 +465,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         onOpenChange={setTaskModalOpen}
         onAddTask={handleAddTask}
         isAIThinking={isAIThinking}
+        aiReasoning={aiReasoning}
+        targetQuadrant={targetQuadrant}
       />
       
       <div className="mt-6 mb-2">
