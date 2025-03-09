@@ -65,6 +65,8 @@ export const addTask = mutation({
     needsReflection: v.optional(v.boolean()),
     status: v.optional(v.string()),
     description: v.optional(v.string()),
+    createdAt: v.optional(v.string()),
+    updatedAt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);

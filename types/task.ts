@@ -48,6 +48,10 @@ export interface Task {
   userId: string;
   /** Creation timestamp */
   _creationTime: number;
+  /** ISO string of when the task was created */
+  createdAt: string;
+  /** ISO string of when the task was last updated */
+  updatedAt: string;
 }
 
 /**
@@ -66,6 +70,8 @@ export interface ConvexTask {
   completedAt?: string;
   order?: number;
   userId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Idea interface

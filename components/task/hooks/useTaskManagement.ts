@@ -14,20 +14,27 @@ export type NewTask = {
 };
 
 // Helper function to convert ConvexTask to UI Task
-const adaptConvexTask = (convexTask: ConvexTask): Task => ({
-  id: convexTask._id.toString(),
-  text: convexTask.text,
-  description: convexTask.description,
-  quadrant: convexTask.quadrant,
-  taskType: convexTask.taskType,
-  status: convexTask.status,
-  needsReflection: convexTask.needsReflection,
-  reflection: convexTask.reflection,
-  completedAt: convexTask.completedAt,
-  order: convexTask.order,
-  userId: convexTask.userId,
-  _creationTime: convexTask._creationTime
-});
+const adaptConvexTask = (convexTask: ConvexTask): Task => {
+  // Convert _creationTime to ISO string if createdAt/updatedAt not present (legacy tasks)
+  const creationDate = new Date(convexTask._creationTime / 1000).toISOString();
+  
+  return {
+    id: convexTask._id.toString(),
+    text: convexTask.text,
+    description: convexTask.description,
+    quadrant: convexTask.quadrant,
+    taskType: convexTask.taskType,
+    status: convexTask.status,
+    needsReflection: convexTask.needsReflection,
+    reflection: convexTask.reflection,
+    completedAt: convexTask.completedAt,
+    order: convexTask.order,
+    userId: convexTask.userId,
+    _creationTime: convexTask._creationTime,
+    createdAt: convexTask.createdAt || creationDate,
+    updatedAt: convexTask.updatedAt || creationDate
+  };
+};
 
 // Helper function to convert string ID to Convex ID
 const toConvexId = (id: string): Id<"tasks"> => id as unknown as Id<"tasks">;
@@ -59,6 +66,7 @@ export function useTaskManagement() {
   // Add a new task
   const addTask = useCallback(async (newTask: NewTask): Promise<string | null> => {
     try {
+      const now = new Date().toISOString();
       const taskId = await addTaskMutation({
         text: newTask.text,
         quadrant: newTask.quadrant,
@@ -66,7 +74,10 @@ export function useTaskManagement() {
         needsReflection: newTask.needsReflection || false,
         status: newTask.status || 'active',
         description: newTask.description,
-      });
+        createdAt: now,
+        updatedAt: now,
+        order: 0 // Default order for new tasks
+      } as ConvexTask);
 
       return taskId.toString();
     } catch (error) {
@@ -99,6 +110,7 @@ export function useTaskManagement() {
       }
 
       // Create a temporary task object
+      const now = new Date().toISOString();
       const task: Task = {
         id: taskId,
         text: taskData.text,
@@ -108,6 +120,9 @@ export function useTaskManagement() {
         status: taskData.status || "active",
         userId: "", // Will be set by Convex
         _creationTime: Date.now(),
+        createdAt: now,
+        updatedAt: now,
+        order: 0 // Default order for new tasks
       };
 
       // Return immediately to show the task in Q4

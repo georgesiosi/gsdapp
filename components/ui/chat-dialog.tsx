@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { ChevronDown, ChevronUp } from "lucide-react"
-import { Task } from "@/types/task"
+import { Task, UserSettings } from "@/types/task"
 import { cn } from "@/lib/utils"
 import { v4 as uuidv4 } from 'uuid'
 import * as Tooltip from '@radix-ui/react-tooltip'
@@ -188,16 +188,71 @@ const MessageBubble = memo(function MessageBubble({
 })
 
 function ChatDialogComponent({ open, onOpenChange, tasks, userContext }: ChatDialogProps) {
-  const { settings, updateSettings } = useSettings()
+  const { settings, saveSettings } = useSettings()
   const [mounted, setMounted] = useState<boolean>(false)
-
-  // Initialize OpenAI key from environment variable if not set
+  const [localApiKey, setLocalApiKey] = useState<string | null>(null)
+  const apiKeyRef = useRef<string | null>(null)
+  
+  // More robust API key initialization and synchronization
   useEffect(() => {
-    const envKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
-    if (settings && envKey && !settings.openAIKey) {
-      updateSettings({ ...settings, openAIKey: envKey })
-    }
-  }, [settings, updateSettings])
+    if (!open) return; // Only run when dialog is opened
+    
+    console.log('[DEBUG-CHAT] Initializing and synchronizing API key sources');
+    
+    // Get API key from all possible sources
+    const syncApiKey = () => {
+      // Priority order: localStorage > settings > environment variable
+      
+      // 1. Check localStorage first (highest priority)
+      if (typeof window !== 'undefined') {
+        const storedKey = localStorage.getItem('openai-api-key');
+        if (storedKey) {
+          console.log('[DEBUG-CHAT] Found API key in localStorage, length:', storedKey.length);
+          setLocalApiKey(storedKey);
+          apiKeyRef.current = storedKey;
+          
+          // Sync to settings if different
+          if (!settings.openAIKey || settings.openAIKey !== storedKey) {
+            console.log('[DEBUG-CHAT] Syncing localStorage key to settings');
+            saveSettings({ openAIKey: storedKey });
+          }
+          return storedKey;
+        }
+      }
+      
+      // 2. Check settings object
+      if (settings.openAIKey) {
+        console.log('[DEBUG-CHAT] Found API key in settings, length:', settings.openAIKey.length);
+        setLocalApiKey(settings.openAIKey);
+        apiKeyRef.current = settings.openAIKey;
+        
+        // Sync to localStorage
+        if (typeof window !== 'undefined') {
+          console.log('[DEBUG-CHAT] Syncing settings key to localStorage');
+          localStorage.setItem('openai-api-key', settings.openAIKey);
+        }
+        return settings.openAIKey;
+      }
+      
+      // 3. Check environment variable as last resort
+      const envKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+      if (envKey) {
+        console.log('[DEBUG-CHAT] Using API key from environment variable');
+        setLocalApiKey(envKey);
+        apiKeyRef.current = envKey;
+        saveSettings({ openAIKey: envKey });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('openai-api-key', envKey);
+        }
+        return envKey;
+      }
+      
+      console.log('[DEBUG-CHAT] No API key found from any source');
+      return null;
+    };
+    
+    syncApiKey();
+  }, [open, settings.openAIKey, saveSettings]);
   const [error, setError] = useState<ChatError | null>(null)
   const [isSystemMessageCollapsed, setIsSystemMessageCollapsed] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -376,13 +431,32 @@ You have access to real-time task data. Please provide specific, contextual resp
         content: input.trim()
       }
 
-      // Check for OpenAI API key
-      if (!settings.openAIKey) {
+          // Get the OpenAI API key from localStorage
+      const openAIKey = typeof window !== 'undefined' ? localStorage.getItem('openai-api-key') : null;
+      
+      console.log('[DEBUG-CHAT] API key check:', {
+        hasKey: !!openAIKey,
+        keyLength: openAIKey?.length,
+        hasLocalStorage: typeof window !== 'undefined'
+      });
+      
+      if (!openAIKey) {
+        console.error('[DEBUG-CHAT] No API key found in localStorage');
         setError({
           message: 'OpenAI API key is required. Please add your API key in Settings.',
           code: 'NO_API_KEY'
-        })
-        return
+        });
+        return;
+      }
+      
+      // Validate API key format
+      if (!openAIKey.startsWith('sk-')) {
+        console.error('[DEBUG-CHAT] Invalid API key format');
+        setError({
+          message: 'Invalid OpenAI API key format. API keys should start with "sk-"',
+          code: 'INVALID_API_KEY'
+        });
+        return;
       }
 
       setMessages(prev => [...prev, userMessage])
@@ -405,7 +479,7 @@ You have access to real-time task data. Please provide specific, contextual resp
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'text/event-stream',
-            'x-openai-key': settings.openAIKey || '',
+            'x-openai-key': openAIKey,
             'x-license-key': settings.licenseKey || 'LEGACY_ACCESS' // Use LEGACY_ACCESS as fallback
           },
           body: JSON.stringify({
@@ -440,7 +514,7 @@ You have access to real-time task data. Please provide specific, contextual resp
         abortController.current = null
       }
     },
-    [input, isLoading, messages, tasks, userContext, isSystemMessageCollapsed, settings]
+    [input, isLoading, messages, tasks, userContext, isSystemMessageCollapsed, settings, localApiKey]
   )
 
   // Handle initial mount and system message collapse
