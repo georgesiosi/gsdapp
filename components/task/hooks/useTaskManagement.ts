@@ -3,6 +3,35 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Task, QuadrantType, TaskStatus, TaskType, ConvexTask } from "@/types/task";
+import { ReasoningLogService } from "@/services/ai/reasoningLogService";
+
+// Define event types and interfaces
+// Define event types and interfaces
+type AIEventDetail = {
+  aiThinkingChanged: { thinking: boolean; message?: string };
+  aiAnalysisComplete: { 
+    message: string;
+    result?: any;
+    targetQuadrant?: string;
+    taskType?: string;
+    reasoning?: string;
+  };
+  aiAnalysisError: { error: string; message: string };
+};
+
+type AIEventType = keyof AIEventDetail;
+
+// Helper function to dispatch events
+const dispatchAIEvent = <T extends AIEventType>(eventType: T, detail: AIEventDetail[T]) => {
+  console.log(`[DEBUG] Dispatching ${eventType} event with detail:`, detail);
+  const event = new CustomEvent(eventType, { detail });
+  window.dispatchEvent(event);
+};
+
+// Helper function to dispatch AI thinking state
+const dispatchThinkingState = (thinking: boolean, message?: string) => {
+  dispatchAIEvent('aiThinkingChanged', { thinking, message });
+};
 
 export type NewTask = {
   text: string;
@@ -125,111 +154,299 @@ export function useTaskManagement() {
       };
 
       // Return immediately to show the task in Q4 and start AI analysis
-      const analyzeTask = async () => {
-        // Ensure we're in analyzing state
-        const toast = (window as any).toast;
-        const dispatchAIThinking = (thinking: boolean) => {
-          window.dispatchEvent(new CustomEvent('aiThinkingChanged', { detail: { thinking } }));
-        };
-        dispatchAIThinking(true);
-        // Get OpenAI API key from localStorage
-        const openAIKey = localStorage.getItem('openai-api-key');
+      const analyzeTask = async (retryCount = 0, maxRetries = 3) => {
+        // Calculate exponential backoff delay
+        const backoffDelay = retryCount > 0 ? Math.min(1000 * Math.pow(2, retryCount - 1), 10000) : 0;
         
-        if (!openAIKey) {
-          const toast = (window as any).toast;
-          if (toast) {
-            toast.error(
-              'Task added to Q4. AI analysis skipped: No OpenAI API key found. Add your API key in Settings to enable AI analysis.'
-            );
-          }
+        if (retryCount > 0) {
+          // Wait for backoff delay before retrying
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          
+          dispatchThinkingState(true, `Retrying AI analysis (attempt ${retryCount + 1} of ${maxRetries + 1})...`);
+        }
+        // Don't retry more than maxRetries times
+        if (retryCount >= maxRetries) {
+          dispatchAIEvent('aiAnalysisError', { 
+            error: 'Max retries exceeded',
+            message: `Failed to analyze task after ${maxRetries + 1} attempts. The task will remain in Q4. Please try again later or check your settings.` 
+          });
           return;
         }
+        
+        // Track start time for this attempt
+        const startTime = Date.now();
+        // Get OpenAI API key and sync preference from localStorage
+        const openAIKey = localStorage.getItem('openai-api-key');
+        const userPrefs = localStorage.getItem('user-preferences');
+        let syncApiKey = false;
+        
+        try {
+          if (userPrefs) {
+            const prefs = JSON.parse(userPrefs);
+            syncApiKey = prefs.syncApiKey || false;
+          }
+        } catch (e) {
+          console.warn("Failed to parse user preferences:", e);
+        }
+        
+        if (!openAIKey) {
+          dispatchAIEvent('aiAnalysisError', { 
+            error: 'No OpenAI API key found',
+            message: `Task added to Q4. AI analysis skipped: No OpenAI API key found. ${syncApiKey ? 'Please set up your API key in Settings.' : 'Add your API key in Settings to enable AI analysis.'}`
+          });
+          return;
+        }
+        
+        // Validate API key format
+        if (!openAIKey.startsWith('sk-')) {
+          dispatchAIEvent('aiAnalysisError', { 
+            error: 'Invalid API key format',
+            message: 'Task added to Q4. AI analysis skipped: Invalid API key format. API keys should start with "sk-".' 
+          });
+          return;
+        }
+
+        // Notify that AI is starting analysis
+        dispatchAIEvent('aiThinkingChanged', { 
+          thinking: true,
+          message: 'Analyzing task with AI...' 
+        });
 
         try {
           // Get user preferences for analysis
           const userPrefs = localStorage.getItem('user-preferences');
           let goal = "";
           let priority = "";
+          let personalContext = "";
           
           if (userPrefs) {
             try {
               const prefs = JSON.parse(userPrefs);
               goal = prefs.goal || "";
               priority = prefs.priority || "";
+              
+              // Build a comprehensive personal context
+              const contexts = [];
+              if (goal) contexts.push(`Working towards: ${goal}`);
+              if (priority) contexts.push(`Current priority: ${priority}`);
+              if (prefs.taskSettings?.focusAreas) {
+                contexts.push(`Focus areas: ${prefs.taskSettings.focusAreas.join(', ')}`);
+              }
+              personalContext = contexts.join('. ');
             } catch (e) {
               console.warn("Failed to parse user preferences:", e);
+              dispatchAIEvent('aiAnalysisError', { 
+                error: e instanceof Error ? e.message : 'Failed to parse preferences',
+                message: 'Warning: Could not load user preferences. AI analysis may be less accurate.' 
+              });
             }
           }
 
-          const response = await fetch("/api/analyze-reflection", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-openai-key": openAIKey,
-            },
-            body: JSON.stringify({
+          // Set up timeout for fetch request
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+          
+          let response: Response;
+          try {
+            response = await fetch("/api/analyze-reflection", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-openai-key": openAIKey,
+              },
+              signal: controller.signal,
+              body: JSON.stringify({
               task: taskData.text,
               justification: "",
               goal,
               priority,
               currentQuadrant: "q4", // Always start in Q4 during analysis
-              personalContext: goal || priority ? `Working towards: ${goal}. Current priority: ${priority}` : undefined
+              personalContext: personalContext || undefined
             }),
           });
           
+          // Handle rate limiting and retries
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('retry-after') || '5';
+            const waitTime = parseInt(retryAfter, 10) * 1000;
+            
+            dispatchAIEvent('aiAnalysisError', { 
+              error: 'Rate limit exceeded',
+              message: `Rate limit exceeded. Retrying in ${Math.ceil(waitTime/1000)} seconds...` 
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            const elapsedTime = Date.now() - startTime;
+            console.log(`AI analysis attempt ${retryCount + 1} failed after ${elapsedTime}ms. Retrying...`);
+            return analyzeTask(retryCount + 1, maxRetries);
+          }
+          } catch (error: unknown) {
+            // Handle network errors and timeouts
+            const networkError = error as Error;
+            const isTimeout = networkError instanceof Error && networkError.name === 'AbortError';
+            const elapsedTime = Date.now() - startTime;
+            
+            console.error(
+              `AI analysis network error after ${elapsedTime}ms:`,
+              networkError,
+              `Retry count: ${retryCount}`
+            );
+            
+            dispatchAIEvent('aiAnalysisError', { 
+              error: networkError instanceof Error ? networkError.message : 'Unknown error',
+              message: isTimeout 
+                ? 'AI analysis timed out. Please try again.'
+                : 'Network error during AI analysis. Please check your connection.'
+            });
+            
+            // Retry on network errors
+            return analyzeTask(retryCount + 1, maxRetries);
+          } finally {
+            clearTimeout(timeout);
+          }
+          
+          // Handle other errors
           if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`Failed to analyze task: ${response.status} ${response.statusText}\n${errorText}`);
+            const error = `Failed to analyze task: ${response.status} ${response.statusText}\n${errorText}`;
+            
+            // Check if it's an authentication error
+            if (response.status === 401 || response.status === 403) {
+              dispatchAIEvent('aiAnalysisError', { 
+                error,
+                message: 'Authentication failed. Please check your API key in Settings.' 
+              });
+            } else {
+              dispatchAIEvent('aiAnalysisError', { 
+                error,
+                message: 'Failed to analyze task. Using default values.' 
+              });
+            }
+            
+            throw new Error(error);
           }
           
-          const result = await response.json();
+          let result;
+          try {
+            result = await response.json();
+          } catch (parseError) {
+            const error = `Failed to parse API response: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`;
+            window.dispatchEvent(new CustomEvent('aiAnalysisError', { 
+              detail: { 
+                error,
+                message: 'AI analysis failed due to invalid response. Using default values.' 
+              } 
+            }));
+            throw new Error(error);
+          }
+          
+          if (!result || typeof result !== 'object') {
+            const error = 'API returned invalid response format';
+            window.dispatchEvent(new CustomEvent('aiAnalysisError', { 
+              detail: { 
+                error,
+                message: 'AI analysis failed due to invalid response format. Using default values.' 
+              } 
+            }));
+            throw new Error(error);
+          }
           
           if (result.error) {
-            throw new Error(`API returned error: ${result.error}`);
+            const error = `API returned error: ${result.error}`;
+            window.dispatchEvent(new CustomEvent('aiAnalysisError', { 
+              detail: { 
+                error,
+                message: 'AI analysis failed. Using default values.' 
+              } 
+            }));
+            throw new Error(error);
           }
+
+          // Notify that AI has completed analysis
+          dispatchAIEvent('aiAnalysisComplete', { 
+            message: 'AI analysis complete',
+            result,
+            targetQuadrant: result.suggestedQuadrant,
+            taskType: result.taskType,
+            reasoning: result.reasoning
+          });
 
           // Update task with AI analysis results
           const targetQuadrant = result.suggestedQuadrant || "q4";
           const taskType = result.taskType || taskData.taskType || "personal";
           
           const now = new Date().toISOString();
-          await updateTaskMutation({
-            id: toConvexId(taskId),
-            quadrant: targetQuadrant,
-            taskType: taskType,
-            updatedAt: now,
-            reflection: result.reasoning ? {
-              justification: result.reasoning,
-              aiAnalysis: JSON.stringify(result),
-              suggestedQuadrant: targetQuadrant,
-              finalQuadrant: targetQuadrant,
-              reflectedAt: now,
-            } : undefined,
-          });
-
-          // Show success toast if quadrant changed
-          if (targetQuadrant !== "q4" || taskType !== "personal") {
-            const toast = (window as any).toast;
-            if (toast) {
-              toast.success(
-                `Task analyzed: ${result.reasoning?.split('.')[0] || 'Based on AI analysis'}. ` +
-                `Moved to ${targetQuadrant.toUpperCase()} as ${taskType} task.`
-              );
+          try {
+            await updateTaskMutation({
+              id: toConvexId(taskId),
+              quadrant: targetQuadrant,
+              taskType: taskType,
+              updatedAt: now,
+              reflection: result.reasoning ? {
+                justification: result.reasoning,
+                aiAnalysis: JSON.stringify(result),
+                suggestedQuadrant: targetQuadrant,
+                finalQuadrant: targetQuadrant,
+                reflectedAt: now,
+              } : undefined,
+            });
+            
+            // Store reasoning data in the ReasoningLogService for the task card display
+            console.log('[DEBUG] Storing AI reasoning log for task:', taskId);
+            if (result.reasoning) {
+              ReasoningLogService.storeLog({
+                taskId: taskId,
+                taskText: taskData.text,
+                timestamp: Date.now(),
+                suggestedQuadrant: targetQuadrant,
+                taskType: taskType,
+                reasoning: result.reasoning,
+                alignmentScore: result.alignmentScore,
+                urgencyScore: result.urgencyScore,
+                importanceScore: result.importanceScore
+              });
             }
+
+            // Notify of successful update
+            window.dispatchEvent(new CustomEvent('aiAnalysisComplete', { 
+              detail: { 
+                message: `Task analyzed and moved to ${targetQuadrant.toUpperCase()} as ${taskType} task`,
+                result,
+                targetQuadrant,
+                taskType,
+                reasoning: result.reasoning?.split('.')[0] || 'Based on AI analysis'
+              } 
+            }));
+          } catch (updateError) {
+            // Handle task update errors
+            const error = `Failed to update task with AI analysis: ${updateError instanceof Error ? updateError.message : 'Unknown error'}`;
+            console.error('Task update error:', updateError);
+            
+            dispatchAIEvent('aiAnalysisError', { 
+              error,
+              message: 'Failed to update task with AI analysis results. Please try again.' 
+            });
+            
+            throw new Error(error);
           }
           
-          // Analysis complete
-          dispatchAIThinking(false);
+          // Notify that analysis is complete
+          dispatchAIEvent('aiAnalysisComplete', { 
+            message: `Task analyzed and moved to ${targetQuadrant.toUpperCase()} as ${taskType} task`,
+            result,
+            targetQuadrant,
+            taskType,
+            reasoning: result.reasoning?.split('.')[0] || 'Based on AI analysis'
+          });
         } catch (analysisError) {
           console.error("Error analyzing task:", analysisError);
-          const toast = (window as any).toast;
-          if (toast) {
-            const errorMessage = analysisError instanceof Error ? analysisError.message : 'Unknown error';
-            toast.error(
-              `Task will remain in Q4. AI analysis failed: ${errorMessage}. Please check your API key and try again.`
-            );
-          }
-          dispatchAIThinking(false);
+          dispatchAIEvent('aiAnalysisError', { 
+            error: analysisError instanceof Error ? analysisError.message : 'Unknown error',
+            message: 'AI analysis failed. Task will remain in Q4. Please check your API key and try again.' 
+          });
+        } finally {
+          // Always notify that AI has finished thinking
+          dispatchThinkingState(false, 'AI analysis complete');
         }
       };
 
