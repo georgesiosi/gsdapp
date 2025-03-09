@@ -25,18 +25,26 @@ export function AIReasoningTooltip({ taskId, className }: AIReasoningTooltipProp
   
   // Load reasoning on hover
   const handleMouseEnter = () => {
-    const log = ReasoningLogService.getLogForTask(taskId)
+    console.log('[DEBUG AIReasoningTooltip] Getting log for task ID:', taskId);
+    const log = ReasoningLogService.getLogForTask(taskId);
+    
     if (log) {
-      setReasoning(log.reasoning)
+      console.log('[DEBUG AIReasoningTooltip] Found reasoning log:', log);
+      setReasoning(log.reasoning);
       setScores({
         alignment: log.alignmentScore,
         urgency: log.urgencyScore,
         importance: log.importanceScore
-      })
+      });
     } else {
-      setReasoning("No AI reasoning available for this task.")
-      setScores(null)
+      console.log('[DEBUG AIReasoningTooltip] No reasoning log found for task');
+      setReasoning("No AI reasoning available for this task.");
+      setScores(null);
     }
+    
+    // Log all stored reasoning logs for debugging
+    const allLogs = ReasoningLogService.getLogs();
+    console.log('[DEBUG AIReasoningTooltip] All stored reasoning logs count:', allLogs.length);
   }
   
   return (
