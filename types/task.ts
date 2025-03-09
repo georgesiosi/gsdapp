@@ -130,7 +130,16 @@ export interface UserSettings {
   theme?: 'light' | 'dark' | 'system';
   showCompletedTasks?: boolean;
   autoAnalyze?: boolean;
+  syncApiKey?: boolean;
   taskSettings: TaskSettings;
+}
+
+// Convex user preferences type
+export interface ConvexUserPreferences extends Omit<UserSettings, 'theme'> {
+  _id: Id<"userPreferences">;
+  _creationTime: number;
+  userId: string;
+  theme?: string;  // Convex stores this as string
 }
 
 // AI Analysis Result interface
