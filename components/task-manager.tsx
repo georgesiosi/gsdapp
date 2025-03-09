@@ -15,8 +15,7 @@ import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { TaskModal } from "@/components/task-modal"
 import { ReflectionCard } from "@/components/ui/reflection-card"
 import { TaskCompletionConfetti } from "@/components/ui/task-completion-confetti"
-// Temporarily disabled while fixing Convex DB setup
-// import { VelocityMeters } from "@/components/velocity-meters"
+import { VelocityMeters } from "@/components/velocity-meters"
 import { ScorecardButton } from "@/components/scorecard-button"
 import { EndDayScorecard } from "@/components/end-day-scorecard"
 import { ChatDialog } from "@/components/ui/chat-dialog"
@@ -369,13 +368,12 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
           tasks={taskList}
           userContext={useProfile.getState().getPersonalContext()}
         />
-
-        {/* Temporarily disabled while fixing Convex DB setup
-        <VelocityMeters 
-          tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed')} 
-        />
-        */}
       </div>
+
+      {/* Velocity Meters */}
+      <VelocityMeters 
+        tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed')} 
+      />
     </div>
   );
 }

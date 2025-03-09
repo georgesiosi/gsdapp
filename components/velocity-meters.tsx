@@ -1,23 +1,18 @@
 "use client"
 
-// Temporarily disabled while fixing Convex DB setup
-// import { Task } from "@/types/task"
-// import { VelocityMeter } from "@/components/ui/velocity-meter"
+import { Task } from "@/types/task"
+import { VelocityMeter } from "@/components/ui/velocity-meter"
+
+interface VelocityMetersProps {
+  tasks: Task[];
+}
 
 /**
- * VelocityMeters component - temporarily disabled while fixing Convex DB setup
- * Will be re-enabled once the database migration is complete
+ * VelocityMeters component - Displays velocity meters for personal and work tasks
  */
-export function VelocityMeters() {
-  // Temporarily disabled while fixing Convex DB setup
-  return null;
+export function VelocityMeters({ tasks }: VelocityMetersProps) {
+  if (!tasks?.length) return null;
   
-  /* Original implementation:
-  const personalTasks = tasks.filter(t => t.taskType === "personal" || t.taskType === undefined);
-  const workTasks = tasks.filter(t => t.taskType === "work" || t.taskType === "business");
-  */
-  
-  /* Original implementation - temporarily commented out
   return (
     <>
       <VelocityMeter 
@@ -33,5 +28,4 @@ export function VelocityMeters() {
       />
     </>
   )
-  */
 }
