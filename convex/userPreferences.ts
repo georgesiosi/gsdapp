@@ -15,6 +15,15 @@ export const getUserPreferences = query({
   },
 });
 
+// Define shared schema for theme and taskSettings
+const themeSchema = v.union(v.literal('light'), v.literal('dark'), v.literal('system'));
+const taskSettingsSchema = v.object({
+  endOfDayTime: v.string(),
+  autoArchiveDelay: v.float64(),
+  gracePeriod: v.float64(),
+  retainRecurringTasks: v.boolean(),
+});
+
 // Save or update user preferences
 export const saveUserPreferences = mutation({
   args: {
@@ -22,15 +31,11 @@ export const saveUserPreferences = mutation({
     openAIKey: v.optional(v.string()),
     licenseKey: v.optional(v.string()),
     priority: v.optional(v.string()),
-    theme: v.optional(v.union(v.literal('light'), v.literal('dark'), v.literal('system'))),
+    theme: v.optional(themeSchema),
     showCompletedTasks: v.optional(v.boolean()),
     autoAnalyze: v.optional(v.boolean()),
-    taskSettings: v.optional(v.object({
-      endOfDayTime: v.string(),
-      autoArchiveDelay: v.number(),
-      gracePeriod: v.number(),
-      retainRecurringTasks: v.boolean(),
-    })),
+    syncApiKey: v.optional(v.boolean()),
+    taskSettings: v.optional(taskSettingsSchema),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -41,8 +46,21 @@ export const saveUserPreferences = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
 
-    console.log('saveUserPreferences called with args:', args);
-    console.log('Current userId:', userId);
+    console.log('------------------------------');
+    console.log('[DEBUG] saveUserPreferences called with args:', {
+      openAIKey: args.openAIKey ? `${args.openAIKey.substring(0, 5)}... (length: ${args.openAIKey.length})` : undefined,
+      hasOpenAIKey: !!args.openAIKey,
+      hasTaskSettings: !!args.taskSettings,
+      theme: args.theme,
+      otherArgsPresent: {
+        goal: !!args.goal,
+        licenseKey: !!args.licenseKey,
+        priority: !!args.priority,
+        showCompletedTasks: !!args.showCompletedTasks,
+        autoAnalyze: !!args.autoAnalyze
+      }
+    });
+    console.log('[DEBUG] Current userId:', userId);
 
     // Start with default task settings
     const defaultTaskSettings = {
@@ -96,29 +114,65 @@ export const saveUserPreferences = mutation({
     // Create clean args by merging defaults with new args
     const cleanArgs = {
       goal: args.goal,
-      openAIKey: args.openAIKey,
+      openAIKey: args.syncApiKey ? args.openAIKey : undefined,  // Only store API key if sync is enabled
       licenseKey: args.licenseKey,
       priority: args.priority,
-      theme: args.theme,
-      showCompletedTasks: args.showCompletedTasks,
-      autoAnalyze: args.autoAnalyze,
-      taskSettings: args.taskSettings,
+      theme: args.theme || 'system',  // Ensure theme is always set
+      showCompletedTasks: args.showCompletedTasks ?? true,
+      autoAnalyze: args.autoAnalyze ?? false,
+      syncApiKey: args.syncApiKey ?? false,
+      taskSettings: args.taskSettings ? {
+        endOfDayTime: args.taskSettings.endOfDayTime,
+        autoArchiveDelay: args.taskSettings.autoArchiveDelay,
+        gracePeriod: args.taskSettings.gracePeriod,
+        retainRecurringTasks: args.taskSettings.retainRecurringTasks
+      } : defaultTaskSettings,
       userId
     };
+    
+    console.log('[DEBUG] Clean args prepared:', {
+      hasOpenAIKey: !!cleanArgs.openAIKey,
+      openAIKeyLength: cleanArgs.openAIKey?.length,
+      openAIKeyPrefix: cleanArgs.openAIKey ? cleanArgs.openAIKey.substring(0, 5) + '...' : null,
+      taskSettingsPresent: !!cleanArgs.taskSettings,
+      userId: cleanArgs.userId
+    });
 
-    console.log('Clean args prepared:', cleanArgs);
+    // Existing debug already replaced
 
     try {
       if (existingPreferences) {
-        console.log('Updating existing preferences with ID:', existingPreferences._id);
-        const result = await ctx.db.patch(existingPreferences._id, cleanArgs);
-        console.log('Update result:', result);
-        return result;
+        console.log('[DEBUG] Updating existing preferences with ID:', existingPreferences._id);
+        console.log('[DEBUG] Before update - existing openAIKey:', 
+          existingPreferences.openAIKey ? 
+          `${existingPreferences.openAIKey.substring(0, 5)}... (length: ${existingPreferences.openAIKey.length})` : 
+          'undefined');
+          
+        await ctx.db.patch(existingPreferences._id, cleanArgs);
+        
+        // Fetch the updated document
+        const updatedPreferences = await ctx.db.get(existingPreferences._id);
+        console.log('[DEBUG] After update - updated openAIKey:', 
+          updatedPreferences && updatedPreferences.openAIKey ? 
+          `${updatedPreferences.openAIKey.substring(0, 5)}... (length: ${updatedPreferences.openAIKey.length})` : 
+          'undefined');
+        console.log('[DEBUG] Full update result:', updatedPreferences ? JSON.stringify(updatedPreferences) : 'null');
+        return updatedPreferences;
       } else {
-        console.log('Creating new preferences');
+        console.log('[DEBUG] Creating new preferences with openAIKey:', cleanArgs.openAIKey ? `length: ${cleanArgs.openAIKey.length}` : 'undefined');
         const result = await ctx.db.insert("userPreferences", cleanArgs);
-        console.log('Insert result:', result);
-        return result;
+        console.log('[DEBUG] Insert result ID:', result);
+        
+        // Fetch the inserted document to verify
+        const insertedPreferences = await ctx.db.get(result);
+        console.log('[DEBUG] Inserted preferences:', insertedPreferences ? {
+          id: insertedPreferences._id,
+          hasOpenAIKey: !!insertedPreferences.openAIKey,
+          openAIKeyLength: insertedPreferences.openAIKey?.length,
+          openAIKeyPrefix: insertedPreferences.openAIKey ? insertedPreferences.openAIKey.substring(0, 5) + '...' : null,
+        } : 'null');
+        
+        return insertedPreferences;
       }
     } catch (error) {
       console.error('Error in saveUserPreferences:', error);
