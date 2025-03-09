@@ -36,6 +36,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   const { 
     tasks: hookTasks, 
     addTask, 
+    addTaskWithAIAnalysis,
     updateTask, 
     deleteTask, 
     reorderTasks,
@@ -174,73 +175,31 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     if (!text.trim()) return;
     
     try {
-      const taskId = await addTask({ 
-        text, 
-        quadrant: 'q4' as QuadrantType, 
-        status: 'active' as TaskStatus, 
-        taskType: 'personal' as TaskType,
-        needsReflection: false 
-      });
-      
-      if (!taskId) {
-        throw new Error('Failed to add task');
-      }
-      
       setTaskModalOpen(false);
       setIsAIThinking(true);
       
-      try {
-        const response = await fetch('/api/analyze-reflection', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            task: text,
-            currentQuadrant: 'q4',
-            personalContext: useProfile.getState().getPersonalContext()
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Analysis failed: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        if (!result || typeof result.isIdea !== 'boolean') {
-          throw new Error('Invalid API response structure');
-        }
-        
-        if (result.isIdea) {
-          await deleteTask(taskId);
-          window.dispatchEvent(new CustomEvent('addToIdeasBank', {
-            detail: {
-              text,
-              taskType: result.taskType || 'idea',
-              connectedToPriority: result.connectedToPriority || false
-            }
-          }));
-        } else {
-          await updateTask(taskId, {
-            quadrant: result.suggestedQuadrant || 'q4',
-            taskType: (result.taskType || 'personal') as TaskType
-          });
-        }
-      } catch (error) {
-        console.error('Error in task analysis:', error);
-        toast({
-          description: error instanceof Error ? error.message : 'Task analysis failed',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsAIThinking(false);
+      const { task, isAnalyzing } = await addTaskWithAIAnalysis({
+        text,
+        quadrant: 'q4',
+        status: 'active',
+        taskType: 'personal',
+        needsReflection: false
+      });
+      
+      if (!task) {
+        throw new Error('Failed to add task');
       }
+      
+      // isAnalyzing will be true if the AI analysis is running in the background
+      setIsAIThinking(isAnalyzing);
     } catch (error) {
       console.error('Error adding task:', error);
-      setIsAIThinking(false);
       toast({
         description: error instanceof Error ? error.message : 'Failed to add task',
         variant: 'destructive'
       });
+    } finally {
+      setIsAIThinking(false);
     }
   };
 
