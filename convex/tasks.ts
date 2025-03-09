@@ -15,7 +15,6 @@ export const testConnection = mutation({
         text: "Convex Test Task - " + now,
         quadrant: "q4",
         taskType: "personal",
-        needsReflection: false,
         status: "active",
         userId,
         order: 9999, // High order to appear at the bottom
@@ -88,13 +87,13 @@ export const addTask = mutation({
       text: args.text,
       quadrant: args.quadrant,
       taskType: args.taskType ?? "personal",
-      needsReflection: args.needsReflection ?? false,
       status: args.status ?? "active",
       description: args.description,
       userId,
       order: maxOrder + 1,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      ...(args.needsReflection !== undefined && { needsReflection: args.needsReflection })
     });
   },
 });

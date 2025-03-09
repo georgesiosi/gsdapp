@@ -7,7 +7,7 @@ export default defineSchema({
     text: v.string(),
     quadrant: v.string(), // "q1", "q2", "q3", "q4"
     taskType: v.optional(v.string()), // "personal", "work", "business"
-    needsReflection: v.boolean(),
+    needsReflection: v.optional(v.boolean()),
     status: v.string(), // "active", "completed"
     description: v.optional(v.string()),
     reflection: v.optional(v.object({
@@ -20,7 +20,7 @@ export default defineSchema({
       reflectedAt: v.string(),
     })),
     completedAt: v.optional(v.string()),
-    order: v.optional(v.number()),
+    order: v.optional(v.float64()),
     userId: v.string(),
     createdAt: v.string(), // ISO string of when the task was created
     updatedAt: v.string(), // ISO string of when the task was last updated
