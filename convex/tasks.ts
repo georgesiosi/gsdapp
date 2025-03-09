@@ -66,8 +66,6 @@ export const addTask = mutation({
     needsReflection: v.optional(v.boolean()),
     status: v.optional(v.string()),
     description: v.optional(v.string()),
-    createdAt: v.string(),
-    updatedAt: v.string(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -83,7 +81,9 @@ export const addTask = mutation({
       ? Math.max(...existingTasks.map(t => t.order ?? 0))
       : -1;
 
+    // Initialize dates
     const now = new Date().toISOString();
+    
     return await ctx.db.insert("tasks", {
       text: args.text,
       quadrant: args.quadrant,
@@ -135,7 +135,7 @@ export const updateTask = mutation({
     }
 
     // Create update object with only provided fields
-    const { id, ...updates } = args;
+    const { id, createdAt, updatedAt, ...updates } = args;
     const now = new Date().toISOString();
     return await ctx.db.patch(args.id, {
       ...updates,
