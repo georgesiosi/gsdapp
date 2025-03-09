@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { ScorecardMetrics } from "@/components/ui/scorecard-metrics";
 import type { Scorecard } from "@/types/scorecard";
-import { ScorecardService } from "@/services/scorecard/scorecardService";
+import { useScorecard } from "@/services/scorecard/scorecardService";
 import type { Task } from "@/types/task";
 import { useToast } from "@/components/ui/use-toast";
 import { LightbulbIcon, XCircleIcon, AlertCircleIcon } from "lucide-react";
@@ -26,6 +26,9 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
   const [existingScorecard, setExistingScorecard] = useState<Scorecard | null>(null);
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
   const { toast } = useToast();
+  
+  // Initialize the scorecard hook
+  const { scorecards, addScorecard, updateScorecard } = useScorecard();
 
   // Get user goal and priority from localStorage
   const getUserGoalAndPriority = () => {
@@ -70,13 +73,18 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
       const data = await response.json();
 
       // Create and save the scorecard
-      const newScorecard = ScorecardService.createScorecard(
-        data.metrics,
-        data.insights,
-        notes // Include any existing notes
-      );
+      const result = await addScorecard({
+        metrics: data.metrics,
+        insights: data.insights,
+        notes: notes, // Include any existing notes
+        trends: [] // Add empty trends as it's required by the type
+      });
 
-      setScorecard(newScorecard);
+      if (result.success) {
+        setScorecard(result.scorecard);
+      } else {
+        throw new Error("Failed to save scorecard");
+      }
       toast({
         title: "Scorecard Generated",
         description: "Your end of day scorecard has been generated successfully.",
@@ -92,13 +100,20 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
     } finally {
       setIsLoading(false);
     }
-  }, [tasks, toast, notes]);
+  }, [tasks, toast, notes, addScorecard]);
 
   // Check for existing scorecard and handle generation when dialog opens
   useEffect(() => {
     if (isOpen && !scorecard && !isLoading && !showOverwriteConfirm) {
       // First check if a scorecard for today already exists
-      const todayScorecard = ScorecardService.getTodayScorecard();
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).getTime();
+      
+      const todayScorecard = scorecards.find(sc => {
+        // Use creation time to find today's scorecard
+        return sc._creationTime >= todayStart && sc._creationTime <= todayEnd;
+      }) || null;
       
       if (todayScorecard) {
         // If a scorecard already exists for today, ask for confirmation
@@ -113,7 +128,7 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
         generateScorecard();
       }
     }
-  }, [isOpen, scorecard, isLoading, showOverwriteConfirm, generateScorecard]);
+  }, [isOpen, scorecard, isLoading, showOverwriteConfirm, generateScorecard, scorecards]);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -132,7 +147,10 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
     
     // If we have a scorecard, update its notes
     if (scorecard) {
-      ScorecardService.updateScorecardNotes(scorecard.id, e.target.value);
+      updateScorecard({
+        id: scorecard.id,
+        notes: e.target.value
+      });
     }
   };
   

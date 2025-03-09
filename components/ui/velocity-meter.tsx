@@ -1,48 +1,50 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useMemo } from "react"
-import { cn } from "@/lib/utils"
-import { Task, TaskType } from "@/types/task"
-import { BarChart3, Info } from "lucide-react"
+import { useState, useEffect, useMemo, memo, useCallback, forwardRef } from "react";
+import { cn } from "@/lib/utils";
+import { Task, TaskType } from "@/types/task";
+import { BarChart3, Info } from "lucide-react";
 import { 
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { isTaskFromToday, formatTaskDate } from '@/utils/dateUtils';
+} from "@/components/ui/tooltip";
+import { isTaskFromToday } from '@/utils/dateUtils';
 
 interface VelocityMeterProps {
-  tasks: Task[]
-  type: TaskType
-  position: "left" | "right"
-  className?: string
+  tasks: Task[];
+  type: TaskType;
+  position: "left" | "right";
+  className?: string;
 }
 
-export function VelocityMeter({ 
+// Memoized button component to prevent re-renders
+const IconButton = memo(forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement> & { icon: React.ReactNode }>(
+  ({ icon, className, ...props }, ref) => (
+    <button 
+      ref={ref}
+      className={className}
+      {...props}
+    >
+      {icon}
+    </button>
+  )
+));
+IconButton.displayName = 'IconButton';
+
+export const VelocityMeter = memo(({ 
   tasks, 
   type, 
   position, 
   className 
-}: VelocityMeterProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isPulsing, setIsPulsing] = useState(false)
-  const [prevCompletedCount, setPrevCompletedCount] = useState(0)
-  const [forceUpdate, setForceUpdate] = useState(false)
+}: VelocityMeterProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isPulsing, setIsPulsing] = useState(false);
+  const [prevCompletedCount, setPrevCompletedCount] = useState(0);
 
-  // Debug all tasks
-  console.log(`[DEBUG] VelocityMeter ${type} - All tasks:`, tasks.length);
-  console.log(`[DEBUG] VelocityMeter ${type} - All task details:`, tasks.map(t => ({
-    id: t.id,
-    text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''),
-    taskType: t.taskType,
-    status: t.status,
-    createdAt: formatTaskDate(t.createdAt),
-    completedAt: t.completedAt ? formatTaskDate(t.completedAt) : 'Not completed'
-  })));
-  
   // Filter tasks by type and get counts
-  const typeTasks = tasks.filter(task => {
+  const typeTasks = useMemo(() => tasks.filter(task => {
     // Include task if:
     // 1. It was completed today, OR
     // 2. It's still active (regardless of when it was created)
@@ -55,75 +57,55 @@ export function VelocityMeter({
       return task.taskType === "personal" || task.taskType === undefined;
     }
     // For work meter, include tasks with taskType="work" or "business"
-    return task.taskType === type || task.taskType === "business";
-  });
-  
-  // Debug filtered tasks
-  console.log(`[DEBUG] VelocityMeter ${type} - Today's tasks:`, typeTasks.length);
-  console.log(`[DEBUG] VelocityMeter ${type} - Today's task details:`, typeTasks.map(t => ({
-    id: t.id,
-    text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''),
-    taskType: t.taskType,
-    status: t.status,
-    createdAt: formatTaskDate(t.createdAt),
-    completedAt: t.completedAt ? formatTaskDate(t.completedAt) : 'Not completed'
-  })));
+      return task.taskType === type || task.taskType === "business";
+  }), [tasks, type]);
   
   // Get all active and completed tasks in the matrix (excluding archived/deleted)
-  const nonArchivedTasks = typeTasks.filter(task => task.status === 'active' || task.status === 'completed')
-  const activeTasks = nonArchivedTasks.filter(task => task.status === 'active')
-  const completedTasksArray = nonArchivedTasks.filter(task => task.status === 'completed')
+  const nonArchivedTasks = useMemo(() => typeTasks.filter(task => 
+    task.status === 'active' || task.status === 'completed'
+  ), [typeTasks])
+  
+  const activeTasks = useMemo(() => 
+    nonArchivedTasks.filter(task => task.status === 'active')
+  , [nonArchivedTasks])
+  
+  const completedTasksArray = useMemo(() => 
+    nonArchivedTasks.filter(task => task.status === 'completed')
+  , [nonArchivedTasks])
+  
   const completedTasksCount = completedTasksArray.length
   const totalTasks = activeTasks.length + completedTasksCount
 
-  // Create stable task references
-  const stableTasks = useMemo(() => tasks, [tasks]);
-  
   // Check if a task was just completed and trigger pulse animation
   useEffect(() => {
     if (completedTasksCount > prevCompletedCount && prevCompletedCount > 0) {
-      setIsPulsing(true)
+      setIsPulsing(true);
       const timer = setTimeout(() => {
-        setIsPulsing(false)
-      }, 1000)
-      return () => clearTimeout(timer)
+        setIsPulsing(false);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-    setPrevCompletedCount(completedTasksCount)
-  }, [completedTasksCount, prevCompletedCount])
+    setPrevCompletedCount(completedTasksCount);
+  }, [completedTasksCount, prevCompletedCount]);
   
-  // Watch for task changes
-  useEffect(() => {
-    console.log(`[DEBUG] VelocityMeter ${type} - Tasks changed, recalculating...`);
-    setForceUpdate(prev => !prev); // Toggle state to force re-render
-  }, [stableTasks, type]);
-
-  // Debug task changes
-  useEffect(() => {
-    console.log(`[DEBUG] VelocityMeter ${type} - Task state recalculated`);
-    console.log(`[DEBUG] VelocityMeter ${type} - Current task states:`, stableTasks.map(t => ({
-      id: t.id,
-      status: t.status,
-      lastUpdated: new Date().toLocaleTimeString()
-    })));
-  }, [forceUpdate, stableTasks, type]);
+  // Memoized values for quadrant tasks to prevent excessive recalculations
+  const { q1Tasks, q2Tasks, q3Tasks, q4Tasks } = useMemo(() => ({
+    q1Tasks: nonArchivedTasks.filter(task => task.quadrant === "q1"),
+    q2Tasks: nonArchivedTasks.filter(task => task.quadrant === "q2"),
+    q3Tasks: nonArchivedTasks.filter(task => task.quadrant === "q3"),
+    q4Tasks: nonArchivedTasks.filter(task => task.quadrant === "q4")
+  }), [nonArchivedTasks])
+  
+  // Calculate completion by quadrant
+  const { q1Completed, q2Completed, q3Completed, q4Completed } = useMemo(() => ({
+    q1Completed: q1Tasks.filter(task => task.status === 'completed').length,
+    q2Completed: q2Tasks.filter(task => task.status === 'completed').length,
+    q3Completed: q3Tasks.filter(task => task.status === 'completed').length,
+    q4Completed: q4Tasks.filter(task => task.status === 'completed').length
+  }), [q1Tasks, q2Tasks, q3Tasks, q4Tasks])
   
   // Calculate percentages for visualization
   const completionPercentage = totalTasks > 0 ? (completedTasksCount / totalTasks) * 100 : 0
-  
-  // Get tasks by quadrant from non-archived tasks
-  const q1Tasks = nonArchivedTasks.filter(task => task.quadrant === "q1")
-  const q2Tasks = nonArchivedTasks.filter(task => task.quadrant === "q2")
-  const q3Tasks = nonArchivedTasks.filter(task => task.quadrant === "q3")
-  const q4Tasks = nonArchivedTasks.filter(task => task.quadrant === "q4")
-  
-  // Calculate completion by quadrant
-  const q1Completed = q1Tasks.filter(task => task.status === 'completed').length
-  const q2Completed = q2Tasks.filter(task => task.status === 'completed').length
-  const q3Completed = q3Tasks.filter(task => task.status === 'completed').length
-  const q4Completed = q4Tasks.filter(task => task.status === 'completed').length
-  
-  // Debug logging
-  console.log(`[DEBUG] VelocityMeter ${type} - Active: ${activeTasks.length}, Completed: ${completedTasksCount}, Total: ${totalTasks}`);
   
   // Determine color scheme based on task type
   const colorScheme = type === "personal" 
@@ -140,8 +122,24 @@ export function VelocityMeter({
         muted: "bg-green-100",
         text: "text-green-700",
         hover: "hover:bg-green-600"
-      }
+      };
   
+  // Use stable callbacks for event handlers
+  const handleMouseEnter = useCallback(() => {
+    setIsExpanded(true);
+  }, []);
+  
+  const handleMouseLeave = useCallback(() => {
+    setIsExpanded(false);
+  }, []);
+  
+  // Memoize the icon to prevent unnecessary re-renders
+  const icon = useMemo(() => {
+    return isExpanded 
+      ? <BarChart3 size={14} className="text-white" />
+      : <Info size={12} className="text-white info-icon" />
+  }, [isExpanded]);
+
   return (
     <div 
       className={cn(
@@ -152,8 +150,8 @@ export function VelocityMeter({
         colorScheme.muted,
         className
       )}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Meter fill */}
       <div 
@@ -167,8 +165,6 @@ export function VelocityMeter({
         }}
       />
       
-
-      
       {/* Info section at top */}
       <div className={cn(
         "absolute top-4 flex flex-col items-center",
@@ -177,18 +173,18 @@ export function VelocityMeter({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className={cn(
-                "rounded-full p-1 mb-1",
-                colorScheme.primary,
-                "cursor-pointer",
-                !isExpanded && "info-container"
-              )}>
-                {isExpanded ? (
-                  <BarChart3 size={14} className="text-white" />
-                ) : (
-                  <Info size={12} className="text-white info-icon" />
+              <IconButton 
+                icon={icon}
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "rounded-full p-1 mb-1 inline-flex items-center justify-center",
+                  colorScheme.primary,
+                  "cursor-pointer",
+                  !isExpanded && "info-container"
                 )}
-              </div>
+                aria-label={`${type} tasks info`}
+              />
             </TooltipTrigger>
             <TooltipContent side={position === "left" ? "right" : "left"}>
               <p className="text-xs font-medium">{type === "personal" ? "Personal" : "Work"} Tasks</p>
@@ -241,20 +237,22 @@ export function VelocityMeter({
         </div>
       )}
     </div>
-  )
-}
+  );
+});
+
+VelocityMeter.displayName = 'VelocityMeter';
 
 interface QuadrantIndicatorProps {
-  label: string
-  total: number
-  completed: number
+  label: string;
+  total: number;
+  completed: number;
   colorScheme: {
-    primary: string
-    secondary: string
-    muted: string
-    text: string
-    hover: string
-  }
+    primary: string;
+    secondary: string;
+    muted: string;
+    text: string;
+    hover: string;
+  };
 }
 
 function QuadrantIndicator({ 
@@ -263,9 +261,9 @@ function QuadrantIndicator({
   completed, 
   colorScheme 
 }: QuadrantIndicatorProps) {
-  if (total === 0) return null
+  if (total === 0) return null;
   
-  const completionPercentage = (completed / total) * 100
+  const completionPercentage = (completed / total) * 100;
   
   return (
     <div className="flex items-center justify-between">
@@ -277,5 +275,5 @@ function QuadrantIndicator({
         />
       </div>
     </div>
-  )
+  );
 }

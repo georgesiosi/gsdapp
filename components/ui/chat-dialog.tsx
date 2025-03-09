@@ -194,7 +194,7 @@ function ChatDialogComponent({ open, onOpenChange, tasks, userContext }: ChatDia
   // Initialize OpenAI key from environment variable if not set
   useEffect(() => {
     const envKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
-    if (!settings.openAIKey && envKey) {
+    if (settings && envKey && !settings.openAIKey) {
       updateSettings({ ...settings, openAIKey: envKey })
     }
   }, [settings, updateSettings])

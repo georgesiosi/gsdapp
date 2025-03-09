@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef, useEffect } from "react"
-import { v4 as uuidv4 } from "uuid"
-import { TaskType, QuadrantType, TaskStatus, Task } from "@/types/task"
-import { getStorage, setStorage } from "@/lib/storage"
+import { useState, useCallback, useMemo } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
+import { Task, QuadrantType, TaskStatus, TaskType, ConvexTask } from "@/types/task";
 
 export type NewTask = {
   text: string;
@@ -9,152 +10,70 @@ export type NewTask = {
   taskType?: TaskType;
   needsReflection?: boolean;
   status?: TaskStatus;
-  createdAt?: string;
-  updatedAt?: string;
-}
+  description?: string;
+};
+
+// Helper function to convert ConvexTask to UI Task
+const adaptConvexTask = (convexTask: ConvexTask): Task => ({
+  id: convexTask._id.toString(),
+  text: convexTask.text,
+  description: convexTask.description,
+  quadrant: convexTask.quadrant,
+  taskType: convexTask.taskType,
+  status: convexTask.status,
+  needsReflection: convexTask.needsReflection,
+  reflection: convexTask.reflection,
+  completedAt: convexTask.completedAt,
+  order: convexTask.order,
+  userId: convexTask.userId,
+  _creationTime: convexTask._creationTime
+});
+
+// Helper function to convert string ID to Convex ID
+const toConvexId = (id: string): Id<"tasks"> => id as unknown as Id<"tasks">;
 
 export function useTaskManagement() {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [showConfetti, setShowConfetti] = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false);
   
-  // Load tasks from storage on mount
-  useEffect(() => {
-    const savedTasks = getStorage('TASKS') as Task[] | null
-    if (savedTasks?.length) {
-      setTasks(savedTasks)
-    }
-  }, [])
-  
-  // Use a ref to store the internal update function
-  type TaskResult = { success: boolean; error?: string };
+  // Convex queries and mutations
+  const rawConvexTasks = useQuery(api.tasks.getTasks);
+  const addTaskMutation = useMutation(api.tasks.addTask);
+  const updateTaskMutation = useMutation(api.tasks.updateTask);
+  const deleteTaskMutation = useMutation(api.tasks.deleteTask);
+  const reorderTasksMutation = useMutation(api.tasks.reorderTasks);
 
-  // Internal functions for task operations
-  const internalFunctions = useRef<{
-    updateTaskInternal: (id: string, updates: Partial<Task>) => TaskResult;
-    deleteTaskInternal: (id: string) => TaskResult;
-  }>({
-    deleteTaskInternal: (id: string): TaskResult => {
-      try {
-        setTasks(prevTasks => {
-          const filteredTasks = prevTasks.filter(task => task.id !== id)
-          setStorage('TASKS', filteredTasks)
-          return filteredTasks
-        })
-        return { success: true }
-      } catch (error) {
-        console.error(`Error deleting task ${id}:`, error)
-        return { success: false, error: 'Failed to delete task' }
-      }
-    },
-    updateTaskInternal: (id: string, updates: Partial<Task>): TaskResult => {
-      try {
-        setTasks(prevTasks => {
-          const taskIndex = prevTasks.findIndex(task => task.id === id)
-          if (taskIndex === -1) return prevTasks
-          
-          const updatedTask = {
-            ...prevTasks[taskIndex],
-            ...updates,
-            updatedAt: new Date().toISOString()
-          }
-          
-          const updatedTasks = [...prevTasks]
-          updatedTasks[taskIndex] = updatedTask
-          
-          // Update storage and notify listeners
-          setStorage('TASKS', updatedTasks)
-          window.dispatchEvent(new CustomEvent('taskUpdated', { 
-            detail: { taskId: id, updates: updatedTask } 
-          }))
-          
-          return updatedTasks
-        })
-        
-        return { success: true }
-      } catch (error) {
-        console.error('Error updating task:', error)
-        return { success: false, error: 'Failed to update task' }
-      }
-    }
-  });
+  // Memoize convex tasks to prevent unnecessary re-renders
+  const convexTasks = useMemo(() => rawConvexTasks || [], [rawConvexTasks]);
 
-  // Ensure task has all required fields with defaults
-  const migrateTask = (task: Partial<Task>): Task => {
-    if (!task.id || !task.text || !task.quadrant) {
-      throw new Error('Missing required task fields')
-    }
-    
-    return {
-      id: task.id,
-      text: task.text,
-      quadrant: task.quadrant,
-      taskType: task.taskType || 'personal',
-      needsReflection: task.needsReflection || false,
-      createdAt: task.createdAt || new Date().toISOString(),
-      completedAt: task.completedAt,
-      updatedAt: task.updatedAt || new Date().toISOString(),
-      order: task.order || 0,
-      status: task.status || 'active',
-      description: task.description
-    }
-  }
-
-  // Set initial tasks
-  const setInitialTasks = useCallback((initialTasks: Task[]) => {
-    // Migrate and ensure all tasks have required properties
-    const migratedTasks = initialTasks.map(task => migrateTask(task));
-    
-    // Sort tasks by order within each quadrant
-    const sortedTasks = [...migratedTasks].sort((a, b) => {
-      // First sort by quadrant
-      if (a.quadrant !== b.quadrant) {
-        return a.quadrant.localeCompare(b.quadrant);
-      }
-      // Then sort by order within quadrant
-      return (a.order || 0) - (b.order || 0);
-    });
-    
-    setTasks(sortedTasks);
-  }, [])
+  // Convert Convex tasks to UI tasks
+  const tasks = useMemo(() => 
+    convexTasks.map((task) => adaptConvexTask({
+      ...task,
+      quadrant: task.quadrant as QuadrantType,
+      taskType: task.taskType as TaskType,
+      status: task.status as TaskStatus,
+    } as ConvexTask)),
+    [convexTasks]
+  );
 
   // Add a new task
-  const addTask = useCallback((newTask: NewTask): Task | null => {
+  const addTask = useCallback(async (newTask: NewTask): Promise<string | null> => {
     try {
-      const taskId = uuidv4();
-      const now = new Date().toISOString();
-      
-      const baseTask: Omit<Task, 'order'> = {
-        id: taskId,
+      const taskId = await addTaskMutation({
         text: newTask.text,
         quadrant: newTask.quadrant,
-        taskType: newTask.taskType ?? 'personal',
-        needsReflection: newTask.needsReflection ?? false,
-        status: newTask.status ?? 'active',
-        createdAt: now,
-        updatedAt: now,
-      };
-      
-      setTasks(prevTasks => {
-        // Find the highest order in this quadrant
-        const quadrantTasks = prevTasks.filter(t => t.quadrant === newTask.quadrant);
-        const maxOrder = quadrantTasks.length > 0 
-          ? Math.max(...quadrantTasks.map(t => t.order ?? 0)) 
-          : -1;
-        
-        const newTask: Task = { ...baseTask, order: maxOrder + 1 };
-        return [...prevTasks, newTask];
+        taskType: newTask.taskType || 'personal',
+        needsReflection: newTask.needsReflection || false,
+        status: newTask.status || 'active',
+        description: newTask.description,
       });
-      
-      const task: Task = {
-        ...baseTask,
-        order: 0
-      };
-      return task;
+
+      return taskId.toString();
     } catch (error) {
       console.error("Error adding task:", error);
       return null;
     }
-  }, [])
+  }, [addTaskMutation]);
 
   // Add a new task with AI analysis
   const addTaskWithAIAnalysis = useCallback(async (taskData: {
@@ -164,180 +83,162 @@ export function useTaskManagement() {
     needsReflection?: boolean,
     status?: TaskStatus,
     taskType?: TaskType,
-    createdAt?: string,
-    updatedAt?: string
   }): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
     try {
-
-      
       // Add the task with provided or default values
-      const task = addTask({
+      const taskId = await addTask({
         text: taskData.text,
-        quadrant: taskData.quadrant || 'q4',
+        quadrant: taskData.quadrant || "q4",
         needsReflection: taskData.needsReflection || false,
-        status: taskData.status || 'active',
-        taskType: taskData.taskType || 'personal',
-        createdAt: taskData.createdAt || new Date().toISOString(),
-        updatedAt: taskData.updatedAt || new Date().toISOString()
+        status: taskData.status || "active",
+        taskType: taskData.taskType || "personal",
       });
       
-      if (!task) {
+      if (!taskId) {
         throw new Error("Failed to add task");
       }
 
+      // Create a temporary task object
+      const task: Task = {
+        id: taskId,
+        text: taskData.text,
+        quadrant: taskData.quadrant || "q4",
+        taskType: taskData.taskType || "personal",
+        needsReflection: taskData.needsReflection || false,
+        status: taskData.status || "active",
+        userId: "", // Will be set by Convex
+        _creationTime: Date.now(),
+      };
+
       // Return immediately to show the task in Q4
       setTimeout(async () => {
+        // Get OpenAI API key from localStorage
+        const openAIKey = localStorage.getItem('openai-api-key');
+        
+        if (!openAIKey) {
+          const toast = (window as any).toast;
+          if (toast) {
+            toast.error(
+              'Task added to Q4. AI analysis skipped: No OpenAI API key found. Add your API key in Settings to enable AI analysis.'
+            );
+          }
+          return;
+        }
+
         try {
-          console.log("[DEBUG] Sending task to AI analysis API:", {
-            text: taskData.text,
-            quadrant: taskData.quadrant || 'q4'
+          const response = await fetch("/api/analyze-reflection", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-openai-key": openAIKey,
+            },
+            body: JSON.stringify({
+              task: taskData.text,
+              justification: "",
+              goal: "",
+              priority: "",
+              currentQuadrant: "q4" // Always start in Q4 during analysis
+            }),
           });
           
-          const response = await fetch('/api/analyze-reflection', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            task: taskData.text,
-            justification: '',
-            goal: '',
-            priority: '',
-            currentQuadrant: taskData.quadrant || 'q4'
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to analyze task: ${response.status} ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        console.log("[DEBUG] AI analysis result:", result);
-        
-        if (result.error) {
-          throw new Error(`API returned error: ${result.error}`);
-        }
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to analyze task: ${response.status} ${response.statusText}\n${errorText}`);
+          }
+          
+          const result = await response.json();
+          
+          if (result.error) {
+            throw new Error(`API returned error: ${result.error}`);
+          }
 
-        // If this is an idea and we're not coming from the Ideas Bank, add it to the Ideas Bank
-        if (result.isIdea) {
-          console.log("[DEBUG] Detected idea, moving to Ideas Bank:", taskData.text);
+          // Update task with AI analysis results
+          const targetQuadrant = result.suggestedQuadrant || "q4";
+          const taskType = result.taskType || taskData.taskType || "personal";
           
-          // Add to Ideas Bank
-          // Create and dispatch event to add to Ideas Bank
-          const event = new CustomEvent('addToIdeasBank', {
-            detail: {
-              text: taskData.text,
-              taskType: result.taskType || taskData.taskType || 'idea',
-              connectedToPriority: result.connectedToPriority || false,
-              createdAt: taskData.createdAt || Date.now(),
-              updatedAt: taskData.updatedAt || Date.now()
-            }
-          });
-          window.dispatchEvent(event);
-          
-          // Remove the task from the tasks list
-          console.log('[DEBUG] Detected idea, removing from tasks list:', task.id);
-          
-          // Use the deleteTask function to properly remove the task
-          // This will handle both localStorage and state updates
-          internalFunctions.current.deleteTaskInternal(task.id);
-          
-          // Show a toast notification
-          const toastEvent = new CustomEvent('showToast', {
-            detail: {
-              message: 'Added to Ideas Bank',
-              type: 'success',
-              action: {
-                label: 'View',
-                onClick: () => window.location.href = '/ideas-bank'
-              }
-            }
-          });
-          window.dispatchEvent(toastEvent);
-          
-          return { task: null, isAnalyzing: false };
-        }
-        
-        // For tasks (or items from Ideas Bank), update with AI analysis
-        const targetQuadrant = result.suggestedQuadrant || taskData.quadrant || 'q4';
-        const taskType = result.taskType || taskData.taskType || 'personal';
-        
-        console.log(`[DEBUG] Moving task ${task.id} from Q4 to ${targetQuadrant}`);
-        
-        // Always update with the AI analysis results
-        setTasks(prevTasks => {
-          const taskIndex = prevTasks.findIndex(t => t.id === task.id);
-          if (taskIndex === -1) return prevTasks;
-
-          const updatedTasks = [...prevTasks];
-          updatedTasks[taskIndex] = {
-            ...updatedTasks[taskIndex],
+          await updateTaskMutation({
+            id: toConvexId(taskId),
             quadrant: targetQuadrant,
             taskType: taskType,
-            updatedAt: new Date().toISOString()
-          };
+            reflection: result.reasoning ? {
+              justification: result.reasoning,
+              aiAnalysis: JSON.stringify(result),
+              suggestedQuadrant: targetQuadrant,
+              finalQuadrant: targetQuadrant,
+              reflectedAt: new Date().toISOString(),
+            } : undefined,
+          });
 
-          console.log(`[DEBUG] Task ${task.id} updated with quadrant ${targetQuadrant} and type ${taskType}`);
-          return updatedTasks;
-        });
+          // Show success toast if quadrant changed
+          if (targetQuadrant !== "q4") {
+            const toast = (window as any).toast;
+            if (toast) {
+              toast.success(
+                `Task analyzed and moved to ${targetQuadrant.toUpperCase()}: ${result.reasoning?.split('.')[0] || 'Based on AI analysis'}`
+              );
+            }
+          }
         } catch (analysisError) {
           console.error("Error analyzing task:", analysisError);
-          // Keep the task in Q4 if analysis fails
+          const toast = (window as any).toast;
+          if (toast) {
+            const errorMessage = analysisError instanceof Error ? analysisError.message : 'Unknown error';
+            toast.error(
+              `Task will remain in Q4. AI analysis failed: ${errorMessage}. Please check your API key and try again.`
+            );
+          }
         }
-      }, 100); // Start analysis after a very short delay
+      }, 100);
 
-      // Return immediately with the task in Q4
       return { task, isAnalyzing: true };
     } catch (error) {
       console.error("Error in addTaskWithAIAnalysis:", error);
       return { task: null, isAnalyzing: false };
     }
-  }, [addTask]);
+  }, [addTask, updateTaskMutation]);
 
-  // Update a task (exposed function)
-  const updateTask = useCallback((id: string, updates: Partial<Task>): TaskResult => {
-    return internalFunctions.current.updateTaskInternal(id, updates);
-  }, []);
+  // Update a task
+  const updateTask = useCallback(async (id: string, updates: Partial<Omit<Task, "id" | "_creationTime" | "userId">>) => {
+    try {
+      await updateTaskMutation({
+        id: toConvexId(id),
+        ...updates,
+      });
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating task:", error);
+      return { success: false, error: "Failed to update task" };
+    }
+  }, [updateTaskMutation]);
 
   // Delete a task
-  const deleteTask = useCallback((id: string): TaskResult => {
-    return internalFunctions.current.deleteTaskInternal(id);
-  }, [])
+  const deleteTask = useCallback(async (id: string) => {
+    try {
+      await deleteTaskMutation({
+        id: toConvexId(id),
+      });
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      return { success: false, error: "Failed to delete task" };
+    }
+  }, [deleteTaskMutation]);
 
   // Toggle task completion
-  const toggleTask = useCallback((id: string): { success: boolean; error?: string } => {
+  const toggleTask = useCallback(async (id: string) => {
     try {
-      let isQ1Task = false;
-      let wasCompleted = false;
+      const task = convexTasks.find(t => t._id.toString() === id);
+      if (!task) return { success: false, error: "Task not found" };
       
-      // Check if this is a Q1 task that's being completed
-      setTasks(prevTasks => {
-        const taskIndex = prevTasks.findIndex(task => task.id === id)
-        if (taskIndex === -1) return prevTasks
-        
-        const currentTask = prevTasks[taskIndex];
-        isQ1Task = currentTask.quadrant === "q1";
-        wasCompleted = currentTask.status === 'completed';
-        
-        const now = new Date().toISOString();
-        const updatedTasks = [...prevTasks];
-        updatedTasks[taskIndex] = {
-          ...currentTask,
-          status: wasCompleted ? 'active' : 'completed',
-          updatedAt: now,
-          completedAt: wasCompleted ? undefined : now
-        };
-
-        // Debug logging for task completion
-        console.log(`[DEBUG] Toggling task ${id}:`, {
-          wasCompleted,
-          newStatus: updatedTasks[taskIndex].status,
-          completedAt: updatedTasks[taskIndex].completedAt
-        });
-
-        return updatedTasks;
+      const isQ1Task = task.quadrant === "q1";
+      const wasCompleted = task.status === "completed";
+      
+      await updateTaskMutation({
+        id: toConvexId(id),
+        status: wasCompleted ? "active" : "completed",
+        completedAt: wasCompleted ? undefined : new Date().toISOString(),
       });
-      
+
       // Show confetti if a Q1 task is being marked as completed
       if (isQ1Task && !wasCompleted) {
         setShowConfetti(true);
@@ -346,51 +247,24 @@ export function useTaskManagement() {
       return { success: true };
     } catch (error) {
       console.error("Error toggling task:", error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error occurred" };
     }
-  }, [])
+  }, [convexTasks, updateTaskMutation]);
 
   // Reorder tasks within a quadrant
-  const reorderTasks = useCallback((quadrant: QuadrantType, sourceIndex: number, destinationIndex: number): TaskResult => {
+  const reorderTasks = useCallback(async (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => {
     try {
-      setTasks(prevTasks => {
-        // Get tasks in this quadrant
-        const quadrantTasks = prevTasks
-          .filter(task => task.quadrant === quadrant)
-          .sort((a, b) => (a.order || 0) - (b.order || 0));
-
-        if (sourceIndex < 0 || sourceIndex >= quadrantTasks.length || 
-            destinationIndex < 0 || destinationIndex >= quadrantTasks.length) {
-          return prevTasks; // Invalid indices
-        }
-        
-        // Remove the task from its current position
-        const [movedTask] = quadrantTasks.splice(sourceIndex, 1);
-        
-        // Insert the task at the new position
-        quadrantTasks.splice(destinationIndex, 0, movedTask);
-        
-        // Update order values for all tasks in the quadrant
-        const updatedQuadrantTasks = quadrantTasks.map((task, index) => ({
-          ...task,
-          order: index,
-          updatedAt: new Date().toISOString()
-        }));
-        
-        // Create a new tasks array with the updated quadrant tasks
-        return prevTasks
-          .filter(task => task.quadrant !== quadrant) // Keep tasks from other quadrants
-          .concat(updatedQuadrantTasks); // Add updated quadrant tasks
+      await reorderTasksMutation({
+        quadrant,
+        sourceIndex,
+        destinationIndex,
       });
-      
       return { success: true };
     } catch (error) {
       console.error("Error reordering tasks:", error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error occurred" };
     }
-  }, []);
-
-
+  }, [reorderTasksMutation]);
 
   // Reset confetti state
   const hideConfetti = useCallback(() => {
@@ -405,8 +279,7 @@ export function useTaskManagement() {
     deleteTask,
     toggleTask,
     reorderTasks,
-    setInitialTasks,
     showConfetti,
     hideConfetti
-  }
+  };
 }

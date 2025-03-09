@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ChevronLeft, CheckCircle, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
-  Form,
+  Form as FormRoot,
   FormControl,
   FormDescription,
   FormField,
@@ -30,18 +30,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProfileFormData } from "@/types/profile"
 import { useProfile } from "@/hooks/use-profile"
 
-const profileSchema = yup.object({
-  name: yup.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  email: yup.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  theme: yup.string().oneOf(["light", "dark", "system"], {
-    message: "Please select a theme.",
-  }),
-  personalContext: yup.string().optional(),
-  licenseKey: yup.string().optional(),
+const profileSchema = yup.object().shape({
+  name: yup.string().required('Name is required').min(2, 'Name must be at least 2 characters'),
+  email: yup.string().required('Email is required').email('Please enter a valid email address'),
+  theme: yup.string().required('Theme is required').oneOf(['light', 'dark', 'system'] as const, 'Please select a valid theme'),
+  personalContext: yup.string().default(''),
+  licenseKey: yup.string().optional().default('')
 })
 
 export default function ProfilePage() {
@@ -54,15 +48,15 @@ export default function ProfilePage() {
     initializeProfile()
   }, [initializeProfile])
 
-  const { control, handleSubmit } = useForm<ProfileFormData>({
+  const form = useForm<ProfileFormData>({
     resolver: yupResolver(profileSchema),
     defaultValues: {
-      name: profile?.name || "",
-      email: profile?.email || "",
-      theme: profile?.theme || "system",
-      personalContext: profile?.personalContext || "",
-      licenseKey: profile?.licenseKey || "",
-    },
+      name: profile?.name || '',
+      email: profile?.email || '',
+      theme: profile?.theme || 'system',
+      personalContext: profile?.personalContext || '',
+      licenseKey: profile?.licenseKey || '',
+    } as ProfileFormData,
   })
 
   async function onSubmit(data: ProfileFormData) {
@@ -110,10 +104,10 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...control}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <FormRoot {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <FormField
-                control={control}
+                control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
@@ -127,7 +121,7 @@ export default function ProfilePage() {
               />
               
               <FormField
-                control={control}
+                control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
@@ -141,7 +135,7 @@ export default function ProfilePage() {
               />
               
               <FormField
-                control={control}
+                control={form.control}
                 name="theme"
                 render={({ field }) => (
                   <FormItem>
@@ -164,7 +158,7 @@ export default function ProfilePage() {
               />
               
               <FormField
-                control={control}
+                control={form.control}
                 name="personalContext"
                 render={({ field }) => (
                   <FormItem>
@@ -186,7 +180,7 @@ export default function ProfilePage() {
               />
 
               <FormField
-                control={control}
+                control={form.control}
                 name="licenseKey"
                 render={({ field }) => (
                   <FormItem>
@@ -249,7 +243,7 @@ export default function ProfilePage() {
                 ) : (
                   <span className="inline-flex items-center">
                     Save Changes
-                    {control.formState.isDirty && (
+                    {form.getValues() && Object.keys(form.formState.dirtyFields).length > 0 && (
                       <span className="ml-2 text-xs bg-primary/20 px-1.5 py-0.5 rounded">
                         Unsaved changes
                       </span>
@@ -258,7 +252,7 @@ export default function ProfilePage() {
                 )}
               </Button>
             </form>
-          </Form>
+          </FormRoot>
         </CardContent>
       </Card>
     </div>

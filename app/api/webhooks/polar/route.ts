@@ -44,14 +44,16 @@ function validatePolarSignature(signature: string | null, timestamp: string | nu
 
 export async function POST(request: Request) {
   try {
-    // Get request body as text for signature validation
-    const body = await request.text();
+    // Get request body and headers
+    const [body, headers] = await Promise.all([
+      request.text(),
+      request.headers
+    ]);
     const event: PolarWebhookEvent = JSON.parse(body);
 
     // Validate Polar signature
-    const headersList = await request.headers;
-    const signature = headersList.get('x-polar-signature');
-    const timestamp = headersList.get('x-polar-timestamp');
+    const signature = headers.get('x-polar-signature');
+    const timestamp = headers.get('x-polar-timestamp');
     
     const validation = validatePolarSignature(signature, timestamp, body);
     if (!validation.isValid) {

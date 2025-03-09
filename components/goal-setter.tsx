@@ -153,18 +153,18 @@ export function GoalSetter() {
   }
 
   return (
-    <div className="goal-setter-container border rounded-lg overflow-hidden relative" style={{ zIndex: 20 }}>
+    <div className="goal-setter-container border rounded-lg overflow-hidden relative bg-card" style={{ zIndex: 20 }}>
       <div 
-        className="goal-setter-header flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+        className="goal-setter-header flex items-center justify-between p-3 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors dark:hover:bg-muted/30 border-b"
         onClick={toggleCollapse}
       >
         <div className="flex items-center gap-2">
-          <Target className="h-4 w-4 text-gray-500" />
-          <h3 className="text-sm font-medium text-gray-900">Focus & Priority</h3>
+          <Target className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-foreground">Focus & Priority</h3>
           {isCollapsed ? (
-            <ChevronDown className="h-4 w-4 text-gray-500" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <ChevronUp className="h-4 w-4 text-gray-500" />
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
       </div>
@@ -172,14 +172,14 @@ export function GoalSetter() {
       <div 
         className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'} overflow-hidden`}
       >
-        <div className="space-y-8 p-3 relative">
+        <div className="space-y-8 p-3 relative bg-card/50 dark:bg-card/50">
           {/* Main Goal Section */}
-          <div className="relative group rounded-lg border bg-blue-50/30 border-blue-100 p-3 transition-all duration-200 mb-8">
+          <div className="relative group rounded-lg border bg-primary/5 dark:bg-primary/10 border-primary/20 p-3 transition-all duration-200 mb-8 hover:bg-primary/10 dark:hover:bg-primary/20">
             <div className="flex items-center gap-2 mb-1">
-              <Flag className="h-4 w-4 text-blue-500" />
-              <span className="text-xs font-medium text-blue-600">Main Goal</span>
+              <Flag className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium text-primary">Main Goal</span>
               {isCompleted && (
-                <span className="inline-flex items-center rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700">
+                <span className="inline-flex items-center rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 px-1.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="h-3 w-3 mr-0.5" />
                   Done
                 </span>
@@ -192,7 +192,7 @@ export function GoalSetter() {
                   value={tempGoal}
                   onChange={(e) => setTempGoal(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && saveGoal()}
-                  className="text-sm h-8 border-blue-200"
+                  className="text-sm h-8 border-primary/20"
                   placeholder="Enter your main goal"
                   autoFocus
                 />
@@ -216,8 +216,8 @@ export function GoalSetter() {
               </div>
             ) : (
               <div className="group-hover:pr-16 relative">
-                <p className="text-sm text-gray-800 mb-2">{savedGoal || "Set your main goal"}</p>
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-md px-1.5 py-1 shadow-sm" style={{ zIndex: 30 }}>
+                <p className="text-sm text-foreground/90 mb-2">{savedGoal || "Set your main goal"}</p>
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 dark:bg-background/80 rounded-md px-1.5 py-1 shadow-sm backdrop-blur-sm" style={{ zIndex: 30 }}>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -230,7 +230,7 @@ export function GoalSetter() {
                     variant="ghost"
                     size="sm"
                     onClick={toggleCompletion}
-                    className={`h-7 w-7 p-0 ${isCompleted ? 'text-green-600' : 'text-gray-400'}`}
+                    className={`h-7 w-7 p-0 ${isCompleted ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/70'}`}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </Button>
@@ -240,10 +240,10 @@ export function GoalSetter() {
           </div>
 
           {/* Daily Priority Section */}
-          <div className="relative group rounded-lg border bg-amber-50/30 border-amber-100 p-3 transition-all duration-200 mb-8">
+          <div className="relative group rounded-lg border bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20 p-3 transition-all duration-200 mb-8 hover:bg-amber-500/10 dark:hover:bg-amber-500/20">
             <div className="flex items-center gap-2 mb-1">
-              <Calendar className="h-4 w-4 text-amber-500" />
-              <span className="text-xs font-medium text-amber-600">Today's Priority</span>
+              <Calendar className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">Today's Priority</span>
             </div>
 
             {isEditingPriority ? (
@@ -252,7 +252,7 @@ export function GoalSetter() {
                   value={tempPriority}
                   onChange={(e) => setTempPriority(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && savePriority()}
-                  className="text-sm h-8 border-amber-200"
+                  className="text-sm h-8 border-amber-500/20"
                   placeholder="Enter today's priority"
                   autoFocus
                 />
@@ -276,8 +276,8 @@ export function GoalSetter() {
               </div>
             ) : (
               <div className="group-hover:pr-16 relative">
-                <p className="text-sm text-gray-800 mb-2">{savedPriority || "Set your daily priority"}</p>
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-md px-1.5 py-1 shadow-sm" style={{ zIndex: 30 }}>
+                <p className="text-sm text-foreground/90 mb-2">{savedPriority || "Set your daily priority"}</p>
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 dark:bg-background/80 rounded-md px-1.5 py-1 shadow-sm backdrop-blur-sm" style={{ zIndex: 30 }}>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -290,7 +290,7 @@ export function GoalSetter() {
                     variant="ghost"
                     size="sm"
                     onClick={toggleCompletion}
-                    className={`h-7 w-7 p-0 ${isCompleted ? 'text-green-600' : 'text-gray-400'}`}
+                    className={`h-7 w-7 p-0 ${isCompleted ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/70'}`}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </Button>

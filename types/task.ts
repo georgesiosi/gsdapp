@@ -1,3 +1,5 @@
+import { Id } from "../convex/_generated/dataModel";
+
 // Task quadrant types
 export type QuadrantType = "q1" | "q2" | "q3" | "q4";
 
@@ -24,8 +26,10 @@ export type TaskStatus = 'active' | 'completed';
 export interface Task {
   /** Unique identifier for the task */
   id: string;
-  /** Task description or content */
+  /** Task title or short description */
   text: string;
+  /** Detailed description of the task */
+  description?: string;
   /** Eisenhower quadrant classification */
   quadrant: QuadrantType;
   /** Optional categorization of the task */
@@ -36,24 +40,42 @@ export interface Task {
   needsReflection: boolean;
   /** Optional reflection data if task has been reflected upon */
   reflection?: TaskReflection;
-  /** ISO timestamp of task creation */
-  createdAt: string;
-  /** ISO timestamp of last task update */
-  updatedAt: string;
   /** ISO timestamp of task completion, only set when status is 'completed' */
   completedAt?: string;
   /** Optional ordering within the quadrant for manual sorting */
   order?: number;
+  /** User ID who owns this task */
+  userId: string;
+  /** Creation timestamp */
+  _creationTime: number;
+}
+
+/**
+ * Convex database task type
+ */
+export interface ConvexTask {
+  _id: Id<"tasks">;
+  _creationTime: number;
+  text: string;
+  description?: string;
+  quadrant: QuadrantType;
+  taskType?: TaskType;
+  status: TaskStatus;
+  needsReflection: boolean;
+  reflection?: TaskReflection;
+  completedAt?: string;
+  order?: number;
+  userId: string;
 }
 
 // Idea interface
 export interface Idea {
-  id: string;
+  id: Id<"ideas">;
   text: string;
   taskType: TaskOrIdeaType;
   connectedToPriority: boolean;
-  createdAt: string;
-  updatedAt: string;
+  userId: string;
+  _creationTime: number;
 }
 
 // Task Reflection interface
@@ -69,7 +91,7 @@ export interface TaskReflection {
 
 // Reasoning log interface
 export interface ReasoningLog {
-  taskId: string;
+  taskId: Id<"tasks">;
   taskText: string;
   timestamp: number;
   suggestedQuadrant: QuadrantType;
@@ -83,11 +105,11 @@ export interface ReasoningLog {
 // Task Manager Context interface
 export interface TaskManagerContextType {
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id'>) => Task | null;
-  updateTask: (id: string, updates: Partial<Task>) => boolean;
-  deleteTask: (id: string) => boolean;
-  moveTask: (id: string, quadrant: QuadrantType) => boolean;
-  completeTask: (id: string) => boolean;
+  addTask: (task: Omit<Task, 'id' | '_creationTime'>) => Task | null;
+  updateTask: (id: Id<"tasks">, updates: Partial<Omit<Task, 'id' | '_creationTime'>>) => boolean;
+  deleteTask: (id: Id<"tasks">) => boolean;
+  moveTask: (id: Id<"tasks">, quadrant: QuadrantType) => boolean;
+  completeTask: (id: Id<"tasks">) => boolean;
   addTaskWithAIAnalysis: (text: string, initialQuadrant?: QuadrantType, userGoal?: string, userPriority?: string) => Promise<{ task: Task | null, isAnalyzing: boolean }>;
 }
 

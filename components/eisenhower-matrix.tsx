@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { ReflectionBadge } from "@/components/ui/reflection-badge"
 import { AIThinkingIndicator } from "@/components/ui/ai-thinking-indicator"
@@ -21,6 +21,7 @@ interface QuadrantProps {
   onMoveTask: (taskId: string, newQuadrant: QuadrantType) => void
   onEditTask: (taskId: string, newText: string) => void
   onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
+  onTaskClick?: (task: Task) => void
   className?: string
   isAIThinking?: boolean
 }
@@ -35,6 +36,7 @@ function Quadrant({
   onMoveTask, 
   onEditTask, 
   onReorderTasks,
+  onTaskClick,
   className, 
   isAIThinking 
 }: QuadrantProps) {
@@ -103,7 +105,7 @@ function Quadrant({
   return (
     <div 
       className={cn(
-        "quadrant", 
+        "quadrant rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all", 
         className,
         isAIThinking && "ring-2 ring-primary/40 transition-all duration-300"
       )}
@@ -113,23 +115,23 @@ function Quadrant({
       }}
       onDrop={(e: DragEvent) => handleDrop(e)}
     >
-      <div className="flex items-center justify-between p-3 border-b">
+      <div className="flex items-center justify-between p-3 border-b bg-muted/50 dark:bg-muted/20">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium">{title}</h3>
+          <h3 className="text-sm font-medium text-foreground">{title}</h3>
           <QuadrantInfoTooltip quadrantId={quadrantId} />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{tasks.length} {quadrantId === "q1" ? "tasks to do now" : quadrantId === "q2" ? "tasks to schedule" : quadrantId === "q3" ? "tasks to delegate" : "tasks to avoid"}</span>
+          <span className="text-xs text-muted-foreground/80">{tasks.length} {quadrantId === "q1" ? "tasks to do now" : quadrantId === "q2" ? "tasks to schedule" : quadrantId === "q3" ? "tasks to delegate" : "tasks to avoid"}</span>
           {isAIThinking && quadrantId === "q4" && (
             <AIThinkingIndicator isThinking={true} className="scale-75" />
           )}
         </div>
       </div>
-      <div className="quadrant-content">
+      <div className="quadrant-content bg-card/50 dark:bg-card/50">
         {sortedTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-6">
             <p className="text-xs text-muted-foreground">No tasks yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Drag tasks here or add new ones</p>
+            <p className="text-xs text-muted-foreground/80 mt-1">Drag tasks here or add new ones</p>
           </div>
         ) : (
           <ul className="space-y-2">
@@ -137,14 +139,34 @@ function Quadrant({
               <li 
                 key={task.id} 
                 className={cn(
-                  "task-item",
-                  draggedTaskId === task.id && "opacity-50"
+                  "task-item group p-2 rounded-md",
+                  draggedTaskId === task.id && "opacity-50",
+                  "cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors",
+                  editingTaskId === task.id && "pointer-events-none"
                 )}
                 draggable={editingTaskId !== task.id}
                 onDragStart={(e) => handleDragStart(e, task.id)}
-                onDragOver={(e) => handleDragOver(e, task.id)}
+                onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, task.id)}
                 onDragEnd={handleDragEnd}
+                onClick={(e) => {
+                  // Ignore clicks if we're dragging
+                  if (draggedTaskId) return
+
+                  // Get the target element
+                  const target = e.target as HTMLElement
+
+                  // Ignore clicks on interactive elements
+                  if (
+                    target.closest('.task-checkbox') ||
+                    target.closest('.task-action-button') ||
+                    target.closest('.reflection-badge')
+                  ) {
+                    return
+                  }
+
+                  onTaskClick?.(task)
+                }}
               >
                 {editingTaskId === task.id ? (
                   <InlineTaskEditor 
@@ -161,13 +183,18 @@ function Quadrant({
                     <input
                       type="checkbox"
                       checked={task.status === 'completed'}
-                      onChange={() => onToggleTask(task.id)}
-                      className="task-checkbox"
+                      onChange={(e) => {
+                        e.stopPropagation()
+                        onToggleTask(task.id)
+                      }}
+                      className="task-checkbox rounded-sm"
                     />
-                    <span className={cn(
-                      "task-text",
-                      task.status === 'completed' && "line-through text-muted-foreground"
-                    )}>
+                    <span 
+                      className={cn(
+                        "task-text text-sm transition-colors",
+                        task.status === 'completed' ? "line-through text-muted-foreground" : "text-foreground/90 group-hover:text-accent-foreground"
+                      )}
+                    >
                       {task.text}
                       {task.needsReflection && onReflectionRequested && (
                         <ReflectionBadge 
@@ -184,14 +211,20 @@ function Quadrant({
                       </div>
                       <AIReasoningTooltip taskId={task.id} className="mr-1" />
                       <button
-                        onClick={() => setEditingTaskId(task.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingTaskId(task.id)
+                        }}
                         className="task-action-button edit-button mr-1"
                         aria-label="Edit task"
                       >
                         <Edit2 size={14} />
                       </button>
                       <button
-                        onClick={() => onDeleteTask(task.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDeleteTask(task.id)
+                        }}
                         className="task-action-button delete-button"
                         aria-label="Delete task"
                       >
@@ -221,6 +254,7 @@ interface EisenhowerMatrixProps {
   onMoveTask: (taskId: string, newQuadrant: QuadrantType) => void
   onEditTask: (taskId: string, newText: string) => void
   onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
+  onTaskClick?: (task: Task) => void
   isAIThinking?: boolean
 }
 
@@ -232,12 +266,33 @@ export function EisenhowerMatrix({
   onMoveTask, 
   onEditTask,
   onReorderTasks,
+  onTaskClick,
   isAIThinking = false 
 }: EisenhowerMatrixProps) {
-  const q1Tasks = tasks.filter(task => task.quadrant === "q1");
-  const q2Tasks = tasks.filter(task => task.quadrant === "q2");
-  const q3Tasks = tasks.filter(task => task.quadrant === "q3");
-  const q4Tasks = tasks.filter(task => task.quadrant === "q4");
+  // Memoize tasks by quadrant to prevent unnecessary recalculations
+  const tasksByQuadrant = useMemo(() => {
+    console.log('[DEBUG] EisenhowerMatrix - Recalculating tasks by quadrant');
+    return {
+      q1: tasks.filter(t => t.quadrant === 'q1'),
+      q2: tasks.filter(t => t.quadrant === 'q2'),
+      q3: tasks.filter(t => t.quadrant === 'q3'),
+      q4: tasks.filter(t => t.quadrant === 'q4')
+    };
+  }, [tasks]); // Only recalculate when tasks change
+  
+  // Listen for task updates and force re-renders
+  useEffect(() => {
+    const handleTaskUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && customEvent.detail.taskId) {
+        console.log('[DEBUG] EisenhowerMatrix - Task updated:', customEvent.detail);
+        // The tasksByQuadrant memo will automatically update when tasks prop changes
+      }
+    };
+    
+    window.addEventListener('taskUpdated', handleTaskUpdate);
+    return () => window.removeEventListener('taskUpdated', handleTaskUpdate);
+  }, []);
 
   return (
     <div className="eisenhower-matrix">
@@ -245,52 +300,56 @@ export function EisenhowerMatrix({
         <Quadrant
           title="Urgent & Important"
           quadrantId="q1"
-          tasks={q1Tasks}
+          tasks={tasksByQuadrant.q1}
           onToggleTask={onToggleTask}
           onDeleteTask={onDeleteTask}
           onReflectionRequested={onReflectionRequested}
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
+          onTaskClick={onTaskClick}
           className="quadrant-urgent-important border-destructive/20"
           isAIThinking={isAIThinking}
         />
         <Quadrant
           title="Not Urgent but Important"
           quadrantId="q2"
-          tasks={q2Tasks}
+          tasks={tasksByQuadrant.q2}
           onToggleTask={onToggleTask}
           onDeleteTask={onDeleteTask}
           onReflectionRequested={onReflectionRequested}
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
+          onTaskClick={onTaskClick}
           className="quadrant-not-urgent-important border-primary/20"
           isAIThinking={isAIThinking}
         />
         <Quadrant
           title="Urgent but Not Important"
           quadrantId="q3"
-          tasks={q3Tasks}
+          tasks={tasksByQuadrant.q3}
           onToggleTask={onToggleTask}
           onDeleteTask={onDeleteTask}
           onReflectionRequested={onReflectionRequested}
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
+          onTaskClick={onTaskClick}
           className="quadrant-urgent-not-important border-yellow-500/20"
           isAIThinking={isAIThinking}
         />
         <Quadrant
           title="Not Urgent & Not Important"
           quadrantId="q4"
-          tasks={q4Tasks}
+          tasks={tasksByQuadrant.q4}
           onToggleTask={onToggleTask}
           onDeleteTask={onDeleteTask}
           onReflectionRequested={onReflectionRequested}
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
+          onTaskClick={onTaskClick}
           className="quadrant-not-urgent-not-important border-muted-foreground/20"
           isAIThinking={isAIThinking}
         />

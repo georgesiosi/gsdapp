@@ -26,6 +26,7 @@ import { useClerk, useUser } from "@clerk/nextjs"
 
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function SettingsMenu() {
   const { signOut } = useClerk()
@@ -37,9 +38,11 @@ export function SettingsMenu() {
   }
   
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-9 w-9">
+    <div className="flex items-center gap-2">
+      <ThemeToggle />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-9 w-9">
           {isSignedIn && user?.imageUrl ? (
             <Avatar className="h-7 w-7">
               <AvatarImage src={user.imageUrl} alt={user.fullName || "User"} />
@@ -157,6 +160,7 @@ export function SettingsMenu() {
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+    </div>
   )
 }

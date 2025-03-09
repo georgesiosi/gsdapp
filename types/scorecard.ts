@@ -1,4 +1,5 @@
-// Scorecard types
+import { Id } from "../convex/_generated/dataModel";
+
 export interface ScorecardMetrics {
   date: string;
   totalTasks: number;
@@ -26,14 +27,14 @@ export interface ScorecardMetrics {
       completionRate: number;
     };
   };
-  highValueCompletionRate: number; // Q1 + Q2 completion rate
-  priorityAlignmentScore: number; // 0-10 score
+  highValueCompletionRate: number;
+  priorityAlignmentScore: number;
 }
 
 export interface ScorecardTrends {
-  completionRateTrend: 'up' | 'down' | 'stable';
-  highValueCompletionTrend: 'up' | 'down' | 'stable';
-  priorityAlignmentTrend: 'up' | 'down' | 'stable';
+  completionRateTrend: string;
+  highValueCompletionTrend: string;
+  priorityAlignmentTrend: string;
 }
 
 export interface ScorecardInsights {
@@ -42,10 +43,10 @@ export interface ScorecardInsights {
 }
 
 export interface Scorecard {
-  id: string;
-  createdAt: string;
+  id: Id<"scorecards">;
   metrics: ScorecardMetrics;
   trends: ScorecardTrends;
   insights: ScorecardInsights;
-  notes?: string; // Optional user notes/reflections on the scorecard
+  notes?: string;
+  _creationTime: number;
 }

@@ -17,5 +17,5 @@ export interface ProfileFormData {
   email: string;
   theme: 'light' | 'dark' | 'system';
   personalContext: string;
-  licenseKey?: string;
+  licenseKey: string; // Make this required in the type but optional in validation
 }

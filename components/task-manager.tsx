@@ -1,12 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useProfile } from "@/hooks/use-profile"
-import { ReasoningLogService } from "@/services/ai/reasoningLogService"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
-import type { Task, TaskStatus, TaskType, QuadrantType, IdeaType } from "@/types/task"
+import type { Task, TaskStatus, QuadrantType, TaskType } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Plus, MessageCircle } from "lucide-react"
@@ -16,488 +15,289 @@ import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { TaskModal } from "@/components/task-modal"
 import { ReflectionCard } from "@/components/ui/reflection-card"
 import { TaskCompletionConfetti } from "@/components/ui/task-completion-confetti"
-import { VelocityMeters } from "@/components/velocity-meters"
-import IdeaPriorityDialog from "@/components/ideas/idea-priority-dialog"
+// Temporarily disabled while fixing Convex DB setup
+// import { VelocityMeters } from "@/components/velocity-meters"
 import { ScorecardButton } from "@/components/scorecard-button"
 import { EndDayScorecard } from "@/components/end-day-scorecard"
 import { ChatDialog } from "@/components/ui/chat-dialog"
-import { getStorage, setStorage } from "@/lib/storage"
+import { Id } from "../convex/_generated/dataModel"
 
 interface TaskManagerProps {
   tasks?: Task[];
 }
 
+// Helper function to convert string ID to Convex ID
+const toConvexId = (id: string): Id<"tasks"> => id as unknown as Id<"tasks">;
+
 export const TaskManager: React.FC<TaskManagerProps> = () => {
   const router = useRouter();
   const { toast } = useToast();
+  const [taskList, setTaskList] = useState<Task[]>([]);
+
   const { 
-    tasks: taskList, 
+    tasks: hookTasks, 
     addTask, 
-    addTaskWithAIAnalysis, 
     updateTask, 
     deleteTask, 
     reorderTasks,
-    setInitialTasks,
     showConfetti,
     hideConfetti
-  } = useTaskManagement()
-  const { addIdea, ideas, setInitialIdeas } = useIdeasManagement()
-  const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem()
+  } = useTaskManagement();
 
-  const [taskModalOpen, setTaskModalOpen] = useState(false)
-  const [isAIThinking, setIsAIThinking] = useState(false)
-  const [ideaDialogOpen, setIdeaDialogOpen] = useState(false)
-  const [currentIdea, setCurrentIdea] = useState<{ text: string; taskType?: TaskType | IdeaType; connectedToPriority: boolean } | null>(null);
+  // Keep local state in sync with hook state and handle updates
+  useEffect(() => {
+    // Only update if the tasks have actually changed
+    if (hookTasks) {
+      // Deep comparison to prevent unnecessary updates
+      const tasksChanged = JSON.stringify(hookTasks) !== JSON.stringify(taskList);
+      if (tasksChanged) {
+        setTaskList(hookTasks);
+      }
+    }
+  }, [hookTasks, taskList]); // Include taskList to satisfy eslint, deep comparison prevents infinite loops
 
-  const [isLoadingTasks, setIsLoadingTasks] = useState(true);
-  const [isLoadingIdeas, setIsLoadingIdeas] = useState(true);
+  // Import ideas management but disable for now while fixing Convex DB setup
+  const { } = useIdeasManagement(); // Destructure nothing since we're not using ideas yet
+  const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem();
+
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [isAIThinking, setIsAIThinking] = useState(false);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
-  // Load tasks from localStorage using storage utility
-  useEffect(() => {
-    const loadTasks = () => {
-      try {
-        // Use our storage utility instead of direct localStorage access
-        const parsedTasks = getStorage('TASKS');
-        
-        if (parsedTasks) {
-          // Convert all dates to ISO strings for consistent handling
-          const formattedTasks = parsedTasks.map((task: any) => ({
-            ...task,
-            createdAt: typeof task.createdAt === 'string' ? 
-              task.createdAt : new Date(task.createdAt).toISOString(),
-            updatedAt: typeof task.updatedAt === 'string' ? 
-              task.updatedAt : new Date(task.updatedAt).toISOString(),
-            completedAt: task.completedAt ? 
-              (typeof task.completedAt === 'string' ? 
-                task.completedAt : new Date(task.completedAt).toISOString()) : 
-              undefined
-          }));
-          
-          setInitialTasks(formattedTasks);
-        }
-        setIsLoadingTasks(false);
-      } catch (error) {
-        console.error("Error loading tasks from storage:", error);
-        setIsLoadingTasks(false);
-      }
-    };
+  const handleTaskClick = (task: Task) => {
+    router.push(`/tasks/${task.id}`);
+  };
+
+  // Shared quadrant names mapping - memoized to prevent unnecessary re-renders
+  const quadrantNames = useMemo<Record<QuadrantType, string>>(() => ({
+    q1: 'Urgent & Important',
+    q2: 'Important, Not Urgent',
+    q3: 'Urgent, Not Important',
+    q4: 'Neither Urgent nor Important'
+  }), []); // Empty deps array since this never changes
+
+  // Memoized task update handler
+  const handleTaskUpdated = useCallback((event: Event) => {
+    const { detail } = event as CustomEvent;
+    if (!detail?.taskId) return;
     
-    loadTasks();
-  }, [setInitialTasks]);
-
-  // Load ideas from storage using our storage utility
-  useEffect(() => {
-    const loadIdeas = () => {
-      try {
-        // Use our storage utility instead of direct localStorage access
-        const parsedIdeas = getStorage('IDEAS');
-        if (parsedIdeas) {
-          // Debug logging for loaded ideas
-  
-          
-          // Convert all dates to ISO strings for consistent handling
-          const formattedIdeas = parsedIdeas.map((idea: any) => ({
-            ...idea,
-            createdAt: typeof idea.createdAt === 'string' ? 
-              idea.createdAt : new Date(idea.createdAt).toISOString(),
-            updatedAt: typeof idea.updatedAt === 'string' ? 
-              idea.updatedAt : new Date(idea.updatedAt).toISOString()
-          }));
-          
-          setInitialIdeas(formattedIdeas);
-        }
-        setIsLoadingIdeas(false);
-      } catch (error) {
-        console.error("Error loading ideas from storage:", error);
-        setIsLoadingIdeas(false);
-      }
-    };
-    
-    loadIdeas();
-  }, [setInitialIdeas]);
-
-  // Save tasks to storage whenever they change
-  useEffect(() => {
-    if (taskList.length > 0) {
-      try {
-        // Ensure all tasks have proper date fields before saving
-        const tasksToSave = taskList.map(task => ({
-          ...task,
-          createdAt: task.createdAt || new Date().toISOString(),
-          updatedAt: task.updatedAt || new Date().toISOString(),
-          completedAt: task.status === 'completed' ? (task.completedAt || new Date().toISOString()) : undefined
-        }));
+    // Update UI immediately for pre-update events
+    if (detail.source?.includes('pre')) {
+      setTaskList(prevTasks => {
+        const taskIndex = prevTasks.findIndex(t => t.id === detail.taskId);
+        if (taskIndex === -1) return prevTasks;
         
-        setStorage('TASKS', tasksToSave);
-      } catch (error) {
-        console.error("Error saving tasks to storage:", error);
-        toast({
-          title: "Error Saving Tasks",
-          description: "There was a problem saving your tasks. Changes may not persist.",
-          variant: "destructive",
-        });
-      }
+        // Only update if the task data has actually changed
+        const updatedTask = {
+          ...prevTasks[taskIndex],
+          ...detail.updates,
+        };
+        
+        if (JSON.stringify(updatedTask) === JSON.stringify(prevTasks[taskIndex])) {
+          return prevTasks;
+        }
+        
+        const updatedTasks = [...prevTasks];
+        updatedTasks[taskIndex] = updatedTask;
+        return updatedTasks;
+      });
     }
-  }, [taskList, toast]);
-
-  // Save ideas to storage whenever they change
-  useEffect(() => {
-    if (!isLoadingIdeas && ideas.length > 0) {
-      try {
-        setStorage('IDEAS', ideas);
-
-      } catch (error) {
-        console.error("Error saving ideas to storage:", error);
-        toast({
-          title: "Error Saving Ideas",
-          description: "There was a problem saving your ideas. Changes may not persist.",
-          variant: "destructive",
-        });
-      }
+    
+    // Show quadrant change notification
+    if (detail.updates?.quadrant && typeof detail.updates.quadrant === 'string') {
+      const quadrant = detail.updates.quadrant as QuadrantType;
+      toast({
+        title: "Task Moved",
+        description: `Task moved to ${quadrantNames[quadrant]}`,
+        className: "bg-card text-card-foreground"
+      });
     }
-  }, [ideas, isLoadingIdeas, toast]);
+  }, [toast, quadrantNames]);
+
+  // Memoized export handler
+  const handleExport = useCallback(() => {
+    exportTasksToCSV();
+    toast({
+      title: "Tasks Exported",
+      description: "Your tasks have been exported to CSV",
+      className: "bg-card text-card-foreground",
+    });
+  }, [toast]);
+
+  // Memoized ideas bank handler
+  const handleAddToIdeasBank = useCallback((event: Event) => {
+    if ((event as CustomEvent).detail?.text) {
+      router.push("/ideas-bank");
+      toast({
+        title: "Redirecting",
+        description: "Taking you to the Ideas Bank",
+        duration: 3000,
+        className: "bg-card text-card-foreground",
+      });
+    }
+  }, [router, toast]);
   
-  // Function removed after debugging was complete
-
   // Set up event listeners
   useEffect(() => {
-    // Export tasks event listener
-    const handleExport = () => {
-      exportTasksToCSV();
-      toast({
-        title: "Tasks Exported",
-        description: "Your tasks have been exported to CSV",
-      });
-    };
-
-    // Handle tasks restored from backup
-    const handleTasksRestored = () => {
-      const restoredTasks = getStorage('TASKS');
-      if (restoredTasks) {
-        const formattedTasks = restoredTasks.map((task: any) => ({
-          ...task,
-          createdAt: typeof task.createdAt === 'string' ? 
-            task.createdAt : new Date(task.createdAt).toISOString(),
-          updatedAt: typeof task.updatedAt === 'string' ? 
-            task.updatedAt : new Date(task.updatedAt).toISOString(),
-          completedAt: task.completedAt ? 
-            (typeof task.completedAt === 'string' ? 
-              task.completedAt : new Date(task.completedAt).toISOString()) : 
-            undefined
-        }));
-        
-        setInitialTasks(formattedTasks);
-        toast({
-          title: "Tasks Restored",
-          description: "Your tasks have been restored from backup",
-        });
-      }
-    };
-    
-    // Ideas Bank event listener - listen for addToIdeasBank events from useTaskManagement
-    const handleAddToIdeasBank = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      
-      if (customEvent.detail && customEvent.detail.text) {
-        const idea = addIdea({
-          text: customEvent.detail.text,
-          taskType: customEvent.detail.taskType || 'idea',
-          connectedToPriority: customEvent.detail.connectedToPriority || false
-        });
-        
-        if (idea) {
-          toast({
-            title: "Idea Added",
-            description: (
-              <div>
-                Added to Ideas Bank.{" "}
-                <button 
-                  onClick={() => router.push("/ideas-bank")} 
-                  className="font-medium underline hover:text-primary ml-1"
-                >
-                  View Ideas Bank
-                </button>
-              </div>
-            ),
-            duration: 5000,
-          });
-        }
-      }
-    };
-    
+    // Add event listeners
+    window.addEventListener('taskUpdated', handleTaskUpdated);
     window.addEventListener('exportTasks', handleExport);
-    window.addEventListener('tasksRestored', handleTasksRestored);
     window.addEventListener('addToIdeasBank', handleAddToIdeasBank);
     
+    // Cleanup event listeners
     return () => {
+      window.removeEventListener('taskUpdated', handleTaskUpdated);
       window.removeEventListener('exportTasks', handleExport);
-      window.removeEventListener('addToIdeasBank', handleAddToIdeasBank as EventListener);
-      window.removeEventListener('tasksRestored', handleTasksRestored);
+      window.removeEventListener('addToIdeasBank', handleAddToIdeasBank);
     };
-  }, [addIdea, router, toast, setInitialTasks]);
+  }, [handleTaskUpdated, handleExport, handleAddToIdeasBank]); // Include all event handlers in deps
 
-
-
-  const handleUpdateTaskStatus = (taskId: string, status: TaskStatus) => {
-    // Find all tasks in the same quadrant
+  const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus) => {
     const task = taskList.find(t => t.id === taskId);
     if (!task) return;
     
-    const quadrantTasks = taskList.filter(t => t.quadrant === task.quadrant);
-    
-    // Calculate new order based on status
-    let newOrder = 0; // Default value
-    if (status === 'completed') {
-      // If completing task, put it at the end
-      const maxOrder = Math.max(...quadrantTasks.map(t => t.order || 0));
-      newOrder = maxOrder + 1;
-    } else if (status === 'active') {
-      // If uncompleting task, put it at the start of active tasks
-      const activeTasks = quadrantTasks.filter(t => t.status === 'active');
-      const minActiveOrder = activeTasks.length > 0 
-        ? Math.min(...activeTasks.map(t => t.order || 0))
-        : 0;
-      newOrder = minActiveOrder - 1;
+    try {
+      await updateTask(toConvexId(taskId), {
+        status,
+        completedAt: status === 'completed' ? new Date().toISOString() : undefined
+      });
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast({
+        description: 'Failed to update task status',
+        variant: 'destructive'
+      });
     }
-
-    const timestamp = new Date().toISOString();
-    const updates: Partial<Task> = {
-      status,
-      ...(status === 'completed' && { completedAt: timestamp }),
-      updatedAt: timestamp,
-      order: newOrder
-    };
-
-    updateTask(taskId, updates);
   };
 
-  const handleAddTask = async (text: string, quadrant: string) => {
+  const handleAddTask = async (text: string) => {
     if (!text.trim()) return;
     
     try {
-      // First add the task to Q4
-      const task = addTask({
-        text,
-        quadrant: 'q4', // Always start in Q4
-        needsReflection: false,
-        status: 'active',
-        taskType: 'personal' // Default type until AI analysis
+      const taskId = await addTask({ 
+        text, 
+        quadrant: 'q4' as QuadrantType, 
+        status: 'active' as TaskStatus, 
+        taskType: 'personal' as TaskType,
+        needsReflection: false 
       });
       
-      if (!task) {
-        throw new Error("Failed to add task");
+      if (!taskId) {
+        throw new Error('Failed to add task');
       }
       
       setTaskModalOpen(false);
-      
-      // Then analyze with AI
       setIsAIThinking(true);
       
       try {
         const response = await fetch('/api/analyze-reflection', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             task: text,
-            justification: '',
-            goal: '',
-            priority: '',
             currentQuadrant: 'q4',
             personalContext: useProfile.getState().getPersonalContext()
-          }),
+          })
         });
         
         if (!response.ok) {
-          throw new Error(`Failed to analyze input: ${response.status} ${response.statusText}`);
+          throw new Error(`Analysis failed: ${response.status}`);
         }
         
         const result = await response.json();
-        console.log("[DEBUG] AI analysis result:", result);
         
-        // Validate the AI response
         if (!result || typeof result.isIdea !== 'boolean') {
-          throw new Error('Invalid AI analysis response');
+          throw new Error('Invalid API response structure');
         }
         
         if (result.isIdea) {
-          console.log("[DEBUG] Detected idea:", text);
-          // If it's an idea, move it to the ideas bank via event system
-          
-          // First delete the task
-          deleteTask(task.id);
-          
-          // Then dispatch the event to add to Ideas Bank
-          const event = new CustomEvent('addToIdeasBank', {
+          await deleteTask(taskId);
+          window.dispatchEvent(new CustomEvent('addToIdeasBank', {
             detail: {
               text,
-              taskType: result.taskType || 'idea', 
+              taskType: result.taskType || 'idea',
               connectedToPriority: result.connectedToPriority || false
             }
-          });
-          console.log("[DEBUG] Dispatching addToIdeasBank event:", event.detail);
-          window.dispatchEvent(event);
+          }));
         } else {
-          // Update the task with AI analysis
-          const targetQuadrant = result.suggestedQuadrant || quadrant;
-          const taskType = result.taskType || 'work';
-          
-          console.log("[DEBUG] Updating task with AI analysis:", {
-            id: task.id,
-            quadrant: targetQuadrant,
-            taskType: taskType
+          await updateTask(taskId, {
+            quadrant: result.suggestedQuadrant || 'q4',
+            taskType: (result.taskType || 'personal') as TaskType
           });
-          
-          updateTask(task.id, {
-            quadrant: targetQuadrant,
-            taskType: taskType
-          });
-          
-          // Store the reasoning log
-          try {
-            ReasoningLogService.storeLog({
-              taskId: task.id,
-              taskText: text,
-              timestamp: Date.now(),
-              suggestedQuadrant: targetQuadrant,
-              taskType: taskType,
-              reasoning: result.reasoning || 'No reasoning provided',
-              alignmentScore: result.alignmentScore || 5,
-              urgencyScore: result.urgencyScore || 5,
-              importanceScore: result.importanceScore || 5
-            });
-          } catch (logError) {
-            console.error('Error storing reasoning log:', logError);
-          }
         }
-      } catch (analysisError) {
-        console.error("Error analyzing task:", analysisError);
-        // Task stays in Q4 if analysis fails
+      } catch (error) {
+        console.error('Error in task analysis:', error);
         toast({
-          title: "Analysis Failed",
-          description: "Task added to Q4. AI analysis failed.",
-          variant: "destructive",
+          description: error instanceof Error ? error.message : 'Task analysis failed',
+          variant: 'destructive'
         });
+      } finally {
+        setIsAIThinking(false);
       }
-      
-      setIsAIThinking(false);
     } catch (error) {
-      console.error("Error in handleAddTask:", error);
+      console.error('Error adding task:', error);
       setIsAIThinking(false);
       toast({
-        title: "Error Adding Task",
-        description: "There was a problem adding your task. Please try again.",
-        variant: "destructive",
+        description: error instanceof Error ? error.message : 'Failed to add task',
+        variant: 'destructive'
       });
     }
   };
 
-  const handleMoveTask = (taskId: string, newQuadrant: QuadrantType) => {
-    const task = taskList.find(t => t.id === taskId);
-    if (!task) return;
-
-    // Update the task's quadrant
-    updateTask(taskId, { quadrant: newQuadrant });
-
-    // Show a toast notification
-    toast({
-      title: "Task Moved",
-      description: `Task moved to ${newQuadrant === 'q1' ? 'Urgent & Important' :
-                    newQuadrant === 'q2' ? 'Important, Not Urgent' :
-                    newQuadrant === 'q3' ? 'Urgent, Not Important' :
-                    'Neither Urgent nor Important'}`
-    });
-  }
-
-  const handleSendToIdeasBank = () => {
-    console.log('[DEBUG] handleSendToIdeasBank called with:', {
-      text: currentIdea?.text.substring(0, 30),
-      taskType: currentIdea?.taskType,
-      connectedToPriority: currentIdea?.connectedToPriority
-    });
-    
-    // Add the idea to the Ideas Bank
+  const handleMoveTask = async (taskId: string, newQuadrant: QuadrantType) => {
     try {
-      const idea = addIdea({
-        text: currentIdea?.text || '',
-        taskType: (currentIdea?.taskType || 'idea') as IdeaType,
-        connectedToPriority: currentIdea?.connectedToPriority ?? false
-      });
+      await updateTask(toConvexId(taskId), { quadrant: newQuadrant });
+      const quadrantName = quadrantNames[newQuadrant];
       
-      console.log('[DEBUG] addIdea returned:', idea ? idea.id : 'null');
-      
-      if (idea) {
-        setIdeaDialogOpen(false);
-        setTaskModalOpen(false);
-        
-        // Show a toast notification with a link to the Ideas Bank
-        toast({
-          title: "Idea Added",
-          description: (
-            <div>
-              Added to Ideas Bank.{" "}
-              <button 
-                onClick={() => router.push("/ideas-bank")} 
-                className="font-medium underline hover:text-primary"
-              >
-                View Ideas Bank
-              </button>
-            </div>
-          ),
-          duration: 5000,
-        });
-      } else {
-        console.error('[ERROR] addIdea returned null');
-        toast({
-          title: "Error Adding Idea",
-          description: "There was a problem adding your idea. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('[ERROR] Error in handleSendToIdeasBank:', error);
       toast({
-        title: "Error Adding Idea",
-        description: "There was a problem adding your idea. Please try again.",
-        variant: "destructive",
+        description: `Task moved to ${quadrantName}`
+      });
+    } catch (error) {
+      console.error('Error moving task:', error);
+      toast({
+        description: 'Failed to move task',
+        variant: 'destructive'
       });
     }
   };
 
-  const handleConvertToTask = async () => {
-    // Convert the idea to a task
-    const { task } = await addTaskWithAIAnalysis(currentIdea?.text);
-    
-    if (task) {
-      setIdeaDialogOpen(false);
-      setTaskModalOpen(false);
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTask(toConvexId(taskId));
+    } catch (error) {
+      console.error('Error deleting task:', error);
       toast({
-        title: "Task Added",
-        description: "Your idea has been converted to a task and categorized by AI.",
+        description: 'Failed to delete task',
+        variant: 'destructive'
       });
+    }
+  };
+
+  const handleEditTask = async (taskId: string, text: string) => {
+    try {
+      await updateTask(toConvexId(taskId), { text });
+    } catch (error) {
+      console.error('Error editing task:', error);
+      toast({
+        description: 'Failed to edit task',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Wrapper for onToggleTask to match EisenhowerMatrix's expected signature
+  const handleToggleTask = (taskId: string) => {
+    const task = taskList.find(t => t.id === taskId);
+    if (task) {
+      handleUpdateTaskStatus(taskId, task.status === 'completed' ? 'active' : 'completed');
     }
   };
 
   return (
     <div>
-      {/* Confetti animation for completing urgent & important tasks */}
       <TaskCompletionConfetti show={showConfetti} onComplete={hideConfetti} />
-      
-      {/* Idea priority dialog */}
-      <IdeaPriorityDialog
-        isOpen={ideaDialogOpen}
-        ideaText={currentIdea?.text || ''}
-        onClose={() => setIdeaDialogOpen(false)}
-        onSendToIdeasBank={handleSendToIdeasBank}
-        onConvertToTask={handleConvertToTask}
-      />
-      
-      {/* Export tasks event listener is set up in a useEffect at the component level */}
 
-      {/* Floating Action Buttons */}
       <div id="floating-action-buttons" className="fixed bottom-4 right-8 flex flex-col gap-2" style={{ zIndex: 100 }}>
         <Button 
           variant="default" 
@@ -517,11 +317,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         </Button>
       </div>
 
-      {/* Task Actions Section */}
       <div className="mb-4 flex justify-end space-x-2">
-        {/* Test button removed after debugging was complete */}
         <ScorecardButton
-          onClick={() => setScorecardOpen(true)}
           tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed')}
           className="w-auto"
         />
@@ -530,38 +327,16 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       <div className="mt-4">
         <EisenhowerMatrix
           tasks={taskList
-            .filter(t => {
-              // Show active tasks and tasks completed today
-              if (t.status === 'active') return true;
-              if (t.status === 'completed' && t.completedAt) {
-                const completedDate = new Date(t.completedAt);
-                const today = new Date();
-                return completedDate.toDateString() === today.toDateString();
-              }
-              return false;
-            })
-            .map(task => ({
-            ...task,
-            createdAt: String(task.createdAt),
-            updatedAt: String(task.updatedAt),
-            completedAt: task.completedAt ? String(task.completedAt) : undefined
-          }))}
-          onToggleTask={(id) => {
-            const task = taskList.find(t => t.id === id);
-            if (!task) return;
-            handleUpdateTaskStatus(id, task.status === 'completed' ? 'active' : 'completed');
-          }}
-          onDeleteTask={deleteTask}
+            .filter(t => t.status === 'active' || 
+              (t.status === 'completed' && t.completedAt && 
+               new Date(t.completedAt).toDateString() === new Date().toDateString()))}
+          onToggleTask={handleToggleTask}
+          onDeleteTask={handleDeleteTask}
           onReflectionRequested={startReflection}
           onMoveTask={handleMoveTask}
-          onEditTask={(taskId, newText) => {
-            updateTask(taskId, { text: newText });
-            toast({
-              title: "Task Updated",
-              description: "Your task has been updated successfully.",
-            });
-          }}
+          onEditTask={handleEditTask}
           onReorderTasks={reorderTasks}
+          onTaskClick={handleTaskClick}
           isAIThinking={isAIThinking}
         />
       </div>
@@ -581,34 +356,26 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         isAIThinking={isAIThinking}
       />
       
-      {/* Velocity Meters */}
       <div className="mt-6 mb-2">
-        
-        {/* Velocity Meters for personal and work tasks */}
         <EndDayScorecard
           isOpen={scorecardOpen}
           onClose={() => setScorecardOpen(false)}
           tasks={taskList}
-      />
+        />
 
-      <ChatDialog
+        <ChatDialog
           open={chatOpen}
           onOpenChange={setChatOpen}
           tasks={taskList}
           userContext={useProfile.getState().getPersonalContext()}
-      />
-
-        <VelocityMeters 
-          tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed').map(task => {
-            return {
-              ...task,
-              createdAt: String(task.createdAt),
-              updatedAt: String(task.updatedAt),
-              completedAt: task.completedAt ? String(task.completedAt) : undefined
-            };
-          })} 
         />
+
+        {/* Temporarily disabled while fixing Convex DB setup
+        <VelocityMeters 
+          tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed')} 
+        />
+        */}
       </div>
     </div>
-  )
+  );
 }

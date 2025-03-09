@@ -13,21 +13,28 @@ interface AIResponse {
   importanceScore?: number;
 }
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Create OpenAI client with user's API key
+function createOpenAIClient(apiKey: string | null) {
+  if (!apiKey) {
+    throw new Error('OpenAI API key is required');
+  }
+  return new OpenAI({ apiKey });
+}
 
 export async function POST(request: Request) {
   try {
-    // Check API key first
-    if (!process.env.OPENAI_API_KEY) {
-      console.error("[API] OPENAI_API_KEY not configured");
+    // Get user's OpenAI API key from headers
+    const openAIKey = request.headers.get('x-openai-key') || process.env.OPENAI_API_KEY;
+    if (!openAIKey) {
+      console.error("[API] OpenAI API key not provided");
       return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
+        { error: 'OpenAI API key is required. Please add your API key in Settings.' },
+        { status: 400 }
       );
     }
+    
+    // Initialize OpenAI client
+    const openai = createOpenAIClient(openAIKey);
     
     const { task, justification, goal, priority, currentQuadrant, personalContext } = await request.json();
 
@@ -35,63 +42,88 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Task text is required' }, { status: 400 });
     }
 
-    // Check if this is explicitly marked as an idea
+    // Check for idea indicators in the task text
     const isExplicitIdea = task.toLowerCase().trim().startsWith('idea:');
+    const hasIdeaMarkers = task.toLowerCase().includes('maybe') || 
+                          task.toLowerCase().includes('consider') || 
+                          task.toLowerCase().includes('what if') || 
+                          task.toLowerCase().includes('brainstorm');
     const taskText = isExplicitIdea ? task.slice(5).trim() : task;
 
-    // If it's explicitly marked as an idea, analyze only for priority connection
-    if (isExplicitIdea) {
-      // Create a focused prompt for priority analysis
-      const priorityPrompt = `
-Analyze if this idea is connected to the user's stated priority:
+    // If it's marked as an idea or has idea-like markers, analyze for priority connection
+    if (isExplicitIdea || hasIdeaMarkers) {
+      // Create a focused prompt for idea analysis
+      const ideaPrompt = `
+Analyze this potential idea and determine:
+1. If it's truly an idea vs an actionable task
+2. If it's connected to the user's stated priority
 
-IDEA: "${taskText}"
+INPUT: "${taskText}"
 PRIORITY: "${priority || 'Not specified'}"
 
 Return a JSON object:
 {
+  "isIdea": boolean,
   "connectedToPriority": boolean,
-  "reasoning": string
+  "reasoning": string,
+  "suggestedConversion": string // If it should be a task, suggest how to convert it
 }
 `;
 
       try {
-        const priorityCompletion = await openai.chat.completions.create({
+        const ideaCompletion = await openai.chat.completions.create({
           model: "gpt-3.5-turbo",
           temperature: 0.2,
           messages: [
-            { role: "system", content: priorityPrompt },
-            { role: "user", content: `Is this idea connected to the priority?` }
+            { role: "system", content: ideaPrompt },
+            { role: "user", content: `Analyze this input and determine if it's an idea and its priority connection.` }
           ],
         });
 
         try {
-          const priorityResponse = JSON.parse(
-            priorityCompletion.choices[0]?.message?.content?.match(/\{[\s\S]*\}/)?.[0] || '{"connectedToPriority":false}'
+          const ideaResponse = JSON.parse(
+            ideaCompletion.choices[0]?.message?.content?.match(/\{[\s\S]*\}/)?.[0] || 
+            '{"isIdea":true,"connectedToPriority":false,"reasoning":"Failed to parse response"}'
           );
 
-          return NextResponse.json({
-            isIdea: true,
-            taskType: 'idea',
-            connectedToPriority: Boolean(priorityResponse.connectedToPriority),
-            reasoning: priorityResponse.reasoning || 'User explicitly marked this as an idea'
-          });
-        } catch {
+          // If it's not actually an idea, proceed with task analysis
+          if (!ideaResponse.isIdea && !isExplicitIdea) {
+            // Fall through to task analysis
+            console.log("[API] Input initially flagged as idea but determined to be a task");
+          } else {
+            return NextResponse.json({
+              isIdea: true,
+              taskType: 'idea',
+              connectedToPriority: Boolean(ideaResponse.connectedToPriority),
+              reasoning: ideaResponse.reasoning || 'Analysis completed',
+              suggestedConversion: ideaResponse.suggestedConversion
+            });
+          }
+        } catch (parseError) {
+          console.error("[API] Failed to parse idea analysis response:", parseError);
+          if (isExplicitIdea) {
+            return NextResponse.json({
+              isIdea: true,
+              taskType: 'idea',
+              connectedToPriority: false,
+              reasoning: 'Failed to analyze idea, treating as unconnected idea'
+            });
+          }
+          // Fall through to task analysis if not explicitly marked as idea
+          console.log("[API] Falling back to task analysis due to parsing error");
+        }
+      } catch (openaiError) {
+        console.error("[API] OpenAI API error during idea analysis:", openaiError);
+        if (isExplicitIdea) {
           return NextResponse.json({
             isIdea: true,
             taskType: 'idea',
             connectedToPriority: false,
-            reasoning: 'User explicitly marked this as an idea'
+            reasoning: 'Unable to analyze due to service error, treating as unconnected idea'
           });
         }
-      } catch (openaiError) {
-        console.error("[API] OpenAI API error during priority analysis:", openaiError);
-        return NextResponse.json({
-          isIdea: true,
-          taskType: 'idea',
-          connectedToPriority: false,
-          reasoning: 'Unable to analyze priority connection due to service error'
-        });
+        // Fall through to task analysis if not explicitly marked as idea
+        console.log("[API] Falling back to task analysis due to API error");
       }
     }
 

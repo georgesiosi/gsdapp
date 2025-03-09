@@ -69,9 +69,14 @@ function initializeLicenseService() {
 
 export async function POST(request: Request) {
   try {
-    // Check license first
-    const licenseKey = request.headers.get('x-license-key');
-    const licenseService = initializeLicenseService();
+    // Initialize services and get headers
+    const [licenseService, headers] = [
+      initializeLicenseService(),
+      request.headers
+    ];
+    
+    // Check license
+    const licenseKey = headers.get('x-license-key');
     const licenseValidation = await licenseService.validateLicense(licenseKey);
     
     if (!licenseValidation.isValid) {
@@ -85,7 +90,7 @@ export async function POST(request: Request) {
     }
 
     // Get user's OpenAI API key or fall back to environment variable
-    const openAIKey = request.headers.get('x-openai-key') || process.env.OPENAI_API_KEY;
+    const openAIKey = headers.get('x-openai-key') || process.env.OPENAI_API_KEY;
     if (!openAIKey) {
       return NextResponse.json(
         { error: 'OpenAI API key is required. Please add your API key in Settings.' },
@@ -253,13 +258,13 @@ ${userContext ? `CONTEXT: ${userContext}\n` : ''}${includeCompleted ? 'NOTE: Inc
         }
       });
 
-      // Return the stream
-      return new Response(streamedResponse, {
-        headers: {
+      // Return the stream with proper headers
+      return new NextResponse(streamedResponse, {
+        headers: new Headers({
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
-        },
+        }),
       });
     } catch (streamError) {
       console.error('[ERROR] Streaming error:', streamError);

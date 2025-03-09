@@ -1,45 +1,31 @@
 "use client"
 
-import { Task } from "@/types/task"
-import { VelocityMeter } from "@/components/ui/velocity-meter"
+// Temporarily disabled while fixing Convex DB setup
+// import { Task } from "@/types/task"
+// import { VelocityMeter } from "@/components/ui/velocity-meter"
 
-interface VelocityMetersProps {
-  tasks: Task[]
-}
-
-export function VelocityMeters({ tasks }: VelocityMetersProps) {
-  // Debug all tasks and their types
-  console.log("[DEBUG] VelocityMeters - All tasks count:", tasks.length);
+/**
+ * VelocityMeters component - temporarily disabled while fixing Convex DB setup
+ * Will be re-enabled once the database migration is complete
+ */
+export function VelocityMeters() {
+  // Temporarily disabled while fixing Convex DB setup
+  return null;
   
-  // Count tasks by type
-  const personalTasks = tasks.filter(t => t.taskType === "personal" || t.taskType === undefined).length;
-  const workTasks = tasks.filter(t => t.taskType === "work" || t.taskType === "business").length;
-  const unknownTasks = tasks.filter(t => !t.taskType || (t.taskType !== "personal" && t.taskType !== "work" && t.taskType !== "business")).length;
+  /* Original implementation:
+  const personalTasks = tasks.filter(t => t.taskType === "personal" || t.taskType === undefined);
+  const workTasks = tasks.filter(t => t.taskType === "work" || t.taskType === "business");
+  */
   
-  console.log("[DEBUG] VelocityMeters - Task type counts:", {
-    personal: personalTasks,
-    work: workTasks,
-    unknown: unknownTasks
-  });
-  
-  // Log task types for all tasks
-  console.log("[DEBUG] VelocityMeters - Task types:", tasks.map(t => ({
-    id: t.id,
-    text: t.text.substring(0, 20) + (t.text.length > 20 ? '...' : ''),
-    taskType: t.taskType,
-    completed: t.completed
-  })));
-  
+  /* Original implementation - temporarily commented out
   return (
     <>
-      {/* Personal Tasks Velocity Meter (Left side) */}
       <VelocityMeter 
         tasks={tasks} 
         type="personal" 
         position="left" 
       />
       
-      {/* Work Tasks Velocity Meter (Right side) - includes both work and business tasks */}
       <VelocityMeter 
         tasks={tasks} 
         type="work" 
@@ -47,4 +33,5 @@ export function VelocityMeters({ tasks }: VelocityMetersProps) {
       />
     </>
   )
+  */
 }
