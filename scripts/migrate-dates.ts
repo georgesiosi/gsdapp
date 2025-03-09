@@ -2,7 +2,7 @@ import { api } from "../convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 
 async function migrateDates() {
-  const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const client = new ConvexHttpClient("https://rapid-octopus-495.convex.cloud");
 
   try {
     console.log("Starting date migration...");
