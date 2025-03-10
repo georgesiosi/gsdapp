@@ -112,7 +112,14 @@ function Quadrant({
       }}
       onDrop={(e: DragEvent) => handleDrop(e)}
     >
-      <div className="flex items-center justify-between p-3 border-b bg-muted/50 dark:bg-muted/20">
+      <div className={cn(
+        "flex items-center justify-between p-3 border-b",
+        // Header background colors for each quadrant
+        quadrantId === "q1" && "bg-destructive/10 dark:bg-destructive/20",
+        quadrantId === "q2" && "bg-primary/10 dark:bg-primary/20",
+        quadrantId === "q3" && "bg-yellow-500/10 dark:bg-yellow-500/20",
+        quadrantId === "q4" && "bg-muted/50 dark:bg-muted/30"
+      )}>
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium text-foreground">{title}</h3>
           <QuadrantInfoTooltip quadrantId={quadrantId} />
@@ -122,7 +129,14 @@ function Quadrant({
           {/* AI thinking indicator removed */}
         </div>
       </div>
-      <div className="quadrant-content bg-card/50 dark:bg-card/50">
+      <div className={cn(
+        "quadrant-content p-2",
+        // Base background colors for each quadrant
+        quadrantId === "q1" && "bg-destructive/5 dark:bg-destructive/10",
+        quadrantId === "q2" && "bg-primary/5 dark:bg-primary/10",
+        quadrantId === "q3" && "bg-yellow-500/5 dark:bg-yellow-500/10",
+        quadrantId === "q4" && "bg-muted dark:bg-muted/20"
+      )}>
         {sortedTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-6">
             <p className="text-xs text-muted-foreground">No tasks yet</p>
@@ -301,7 +315,7 @@ export function EisenhowerMatrix({
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
-          className="quadrant-urgent-important border-destructive/20"
+          className="quadrant-urgent-important border-destructive/30"
         />
         <Quadrant
           title="Not Urgent but Important"
@@ -314,7 +328,7 @@ export function EisenhowerMatrix({
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
-          className="quadrant-not-urgent-important border-primary/20"
+          className="quadrant-not-urgent-important border-primary/30"
         />
         <Quadrant
           title="Urgent but Not Important"
@@ -327,7 +341,7 @@ export function EisenhowerMatrix({
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
-          className="quadrant-urgent-not-important border-yellow-500/20"
+          className="quadrant-urgent-not-important border-yellow-500/30"
         />
         <Quadrant
           title="Not Urgent & Not Important"
@@ -340,7 +354,7 @@ export function EisenhowerMatrix({
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
-          className="quadrant-not-urgent-not-important border-muted-foreground/20"
+          className="quadrant-not-urgent-not-important border-muted-foreground/30"
         />
       </div>
     </div>
