@@ -16,8 +16,6 @@
   GENERATE_SOURCEMAP = "false"
   # Ensure Next.js optimizations are enabled
   NEXT_TELEMETRY_DISABLED = "1"
-  # Ensure Convex URL is available during build (with staging prefix)
-  CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL = "https://rapid-octopus-495.convex.cloud"
 
 # Production context: all deploys from the Production branch set in your site's
 # deploy contexts will inherit these settings.
