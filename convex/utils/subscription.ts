@@ -20,7 +20,7 @@ export function getSubscriptionStatus(
   userPreferences: Doc<"userPreferences"> | null
 ): SubscriptionStatus {
   // Legacy user check (had a license key before)
-  if (userPreferences?.legacyUser) {
+  if (userPreferences?.isLegacyUser) {
     return "legacy";
   }
 
