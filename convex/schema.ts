@@ -38,8 +38,8 @@ export default defineSchema({
   userPreferences: defineTable({
     goal: v.optional(v.string()),
     openAIKey: v.optional(v.string()),
-    licenseKey: v.optional(v.string()),
     priority: v.optional(v.string()),
+    isLegacyUser: v.optional(v.boolean()),
     theme: v.optional(v.union(v.literal('light'), v.literal('dark'), v.literal('system'))),
     showCompletedTasks: v.optional(v.boolean()),
     autoAnalyze: v.optional(v.boolean()),
@@ -97,4 +97,23 @@ export default defineSchema({
     notes: v.optional(v.string()),
     userId: v.string(),
   }).index("by_user", ["userId"]),
+
+  // Subscription table - simple and focused
+  subscriptions: defineTable({
+    userId: v.string(),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    tier: v.union(
+      v.literal("free"),
+      v.literal("pro"),
+      v.literal("team")
+    ),
+    validUntil: v.optional(v.number()), // Unix timestamp
+  }).index("by_user", ["userId"]),
+
+  // Webhook secrets - simple and focused
+  webhookSecrets: defineTable({
+    provider: v.string(), // e.g., "polar"
+    secret: v.string(),
+    createdAt: v.number(),
+  }).index("by_provider", ["provider"]),
 });

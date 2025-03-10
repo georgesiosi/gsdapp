@@ -7,9 +7,7 @@ export interface UserProfile {
   email: string;
   theme: 'light' | 'dark' | 'system';
   personalContext: string; // Freeform text for AI context
-  licenseKey?: string;
-  isLegacyUser?: boolean; // For existing users before license implementation
-  licenseStatus?: 'legacy' | 'active' | 'inactive';
+  isLegacyUser: boolean; // Flag for users who existed before subscription system
 }
 
 export interface ProfileFormData {
@@ -17,5 +15,4 @@ export interface ProfileFormData {
   email: string;
   theme: 'light' | 'dark' | 'system';
   personalContext: string;
-  licenseKey: string; // Make this required in the type but optional in validation
 }

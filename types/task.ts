@@ -131,12 +131,12 @@ export interface TaskSettings {
 export interface UserSettings {
   goal?: string;
   openAIKey?: string;
-  licenseKey?: string;
   priority?: string;
   theme?: 'light' | 'dark' | 'system';
   showCompletedTasks?: boolean;
   autoAnalyze?: boolean;
   syncApiKey?: boolean;
+  isLegacyUser?: boolean; // Flag for users who existed before subscription system
   taskSettings: TaskSettings;
 }
 
