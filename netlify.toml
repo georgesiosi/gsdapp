@@ -27,6 +27,9 @@
 # Accessible at: staging.usegsd.com
 [context.staging]
   command = "npm run build"
+  base = "staging"
+  publish = ".next"
+  targetPort = 3000
 
 [context.staging.environment]
   NODE_ENV = "production"
