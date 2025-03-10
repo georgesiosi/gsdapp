@@ -4,6 +4,18 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { Scorecard } from "@/types/scorecard";
 
+export class ScorecardService {
+  static getAllScorecards(): Scorecard[] {
+    try {
+      const scorecards = localStorage.getItem('scorecards');
+      return scorecards ? JSON.parse(scorecards) : [];
+    } catch (error) {
+      console.error('Error retrieving scorecards:', error);
+      return [];
+    }
+  }
+}
+
 export function useScorecard() {
   const scorecards = useQuery(api.scorecards.getScorecards) || [];
   const addScorecardMutation = useMutation(api.scorecards.addScorecard);
