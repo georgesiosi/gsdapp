@@ -1,20 +1,22 @@
 import { authMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
  
-// Skip auth in development for API routes
-const isDev = process.env.NODE_ENV === 'development';
-
+// Configure Clerk auth middleware with environment-specific settings
 export default authMiddleware({
+  debug: true, // Enable debug mode to get more detailed error messages
+  // Disable JWK caching to ensure we always fetch fresh keys
+  jwksCacheTtlInMs: 0, // 0 means no caching
+  jwtKey: undefined, // Force re-fetching keys
   // Routes that can be accessed while signed out
   publicRoutes: [
-    "/", 
     "/sign-in", 
     "/sign-up",
-    ...(isDev ? ["/api/analyze-reflection"] : [])
+    "/api/webhooks/polar/health",
+    "/api/webhooks/polar"
   ],
   // Routes that can always be accessed, and have
   // no authentication information
-  ignoredRoutes: ["/api/webhooks/polar/health", "/api/webhooks/polar"],
+  ignoredRoutes: [],
 
   async afterAuth(auth, req) {
     // Handle preflight requests

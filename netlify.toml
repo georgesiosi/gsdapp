@@ -23,6 +23,41 @@
   # Optimize builds for production
   NEXT_COMPRESS = "true"
 
+# Staging context: all deploys from the staging branch
+# Accessible at: staging.usegsd.com
+[context.staging]
+  command = "npm run build"
+  publish = ".next"
+
+[context.staging.environment]
+  NODE_ENV = "production"
+  # Add staging-specific environment settings
+  NEXT_PUBLIC_ENVIRONMENT = "staging"
+  # Disable certain optimizations for faster builds
+  NEXT_COMPRESS = "false"
+  # Enable more verbose logging for debugging
+  NEXT_PUBLIC_DEBUG_MODE = "true"
+  # Disable service worker caching in staging
+  NEXT_PUBLIC_DISABLE_SW = "true"
+  # Clerk redirect URLs (updated to new recommended props)
+  CONTEXT_STAGING_NEXT_PUBLIC_CLERK_SIGN_IN_URL = "/sign-in"
+  CONTEXT_STAGING_NEXT_PUBLIC_CLERK_SIGN_UP_URL = "/sign-up"
+  CONTEXT_STAGING_NEXT_PUBLIC_CLERK_FALLBACK_REDIRECT_URL = "/"
+  # Removing deprecated props that cause warnings
+  # Application URL
+  CONTEXT_STAGING_NEXT_PUBLIC_APP_URL = "https://staging.app.usegsd.com"
+  # Convex Configuration
+  CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL = "https://rapid-octopus-495.convex.cloud"
+  # Clerk Domain and Configuration
+  CONTEXT_STAGING_NEXT_PUBLIC_CLERK_DOMAIN = "live-glider-97.clerk.accounts.dev"
+  CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL = "https://live-glider-97.clerk.accounts.dev"
+  # Add specific Clerk configuration for staging
+  CONTEXT_STAGING_NEXT_PUBLIC_CLERK_API_HOST = "live-glider-97.clerk.accounts.dev"
+  # Add prefixed environment variables for Clerk credentials
+  CONTEXT_STAGING_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_cmVsZXZhbnQtZnJvZy0yNy5jbGVyay5hY2NvdW50cy5kZXYk"
+  CONTEXT_STAGING_CLERK_SECRET_KEY = "sk_test_sjcOoG65Kx0gBJVJ0p9JqMqF7gMEXu70bdB2id9Pzt"
+  CONTEXT_STAGING_CLERK_ENCRYPTION_KEY = "0sOD2FJOB7xDIIt1jt7oKxHOX9FVt6ZFSICmVg2gI7o="
+
 # Cache configuration
 [build.processing]
   skip_processing = false
@@ -49,5 +84,31 @@
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
     # Enable caching for static assets
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Staging-specific headers
+[[context.staging.headers]]
+  for = "/*"
+  [context.staging.headers.values]
+    # Prevent search engines from indexing staging
+    X-Robots-Tag = "noindex, nofollow"
+    # Add staging environment indicator
+    X-Environment = "staging"
+    # Reduce caching duration for faster testing
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# No caching for Clerk authentication endpoints
+[[headers]]
+  for = "/.well-known/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  for = "/*clerk*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
 
 # Cache is automatically handled by the official Next.js plugin

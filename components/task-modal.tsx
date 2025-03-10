@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AIThinkingIndicator } from "@/components/ui/ai-thinking-indicator"
 import { TaskCreationSuggestions } from "@/components/ui/task-creation-suggestions"
+import { AlertTriangle } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface TaskModalProps {
   open: boolean
@@ -20,9 +22,10 @@ interface TaskModalProps {
   isAIThinking?: boolean
   aiReasoning?: string
   targetQuadrant?: string
+  aiError?: boolean
 }
 
-export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false, aiReasoning, targetQuadrant }: TaskModalProps) {
+export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false, aiReasoning, targetQuadrant, aiError = false }: TaskModalProps) {
   const [newTask, setNewTask] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -32,9 +35,10 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
       isOpen: open, 
       isAIThinking, 
       aiReasoning, 
-      targetQuadrant 
+      targetQuadrant,
+      aiError
     });
-  }, [open, isAIThinking, aiReasoning, targetQuadrant]);
+  }, [open, isAIThinking, aiReasoning, targetQuadrant, aiError]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -77,15 +81,14 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
           <DialogTitle className="flex items-center gap-2">
             Add New Task
             {isAIThinking && <AIThinkingIndicator isThinking={isAIThinking} className="ml-2" />}
+            {aiError && !isAIThinking && (
+              <div className="inline-flex items-center gap-1 text-xs font-medium text-yellow-500 ml-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span>AI Unavailable</span>
+              </div>
+            )}
           </DialogTitle>
-          {aiReasoning && (
-            <div className="mt-2 text-sm text-muted-foreground">
-              <p>AI Analysis: {aiReasoning}</p>
-              {targetQuadrant && (
-                <p className="mt-1">Suggested Quadrant: {targetQuadrant.toUpperCase()}</p>
-              )}
-            </div>
-          )}
+          {/* AI reasoning section removed as per user request */}
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -99,8 +102,15 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
                   autoFocus
                   disabled={isSubmitting || isAIThinking}
                 />
-                <p className="text-xs text-muted-foreground">
-                  {isAIThinking ? '🤔 AI is analyzing your task...' : '💡 Prefix with "idea:" to save to Ideas Bank'}
+                <p className={cn(
+                  "text-xs",
+                  isAIThinking ? "text-blue-500" : 
+                  aiError ? "text-yellow-500" : 
+                  "text-muted-foreground"
+                )}>
+                  {isAIThinking ? '🤔 AI is analyzing your task...' : 
+                   aiError ? '⚠️ AI analysis unavailable - task will be added to Q4' : 
+                   '💡 Prefix with "idea:" to save to Ideas Bank'}
                 </p>
               </div>
               <TaskCreationSuggestions taskText={newTask} />
@@ -119,7 +129,7 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
               type="submit" 
               disabled={!newTask.trim() || isSubmitting}
             >
-              {isAIThinking ? "Adding..." : "Add Task"}
+              {isAIThinking ? "Adding..." : aiError ? "Add Task (Q4)" : "Add Task"}
             </Button>
           </DialogFooter>
         </form>
