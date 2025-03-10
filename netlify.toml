@@ -24,7 +24,7 @@
   NEXT_COMPRESS = "true"
 
 # Staging context: all deploys from the staging branch
-# Accessible at: staging.app.usegsd.com
+# Accessible at: staging.usegsd.com
 [context.staging]
   command = "npm run build"
 
@@ -44,17 +44,17 @@
   NEXT_PUBLIC_CLERK_FALLBACK_REDIRECT_URL = "/"
   # Removing deprecated props that cause warnings
   # Application URL
-  NEXT_PUBLIC_APP_URL = "https://staging.app.usegsd.com"
+  NEXT_PUBLIC_APP_URL = "https://staging.usegsd.com"
   # Convex Configuration
   NEXT_PUBLIC_CONVEX_URL = "https://rapid-octopus-495.convex.cloud"
   # Clerk Domain and Configuration
-  NEXT_PUBLIC_CLERK_DOMAIN = "live-glider-97.clerk.accounts.dev"
-  NEXT_PUBLIC_CLERK_ISSUER_URL = "https://live-glider-97.clerk.accounts.dev"
+  NEXT_PUBLIC_CLERK_DOMAIN = "relevant-frog-27.clerk.accounts.dev"
+  NEXT_PUBLIC_CLERK_ISSUER_URL = "https://relevant-frog-27.clerk.accounts.dev"
   # Add specific Clerk configuration for staging
-  CLERK_API_HOST = "live-glider-97.clerk.accounts.dev"
+  CLERK_API_HOST = "relevant-frog-27.clerk.accounts.dev"
   # Add prefixed environment variables for Clerk credentials
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_bGl2ZS1nbGlkZXItOTcuY2xlcmsuYWNjb3VudHMuZGV2JA"
-  CLERK_SECRET_KEY = "sk_test_MyOFuVVjUgWiLffWK0XruDkrPr2eS012wgbdH6cCxV"
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_cmVsZXZhbnQtZnJvZy0yNy5jbGVyay5hY2NvdW50cy5kZXYk"
+  CLERK_SECRET_KEY = "sk_test_sjcOoG65Kx0gBJVJ0p9JqMqF7gMEXu70bdB2id9Pzt"
   CLERK_ENCRYPTION_KEY = "0sOD2FJOB7xDIIt1jt7oKxHOX9FVt6ZFSICmVg2gI7o="
 
 # Cache configuration
