@@ -29,7 +29,6 @@
   command = "npm run build"
   base = "staging"
   publish = ".next"
-  targetPort = 3000
 
 [context.staging.environment]
   NODE_ENV = "production"
