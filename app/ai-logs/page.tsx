@@ -12,12 +12,14 @@ import Link from "next/link"
 export default function AILogsPage() {
   const [logs, setLogs] = useState<AIReasoningLog[]>([])
   const [activeTab, setActiveTab] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
-  // Load logs on component mount
+  // Load logs on component mount, only in browser
   useEffect(() => {
     const loadLogs = () => {
       try {
+        setIsLoading(true)
         const allLogs = ReasoningLogService.getAllLogs()
         setLogs(allLogs)
       } catch (error) {
@@ -27,10 +29,15 @@ export default function AILogsPage() {
           description: "There was a problem loading the AI reasoning logs.",
           variant: "destructive",
         })
+      } finally {
+        setIsLoading(false)
       }
     }
     
-    loadLogs()
+    // Only load logs in browser environment
+    if (typeof window !== 'undefined') {
+      loadLogs()
+    }
   }, [toast])
 
 
@@ -111,7 +118,11 @@ export default function AILogsPage() {
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
-          {sortedLogs.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Loading logs...</p>
+            </div>
+          ) : sortedLogs.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No logs found for this category.</p>
             </div>
@@ -176,9 +187,10 @@ export default function AILogsPage() {
                 </CardFooter>
               </Card>
             ))
-          )}
+          }
         </TabsContent>
       </Tabs>
     </div>
   )
 }
+
