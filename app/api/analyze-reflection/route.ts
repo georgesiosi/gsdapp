@@ -22,6 +22,12 @@ function createOpenAIClient(apiKey: string | null) {
 }
 
 export async function POST(request: Request) {
+  // Set CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, x-openai-key',
+  };
   try {
     // Get user's OpenAI API key from headers or environment
     const openAIKey = request.headers.get('x-openai-key') || process.env.OPENAI_API_KEY;
@@ -29,7 +35,7 @@ export async function POST(request: Request) {
       console.error("[API] OpenAI API key not provided");
       return NextResponse.json(
         { error: 'OpenAI API key is required. Please add your API key in Settings.' },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
     
@@ -38,7 +44,7 @@ export async function POST(request: Request) {
       console.error("[API] Invalid API key format");
       return NextResponse.json(
         { error: 'Invalid OpenAI API key format. API keys should start with "sk-"' },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
     
@@ -48,7 +54,7 @@ export async function POST(request: Request) {
     const { task, justification, goal, priority, currentQuadrant, personalContext } = await request.json();
 
     if (!task) {
-      return NextResponse.json({ error: 'Task text is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Task text is required' }, { status: 400, headers });
     }
 
     // Check for idea indicators in the task text
@@ -245,7 +251,7 @@ Return a JSON object:
           }
         });
 
-        return NextResponse.json(normalizedResponse);
+        return NextResponse.json(normalizedResponse, { headers });
       } catch (parseError) {
         console.error("[API] Error parsing AI response:", parseError);
         console.error("[API] Response content:", responseContent);
