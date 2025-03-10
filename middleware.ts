@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server';
 // Configure Clerk auth middleware with environment-specific settings
 export default authMiddleware({
   debug: true, // Enable debug mode to get more detailed error messages
+  // Disable JWK caching to ensure we always fetch fresh keys
+  jwksCacheTtlInMs: 0, // 0 means no caching
+  jwtKey: undefined, // Force re-fetching keys
   // Routes that can be accessed while signed out
   publicRoutes: [
     "/sign-in", 
