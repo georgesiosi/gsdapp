@@ -45,6 +45,8 @@
   NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL = "/"
   # Application URL
   NEXT_PUBLIC_APP_URL = "https://staging.app.usegsd.com"
+  # Convex Configuration
+  NEXT_PUBLIC_CONVEX_URL = "https://eager-mole-720.convex.cloud"
 
 # Cache configuration
 [build.processing]
