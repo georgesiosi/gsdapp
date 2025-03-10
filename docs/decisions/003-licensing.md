@@ -7,72 +7,84 @@ update_history:
 # Decision Record: Licensing Approach
 
 ## Date
+
 2025-03-07
 
 ## Context
-The application currently uses a license key system via Polar.sh to manage user access. As we transition to a user authentication system with Clerk and move toward cloud-based storage with Supabase, we need to determine how licensing will integrate with the new architecture.
+
+The application previously used a license key system via Polar.sh to manage user
+access. With our transition to Clerk for authentication and Convex for cloud
+storage, we need to modernize our approach to user access and subscriptions.
 
 ## Options Considered
 
 ### 1. Replace Licensing with Subscription-Only
 
 * **Pros**: Simpler architecture, standard SaaS model
-* **Cons**: Migration challenges for existing users, potential revenue model shift
+* **Cons**: Migration challenges, potential revenue model shift
 
 ### 2. Maintain Separate Licensing System
 
-* **Pros**: Familiar to existing users, maintains current business model
-* **Cons**: Two separate systems to maintain, potential user confusion
+* **Pros**: Familiar to users, maintains current model
+* **Cons**: Two systems to maintain, potential confusion
 
 ### 3. Integrate Licensing with Authentication
 
-* **Pros**: Unified user experience, simplified architecture
-* **Cons**: Development work to integrate systems, potential vendor limitations
+* **Pros**: Unified experience, simplified architecture
+* **Cons**: Integration work needed, potential vendor limits
 
 ## Decision
-We will maintain the Polar.sh licensing/subscription system but integrate it with our new authentication system. Specifically:
 
-1. User identity will be managed by Clerk
-2. Subscription/license status will be managed by Polar.sh
-3. User accounts will be linked to license keys in our database
-4. Legacy users will receive special handling during migration
+We will transition from a license key system to a direct subscription model using
+Polar.sh, fully integrated with our cloud authentication:
+
+1. User identity and authentication managed by Clerk
+2. Subscription status managed directly through Polar.sh
+3. Subscription state stored in user's Convex record
+4. Legacy users automatically migrated to equivalent subscription tiers
 
 ## Rationale
+
 This approach offers several advantages:
 
-1. Maintains continuity for existing users
-2. Preserves current business model
-3. Provides path to cross-device functionality
-4. Separates concerns (authentication vs. authorization)
-5. Enables gradual transition without disruption
+1. Simplified user experience (no license keys to manage)
+2. Modern SaaS subscription model
+3. Native cloud-first architecture
+4. Reduced complexity in codebase
+5. Better user experience across devices
 
-By keeping licensing separate from identity, we maintain flexibility in our business model while still enabling the technical enhancements needed for cross-device support.
+By moving to a direct subscription model, we eliminate unnecessary complexity while
+maintaining the same revenue model through Polar.sh subscriptions.
 
 ## Consequences
 
 ### Positive
 
-* Preserves existing revenue model
-* Maintains familiar system for current users
-* Clean separation of concerns
-* Flexibility for future changes
+* Simplified user experience
+* Reduced architectural complexity
+* Native cloud integration
+* Automatic subscription management
+* Improved cross-device support
 
 ### Negative
 
-* Two systems to maintain
-* Slightly more complex architecture
-* Integration work required
-* Potential user confusion between accounts and licenses
+* Migration effort for existing users
+* Initial development work for subscription integration
+* Need to communicate changes to users
+* Temporary support needed for legacy license keys
 
 ## Implementation Plan
 
-1. Maintain current Polar.sh webhook integration
-2. When adding Clerk authentication:
-   * Add license key field to user profiles in database
-   * Associate existing license keys with new user accounts
-   * Update UI to show both authentication and license status
-3. Update licensing checks to validate against both user identity and license
-4. Provide migration path for legacy users
+1. Set up Polar.sh subscription webhooks
+2. Create subscription status field in Convex user records
+3. Implement automatic user tier assignment based on Polar.sh status
+4. Add subscription management UI in user settings
+5. Migrate existing users:
+   * Map license keys to subscription tiers
+   * Create Clerk accounts for existing users
+   * Transfer user data to Convex
+   * Deprecate license key validation
 
 ## Status
-Planned (following authentication implementation)
+
+In Progress - Phase 1 (Subscription Integration)

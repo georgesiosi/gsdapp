@@ -6,70 +6,73 @@ update_history:
 
 # Authentication Flow
 
-The authentication process consists of:
+The authentication and authorization flow consists of:
 
-1. Step 1
-2. Step 2
-3. Step 3
+1. User authentication through Clerk (email, social providers)
+2. User data management in Convex
+3. Subscription validation through Polar.sh
 
 ## Current State
 
-The application currently uses a license key validation approach:
+The application uses a modern cloud-based approach:
 
-* Users can input a license key in their profile
-* License keys are validated via Polar.sh subscription status
-* No user identity beyond license key
-* Legacy users have access without license keys
+* Authentication managed by Clerk (email, social login)
+* Data storage and sync through Convex
+* Subscription management via Polar.sh
+* User preferences stored in Convex
+* Automatic data migration from localStorage
 
 ## Planned Authentication Evolution
 
-### Phase 1: Add User Authentication (Clerk)
+### Phase 1: User Authentication with Clerk (Completed)
 
 #### Sign Up Flow
 
 1. User creates account via Clerk providers (email, social)
-2. Basic profile created with authentication tokens
-3. Upon successful authentication, redirect to app
-4. Existing localStorage data associated with new account
+2. Clerk UserProfile component handles account creation and management
+3. Upon successful authentication, user is redirected to the app
+4. User preferences are automatically created in Convex
+5. Any existing localStorage data is migrated to Convex
 
 #### Sign In Flow
 
 1. User authenticates with existing credentials
-2. Application retrieves user profile
-3. UI adapts to logged-in state
-4. localStorage data loaded (no sync yet)
+2. Application retrieves user profile from Clerk
+3. Convex syncs user data across devices
+4. UI updates with real-time data
 
 #### Session Management
 
-* Clerk handles token refresh and session management
-* Application maintains session state using Clerk hooks
-* Protected routes require authentication
+* Clerk handles authentication and session tokens
+* Convex manages real-time data synchronization
+* Protected routes and data access secured by both services
 
-### Phase 2: User Identity + License Validation
+### Phase 2: User Identity + Subscription Management
 
-* Authentication (who you are) separate from authorization (what you can access)
-* Polar subscriptions tied to user accounts
-* License keys become optional/legacy
+* Authentication handled by Clerk
+* Subscription status managed by Polar.sh
+* User data synced through Convex
+* Direct subscription model (no license keys)
 
-### Phase 3: Complete Integration
+### Phase 3: Advanced Features
 
 * Role-based access control
-* Team/organization support
-* Shared workspaces (if applicable)
+* Team collaboration features
+* Shared workspaces
+* Enhanced subscription tiers
 
 ### Security Considerations
 
 Key security aspects include:
 
-* No passwords stored in application code
-* Authentication tokens handled by Clerk
-* API requests authenticated with proper tokens
-* Webhook validation for subscription events
+* No sensitive data stored in application code
+* Authentication handled entirely by Clerk
+* All data stored securely in Convex
+* Subscription webhooks validated by Polar.sh
 
 ## UI Components
 
 * Login/signup modals
-* Profile section showing account status
-* Subscription status indicators
-* Account management options
-
+* Profile section with account details
+* Current subscription tier display
+* Account and subscription management
