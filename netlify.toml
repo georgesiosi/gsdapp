@@ -38,11 +38,11 @@
   NEXT_PUBLIC_DEBUG_MODE = "true"
   # Disable service worker caching in staging
   NEXT_PUBLIC_DISABLE_SW = "true"
-  # Clerk redirect URLs
+  # Clerk redirect URLs (updated to new recommended props)
   NEXT_PUBLIC_CLERK_SIGN_IN_URL = "/sign-in"
   NEXT_PUBLIC_CLERK_SIGN_UP_URL = "/sign-up"
-  NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL = "/"
-  NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL = "/"
+  NEXT_PUBLIC_CLERK_FALLBACK_REDIRECT_URL = "/"
+  # Removing deprecated props that cause warnings
   # Application URL
   NEXT_PUBLIC_APP_URL = "https://staging.app.usegsd.com"
   # Convex Configuration
