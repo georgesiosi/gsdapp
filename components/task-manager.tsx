@@ -33,8 +33,6 @@ const toConvexId = (id: string): Id<"tasks"> => id as unknown as Id<"tasks">;
 export const TaskManager: React.FC<TaskManagerProps> = () => {
   const router = useRouter();
   const { toast } = useToast();
-  const migrateDates = useMutation(api.tasks.migrateDates);
-  const [showMigrateButton, setShowMigrateButton] = useState(true);
   const [taskList, setTaskList] = useState<Task[]>([]);
 
   const { 
@@ -396,31 +394,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       </div>
 
       <div className="mb-4 flex justify-between items-center space-x-2">
-        {showMigrateButton && (
-          <Button
-            variant="outline"
-            onClick={async () => {
-              try {
-                const result = await migrateDates();
-                toast({
-                  title: "Migration Complete",
-                  description: `Updated ${result.updatedCount} tasks with dates`,
-                });
-                if (result.updatedCount >= 0) {
-                  setShowMigrateButton(false);
-                }
-              } catch (error) {
-                toast({
-                  title: "Migration Failed",
-                  description: "Failed to update task dates",
-                  variant: "destructive"
-                });
-              }
-            }}
-          >
-            Fix Task Dates
-          </Button>
-        )}
         <ScorecardButton
           tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed')}
           className="w-auto"

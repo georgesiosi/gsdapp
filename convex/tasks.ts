@@ -164,32 +164,6 @@ export const deleteTask = mutation({
 });
 
 // Reorder tasks within a quadrant
-// Migrate existing tasks to include date fields
-export const migrateDates = mutation({
-  handler: async (ctx) => {
-    const userId = await getAuthenticatedUser(ctx);
-    const tasks = await ctx.db
-      .query("tasks")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
-
-    const now = new Date().toISOString();
-    let updatedCount = 0;
-
-    for (const task of tasks) {
-      if (!task.createdAt || !task.updatedAt) {
-        await ctx.db.patch(task._id, {
-          createdAt: task._creationTime ? new Date(task._creationTime).toISOString() : now,
-          updatedAt: now
-        });
-        updatedCount++;
-      }
-    }
-
-    return { success: true, updatedCount };
-  },
-});
-
 export const reorderTasks = mutation({
   args: {
     quadrant: v.string(),
