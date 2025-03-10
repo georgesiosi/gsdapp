@@ -24,6 +24,7 @@
   NEXT_COMPRESS = "true"
 
 # Staging context: all deploys from the staging branch
+# Accessible at: staging.usegsd.com
 [context.staging]
   command = "npm run build"
 
