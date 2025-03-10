@@ -27,7 +27,6 @@
 # Accessible at: staging.usegsd.com
 [context.staging]
   command = "npm run build"
-  base = "staging"
   publish = ".next"
 
 [context.staging.environment]
