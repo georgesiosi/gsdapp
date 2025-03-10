@@ -29,9 +29,29 @@ export default async function RootLayout({
     issuerUrl: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL,
     environment: process.env.NODE_ENV
   });
+  // Check if we're in staging environment
+  const isStaging = process.env.NEXT_PUBLIC_ENVIRONMENT === "staging";
+  
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        {/* Staging environment indicator */}
+        {isStaging && (
+          <div style={{
+            position: 'fixed',
+            bottom: '10px',
+            right: '10px',
+            background: '#ff5722',
+            color: 'white',
+            padding: '5px 10px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            zIndex: 9999,
+          }}>
+            STAGING
+          </div>
+        )}
         <ClerkProvider
           appearance={{
             baseTheme: undefined
