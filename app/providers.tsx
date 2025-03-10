@@ -6,10 +6,10 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient } from "convex/react";
 import { ThemeProvider } from "next-themes";
 
-// Ensure Convex URL is available
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+// Ensure Convex URL is available for both local and staging environments
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL;
 if (!convexUrl) {
-  throw new Error("Missing NEXT_PUBLIC_CONVEX_URL environment variable");
+  throw new Error("Missing Convex URL environment variable. Expected either NEXT_PUBLIC_CONVEX_URL or CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL");
 }
 
 // Log Convex URL to help debug (will be logged in browser console)
