@@ -1,13 +1,17 @@
 // Define auth config for Convex with Clerk best practices
 
-// Note: We use standard env var names here (no CONTEXT_STAGING_ prefix)
-// because Convex has a 40-char limit on env var names.
-// The actual values will be provided by Netlify's environment mapping.
+// Try both prefixed and unprefixed environment variables
+const getEnvVar = (name: string) => 
+  process.env[name] || process.env[`CONTEXT_STAGING_${name}`] || process.env[`CONTEXT_PRODUCTION_${name}`];
+
+// Get Clerk issuer URL with fallback handling
+const clerkIssuerUrl = getEnvVar('NEXT_PUBLIC_CLERK_ISSUER_URL');
+
 export default {
   providers: [{
     name: "clerk",
     // Use Clerk issuer URL for JWT verification
-    domain: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL?.replace(/^https?:\/\//, ''),
+    domain: clerkIssuerUrl?.replace(/^https?:\/\//, ''),
     applicationID: "convex",
     verifyToken: true,
     // Required claims for Clerk JWT verification
