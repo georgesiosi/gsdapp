@@ -47,8 +47,9 @@
   NEXT_PUBLIC_APP_URL = "https://staging.app.usegsd.com"
   # Convex Configuration
   NEXT_PUBLIC_CONVEX_URL = "https://eager-mole-720.convex.cloud"
-  # Clerk Domain
+  # Clerk Domain and Configuration
   NEXT_PUBLIC_CLERK_DOMAIN = "live-glider-97.clerk.accounts.dev"
+  NEXT_PUBLIC_CLERK_ISSUER_URL = "https://live-glider-97.clerk.accounts.dev"
 
 # Cache configuration
 [build.processing]

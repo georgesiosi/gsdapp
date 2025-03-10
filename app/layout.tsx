@@ -22,6 +22,11 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Log the publishable key in development environment for debugging
+  if (process.env.NODE_ENV === "development") {
+    console.log("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY available:", 
+      !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  }
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
