@@ -80,16 +80,7 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Add New Task
-            {isAIThinking && <AIThinkingIndicator isThinking={isAIThinking} className="ml-2" />}
-            {aiError && !isAIThinking && (
-              <div className="inline-flex items-center gap-1 text-xs font-medium text-yellow-500 ml-2">
-                <AlertTriangle className="h-4 w-4" />
-                <span>AI Unavailable</span>
-              </div>
-            )}
-          </DialogTitle>
+          <DialogTitle>Add New Task</DialogTitle>
           {/* AI reasoning section removed as per user request */}
         </DialogHeader>
         <form onSubmit={handleSubmit}>
