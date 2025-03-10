@@ -3,15 +3,12 @@
 import { useEffect } from "react"
 
 /**
- * This component unregisters service workers.
- * 
- * It was originally added to fix issues with Docker and multiple instances
- * impacting localhost ports. If those issues are no longer relevant,
- * this component can be safely removed.
+ * This component has been modified to always unregister service workers
+ * since we've determined they're no longer needed.
  */
 export function ServiceWorkerRegistration() {
   useEffect(() => {
-    // Immediately unregister service workers in development
+    // Always unregister service workers
     const unregisterServiceWorkers = async () => {
       if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
         return;
@@ -23,17 +20,14 @@ export function ServiceWorkerRegistration() {
           console.log('Unregistering', registrations.length, 'service workers...');
           await Promise.all(registrations.map(r => r.unregister()));
           console.log('Service workers unregistered');
-          window.location.reload(); // Force reload after unregistration
         }
       } catch (error) {
         console.error('Error unregistering service workers:', error);
       }
     };
 
-    // Execute immediately in development
-    if (process.env.NODE_ENV === 'development') {
-      unregisterServiceWorkers();
-    }
+    // Always execute regardless of environment
+    unregisterServiceWorkers();
   }, []);
 
   return null;
