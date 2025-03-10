@@ -1,9 +1,29 @@
 // Define auth config for Convex with Clerk best practices
+
+// Log environment variables to help debug issues
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL;
+const clerkIssuerUrl = process.env.NEXT_PUBLIC_CLERK_ISSUER_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL;
+
+// Log all relevant environment variables for debugging
+console.log('Environment Variables:', {
+  convex: {
+    local: process.env.NEXT_PUBLIC_CONVEX_URL,
+    staging: process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL,
+    final: convexUrl
+  },
+  clerk: {
+    local: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL,
+    staging: process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL,
+    final: clerkIssuerUrl,
+    domain: clerkIssuerUrl?.replace(/^https?:\/\//, '')
+  }
+});
+
 export default {
   providers: [{
     name: "clerk",
-    // Handle both local and staging Clerk issuer URLs for JWT verification
-    domain: (process.env.NEXT_PUBLIC_CLERK_ISSUER_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL)?.replace(/^https?:\/\//, ''),
+    // Use the extracted Clerk issuer URL for JWT verification
+    domain: clerkIssuerUrl?.replace(/^https?:\/\//, ''),
     applicationID: "convex",
     verifyToken: true,
     // Required claims for Clerk JWT verification
