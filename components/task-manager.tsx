@@ -224,13 +224,12 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         });
       }
       
-      // Close the modal and reset states now that the task has been analyzed and moved
-      console.log('[DEBUG] Closing modal after AI analysis complete');
-      setTaskModalOpen(false);
+      // Reset AI thinking state
+      setIsAIThinking(false);
     } else {
       console.log('[DEBUG] Missing detail in aiAnalysisComplete event');
     }
-  }, [toast, setTaskModalOpen]);
+  }, [toast]);
 
   // Set up event listeners
   useEffect(() => {
@@ -286,11 +285,14 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     console.log('[DEBUG handleAddTask] Starting task creation:', text);
     
     try {
-      // Keep modal open while AI is thinking
+      // Close modal immediately
+      setTaskModalOpen(false);
+      
+      // Set AI thinking state for Q4 indicator
       console.log('[DEBUG handleAddTask] Setting isAIThinking to true');
       setIsAIThinking(true);
       
-      // We'll keep the modal open to show the AI analysis in progress
+      // Add task and trigger AI analysis
       console.log('[DEBUG handleAddTask] Calling addTaskWithAIAnalysis');
       const { task } = await addTaskWithAIAnalysis({
         text,
@@ -306,11 +308,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         throw new Error('Failed to add task');
       }
 
-      // Modal will be closed by the aiAnalysisComplete event handler
-      // after the task has been moved to its final quadrant
-      console.log('[DEBUG handleAddTask] Current AI reasoning:', aiReasoning);
-      console.log('[DEBUG handleAddTask] Current target quadrant:', targetQuadrant);
-
       // Show success message
       toast({
         description: 'Task added successfully',
@@ -323,8 +320,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         description: error instanceof Error ? error.message : 'Failed to add task',
         variant: 'destructive'
       });
-      // Close modal on error
-      setTaskModalOpen(false);
     } finally {
       // Don't reset AI thinking state here - let the event handlers handle it
       console.log('[DEBUG handleAddTask] Task addition function completed');
@@ -423,6 +418,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
           onEditTask={handleEditTask}
           onReorderTasks={reorderTasks}
           onTaskClick={handleTaskClick}
+          isAIThinking={isAIThinking}
         />
       </div>
 
