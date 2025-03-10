@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // Enable more accurate module resolution
+    esmExternals: true,
+    // Ensure proper handling of path aliases
+    forceSwcTransforms: true
+  },
   reactStrictMode: true,
   // Disable ESLint and TypeScript checks during builds
   eslint: {

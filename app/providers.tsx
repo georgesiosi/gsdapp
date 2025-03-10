@@ -12,6 +12,14 @@ const envVars: Record<string, string | undefined> = {};
 for (const key in process.env) {
   envVars[key] = process.env[key];
 }
+
+// Specifically log Clerk-related variables
+const clerkVars = {
+  domain: process.env.NEXT_PUBLIC_CLERK_DOMAIN || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_DOMAIN,
+  issuerUrl: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL,
+  apiHost: process.env.NEXT_PUBLIC_CLERK_API_HOST || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_API_HOST,
+};
+console.log("Clerk Configuration:", clerkVars);
 console.log("All available environment variables:", envVars);
 
 // With Next.js, we need to be careful about environment variables that are available at runtime

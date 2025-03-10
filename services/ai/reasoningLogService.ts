@@ -15,6 +15,20 @@ export interface AIReasoningLog {
 
 const STORAGE_KEY = 'ai_reasoning_logs';
 
+// Helper to check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
+// Helper to safely access localStorage
+const getLocalStorage = () => {
+  if (!isBrowser) return null;
+  try {
+    return window.localStorage;
+  } catch (e) {
+    console.error('localStorage is not available:', e);
+    return null;
+  }
+};
+
 export class ReasoningLogService {
   /**
    * Store a new reasoning log
@@ -31,7 +45,10 @@ export class ReasoningLogService {
       const trimmedLogs = updatedLogs.slice(0, 100);
       
       // Save to localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmedLogs));
+      const storage = getLocalStorage();
+      if (!storage) return;
+      
+      storage.setItem(STORAGE_KEY, JSON.stringify(trimmedLogs));
     } catch (error) {
       console.error('Error storing AI reasoning log:', error);
     }
@@ -42,7 +59,10 @@ export class ReasoningLogService {
    */
   static getLogs(): AIReasoningLog[] {
     try {
-      const logsJson = localStorage.getItem(STORAGE_KEY);
+      const storage = getLocalStorage();
+      if (!storage) return [];
+      
+      const logsJson = storage.getItem(STORAGE_KEY);
       if (!logsJson) return [];
       
       const logs = JSON.parse(logsJson) as AIReasoningLog[];
@@ -83,7 +103,10 @@ export class ReasoningLogService {
    */
   static clearLogs(): void {
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      const storage = getLocalStorage();
+      if (!storage) return;
+      
+      storage.removeItem(STORAGE_KEY);
     } catch (error) {
       console.error('Error clearing AI reasoning logs:', error);
     }
@@ -102,7 +125,10 @@ export class ReasoningLogService {
         return false;
       }
       
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredLogs));
+      const storage = getLocalStorage();
+      if (!storage) return false;
+      
+      storage.setItem(STORAGE_KEY, JSON.stringify(filteredLogs));
       return true;
     } catch (error) {
       console.error('Error deleting AI reasoning log:', error);
