@@ -15,13 +15,23 @@ if (!convexUrl) {
 // Log Convex URL to help debug (will be logged in browser console)
 console.log("Connecting to Convex URL:", convexUrl);
 
-// Initialize Convex client
-const convex = new ConvexReactClient(convexUrl);
+// Initialize Convex client with custom headers
+const convex = new ConvexReactClient(convexUrl, {
+  unsavedChangesWarning: false // Disable unsaved changes warning
+});
 
 // Log any unhandled promise rejections which might be related to Convex
 if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', event => {
     console.error('Unhandled promise rejection (possibly Convex-related):', event.reason);
+  });
+
+  // Add event listener for AI thinking state
+  window.addEventListener('aiThinkingChanged', (event: Event) => {
+    const customEvent = event as CustomEvent;
+    if (customEvent.detail?.thinking !== undefined) {
+      console.log('AI thinking state changed:', customEvent.detail.thinking);
+    }
   });
 }
 
