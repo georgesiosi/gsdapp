@@ -1,22 +1,23 @@
-// Define auth config for Convex with enhanced JWKS handling
+// Define auth config for Convex with Clerk best practices
 export default {
   providers: [{
     name: "clerk",
-    // Use issuer URL when available, otherwise fall back to domain
-    domain: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL?.replace(/^https?:\/\//, '') ||
-            process.env.NEXT_PUBLIC_CLERK_DOMAIN,
-    applicationID: "convex",  // Match the JWT template name we created in Clerk
-    // Ensure JWT verification is properly configured with better caching control
+    // Always use the Clerk issuer URL for JWT verification
+    domain: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL?.replace(/^https?:\/\//, ''),
+    applicationID: "convex",
     verifyToken: true,
-    // Specify required claims
-    requiredClaims: ["userId", "applicationId"],
-    // Enhanced JWKS options (if supported)
+    // Required claims for Clerk JWT verification
+    requiredClaims: ["sub", "userId", "sessionId"],
+    // Improved JWKS handling
     jwksOptions: {
-      cache: false,  // Disable caching for JWKS
-      timeout: 10000, // Increase timeout for JWKS fetching
-      retry: 3       // Allow retries
+      cache: false,  // Disable caching to ensure fresh keys
+      timeout: 5000, // 5 second timeout
+      retry: {
+        count: 3,    // Number of retries
+        backoff: 1000 // Start with 1 second delay
+      }
     }
   }],
-  // Set to true to get more detailed error messages
-  debug: true, // Force debug on to see more details about the JWT verification
+  // Keep debug mode on for better error messages
+  debug: true
 };
