@@ -2,21 +2,31 @@
 
 import { useState, useEffect } from 'react'
 import { useSettings } from '@/hooks/use-settings'
+import { useProfile } from '@/hooks/use-profile'
 import { TaskSettings, UserSettings } from '@/types/task'
-import { Card } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
-import { ChevronLeft, Download, History } from 'lucide-react'
+import { ChevronLeft, Download, History, CheckCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { SettingsNav } from '@/components/settings/settings-nav'
 import { recoverFromBackup } from '@/lib/storage'
 import { ConvexTest } from '@/components/convex-test'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings() as { settings: UserSettings, updateSettings: (newSettings: UserSettings) => Promise<any> }
+  const { profile, setProfile } = useProfile()
   const { toast } = useToast()
   const [isTaskSettingsSaving, setIsTaskSettingsSaving] = useState(false)
   const [isApiKeySaving, setIsApiKeySaving] = useState(false)
@@ -26,6 +36,7 @@ export default function SettingsPage() {
   const [localKey, setLocalKey] = useState('')
   const [taskSettingsSaveSuccess, setTaskSettingsSaveSuccess] = useState(false)
   const [apiKeySaveSuccess, setApiKeySaveSuccess] = useState(false)
+  const [isProfileSaving, setIsProfileSaving] = useState(false)
   const defaultTaskSettings: TaskSettings = {
     endOfDayTime: '23:59',
     autoArchiveDelay: 7,
@@ -266,6 +277,149 @@ export default function SettingsPage() {
         </div>
         
         <div className="flex-1 space-y-6">
+          <Card className="p-6 mb-6" id="user-preferences">
+            <h2 className="text-xl font-semibold mb-4">User Preferences</h2>
+            <div className="space-y-6">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="theme">Theme</Label>
+                <Select
+                  value={settings.theme || 'system'}
+                  onValueChange={(value) => updateSettings({
+                    ...settings,
+                    theme: value as 'light' | 'dark' | 'system',
+                  })}
+                >
+                  <SelectTrigger id="theme" className="w-full max-w-[240px]">
+                    <SelectValue placeholder="Select theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light">Light</SelectItem>
+                    <SelectItem value="dark">Dark</SelectItem>
+                    <SelectItem value="system">System</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Set the theme for the application. System uses your device preference.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-4 border-t">
+                <Label htmlFor="personal-context">Personal Context</Label>
+                <Textarea
+                  id="personal-context"
+                  placeholder="Share your context, priorities, and what makes tasks urgent or important to you..."
+                  className="min-h-[160px] resize-y"
+                  value={profile?.personalContext || ''}
+                  onChange={(e) => {
+                    if (profile) {
+                      setProfile({
+                        ...profile,
+                        personalContext: e.target.value
+                      })
+                    }
+                  }}
+                />
+                <p className="text-sm text-muted-foreground">
+                  This helps our AI better understand how to categorize your tasks.
+                </p>
+                
+                <Button 
+                  onClick={() => {
+                    setIsProfileSaving(true);
+                    setTimeout(() => {
+                      toast({
+                        title: "Success",
+                        description: "Your personal context has been updated successfully.",
+                        variant: "default",
+                      });
+                      setIsProfileSaving(false);
+                    }, 500);
+                  }}
+                  className="w-fit mt-2"
+                  disabled={isProfileSaving}
+                >
+                  {isProfileSaving ? (
+                    <span className="animate-pulse">Saving...</span>
+                  ) : (
+                    'Save Context'
+                  )}
+                </Button>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-4 border-t">
+                <Label htmlFor="license-key" className="flex items-center gap-2">
+                  License Key
+                  {profile?.licenseStatus === 'legacy' && (
+                    <span className="flex items-center gap-1 text-sm text-blue-600">
+                      <CheckCircle className="h-4 w-4" />
+                      Legacy Access
+                    </span>
+                  )}
+                  {profile?.licenseStatus === 'active' && (
+                    <span className="flex items-center gap-1 text-sm text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      Active
+                    </span>
+                  )}
+                  {profile?.licenseStatus === 'inactive' && (
+                    <span className="flex items-center gap-1 text-sm text-yellow-600">
+                      <AlertCircle className="h-4 w-4" />
+                      Inactive
+                    </span>
+                  )}
+                </Label>
+                <Input
+                  id="license-key"
+                  placeholder={profile?.isLegacyUser ? "Lifetime Access Granted" : "Enter your license key"}
+                  value={profile?.licenseKey || ''}
+                  disabled={profile?.isLegacyUser}
+                  className={profile?.licenseStatus === 'legacy' ? 'bg-blue-50' : 
+                          profile?.licenseStatus === 'active' ? 'bg-green-50' : 
+                          'bg-white'}
+                  onChange={(e) => {
+                    if (profile) {
+                      setProfile({
+                        ...profile,
+                        licenseKey: e.target.value
+                      })
+                    }
+                  }}
+                />
+                <p className="text-sm text-muted-foreground">
+                  {profile?.isLegacyUser 
+                    ? "You have lifetime access as an existing user."
+                    : profile?.licenseStatus === 'active'
+                    ? "Your license is active and valid."
+                    : "Enter your license key to activate the full version."}
+                </p>
+                
+                {!profile?.isLegacyUser && (
+                  <Button 
+                    onClick={() => {
+                      setIsProfileSaving(true);
+                      setTimeout(() => {
+                        toast({
+                          title: "Success",
+                          description: "Your license key has been updated successfully.",
+                          variant: "default",
+                        });
+                        setIsProfileSaving(false);
+                      }, 500);
+                    }}
+                    className="w-fit mt-2"
+                    disabled={isProfileSaving}
+                  >
+                    {isProfileSaving ? (
+                      <span className="animate-pulse">Activating...</span>
+                    ) : (
+                      'Activate License'
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+
           <Card className="p-6 mb-6" id="ai-integration">
             <h2 className="text-xl font-semibold mb-4">AI Integration</h2>
             <div className="space-y-6">
