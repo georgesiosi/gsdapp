@@ -180,7 +180,10 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     
     // Reset AI error state after 10 seconds
     setTimeout(() => setAiError(false), 10000);
-  }, [toast]);
+    
+    // Close modal and reset submitting state
+    setTaskModalOpen(false);
+  }, [toast, setTaskModalOpen]);
 
   // Handle AI analysis completion
   const handleAIAnalysisComplete = useCallback((event: Event) => {
@@ -220,10 +223,14 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
           className: 'bg-card text-card-foreground'
         });
       }
+      
+      // Close the modal and reset states now that the task has been analyzed and moved
+      console.log('[DEBUG] Closing modal after AI analysis complete');
+      setTaskModalOpen(false);
     } else {
       console.log('[DEBUG] Missing detail in aiAnalysisComplete event');
     }
-  }, [toast]);
+  }, [toast, setTaskModalOpen]);
 
   // Set up event listeners
   useEffect(() => {
@@ -299,17 +306,10 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         throw new Error('Failed to add task');
       }
 
-      // Only close the modal when AI analysis is complete
-      // The aiAnalysisComplete event handler will have already updated
-      // the aiReasoning and targetQuadrant state values
+      // Modal will be closed by the aiAnalysisComplete event handler
+      // after the task has been moved to its final quadrant
       console.log('[DEBUG handleAddTask] Current AI reasoning:', aiReasoning);
       console.log('[DEBUG handleAddTask] Current target quadrant:', targetQuadrant);
-      
-      // Don't close the modal immediately - let user see the analysis first
-      setTimeout(() => {
-        console.log('[DEBUG handleAddTask] Closing modal after timeout');
-        setTaskModalOpen(false);
-      }, 1500); // Give user 1.5 seconds to see results
 
       // Show success message
       toast({

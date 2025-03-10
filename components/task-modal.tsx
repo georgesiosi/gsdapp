@@ -54,9 +54,11 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
       setIsSubmitting(true)
       console.log('[DEBUG] Submitting task:', newTask.trim());
       onAddTask(newTask.trim()) // The quadrant will be determined by AI
-      // Note: We don't close the modal here - it will be closed after AI analysis
+      // Modal will stay open until AI analysis completes or errors
+      // The parent component will handle closing the modal
       setNewTask("")
-      setIsSubmitting(false)
+      // Keep isSubmitting true until AI analysis completes
+      // This prevents multiple submissions while waiting
     }
   }
 
