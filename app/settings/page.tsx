@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useSettings } from '@/hooks/use-settings'
 import { useProfile } from '@/hooks/use-profile'
+import { useQuery } from 'convex/react'
+import { useUser } from '@clerk/nextjs'
 import { TaskSettings, UserSettings } from '@/types/task'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -16,6 +18,7 @@ import Link from 'next/link'
 import { SettingsNav } from '@/components/settings/settings-nav'
 import { recoverFromBackup } from '@/lib/storage'
 import { ConvexTest } from '@/components/convex-test'
+import { api } from '@/convex/_generated/api'
 import {
   Select,
   SelectContent,
@@ -23,6 +26,83 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
+// Subscription section component
+function SubscriptionSection() {
+  const { user } = useUser();
+  const subscription = useQuery(api.queries.subscription.getSubscription, 
+    user?.id ? { userId: user.id } : "skip"
+  );
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2">
+        <h3 className="text-lg font-medium">Current Plan</h3>
+        
+        {/* Loading state */}
+        {!subscription && user?.id && (
+          <div className="animate-pulse">
+            <div className="h-5 bg-gray-200 rounded w-1/4 mb-2"></div>
+            <div className="h-4 bg-gray-100 rounded w-3/4"></div>
+          </div>
+        )}
+        
+        {/* Not signed in */}
+        {!user?.id && (
+          <div className="p-4 border rounded-md bg-yellow-50 border-yellow-200">
+            <p className="text-sm">Please sign in to view your subscription details.</p>
+          </div>
+        )}
+        
+        {/* Subscription data */}
+        {subscription && (
+          <div className="p-4 border rounded-md bg-gray-50">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-medium">
+                {subscription.tier === 'free' ? 'Free Plan' : 
+                 subscription.tier === 'pro' ? 'Pro Plan' : 
+                 subscription.tier === 'team' ? 'Team Plan' : 'Unknown Plan'}
+              </span>
+              <span className={`px-2 py-1 text-xs rounded-full ${subscription.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                {subscription.status === 'active' ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            
+            {subscription.status === 'active' && subscription.validUntil && (
+              <p className="text-sm text-gray-600">
+                Valid until: {new Date(subscription.validUntil).toLocaleDateString()}
+              </p>
+            )}
+            
+            {subscription.tier === 'free' && (
+              <div className="mt-4">
+                <Button asChild size="sm" className="w-full">
+                  <a href="https://polar.sh/georgesiosi/subscriptions" target="_blank" rel="noopener noreferrer">
+                    Upgrade Plan
+                  </a>
+                </Button>
+              </div>
+            )}
+            
+            {subscription.tier !== 'free' && (
+              <div className="mt-4">
+                <Button asChild variant="outline" size="sm" className="w-full">
+                  <a href="https://polar.sh/georgesiosi/subscriptions" target="_blank" rel="noopener noreferrer">
+                    Manage Subscription
+                  </a>
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+        
+        <p className="text-sm text-muted-foreground mt-2">
+          Subscriptions are managed through Polar.sh. Click the button above to manage your subscription.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings() as { settings: UserSettings, updateSettings: (newSettings: UserSettings) => Promise<any> }
@@ -108,7 +188,6 @@ export default function SettingsPage() {
       const updatedSettings: UserSettings = {
         goal: settings.goal,
         openAIKey: localKey || settings.openAIKey,
-        licenseKey: settings.licenseKey,
         priority: settings.priority,
         theme: settings.theme as 'light' | 'dark' | 'system',
         showCompletedTasks: settings.showCompletedTasks ?? true,
@@ -346,77 +425,7 @@ export default function SettingsPage() {
                 </Button>
               </div>
 
-              <div className="flex flex-col gap-2 pt-4 border-t">
-                <Label htmlFor="license-key" className="flex items-center gap-2">
-                  License Key
-                  {profile?.licenseStatus === 'legacy' && (
-                    <span className="flex items-center gap-1 text-sm text-blue-600">
-                      <CheckCircle className="h-4 w-4" />
-                      Legacy Access
-                    </span>
-                  )}
-                  {profile?.licenseStatus === 'active' && (
-                    <span className="flex items-center gap-1 text-sm text-green-600">
-                      <CheckCircle className="h-4 w-4" />
-                      Active
-                    </span>
-                  )}
-                  {profile?.licenseStatus === 'inactive' && (
-                    <span className="flex items-center gap-1 text-sm text-yellow-600">
-                      <AlertCircle className="h-4 w-4" />
-                      Inactive
-                    </span>
-                  )}
-                </Label>
-                <Input
-                  id="license-key"
-                  placeholder={profile?.isLegacyUser ? "Lifetime Access Granted" : "Enter your license key"}
-                  value={profile?.licenseKey || ''}
-                  disabled={profile?.isLegacyUser}
-                  className={profile?.licenseStatus === 'legacy' ? 'bg-blue-50' : 
-                          profile?.licenseStatus === 'active' ? 'bg-green-50' : 
-                          'bg-white'}
-                  onChange={(e) => {
-                    if (profile) {
-                      setProfile({
-                        ...profile,
-                        licenseKey: e.target.value
-                      })
-                    }
-                  }}
-                />
-                <p className="text-sm text-muted-foreground">
-                  {profile?.isLegacyUser 
-                    ? "You have lifetime access as an existing user."
-                    : profile?.licenseStatus === 'active'
-                    ? "Your license is active and valid."
-                    : "Enter your license key to activate the full version."}
-                </p>
-                
-                {!profile?.isLegacyUser && (
-                  <Button 
-                    onClick={() => {
-                      setIsProfileSaving(true);
-                      setTimeout(() => {
-                        toast({
-                          title: "Success",
-                          description: "Your license key has been updated successfully.",
-                          variant: "default",
-                        });
-                        setIsProfileSaving(false);
-                      }, 500);
-                    }}
-                    className="w-fit mt-2"
-                    disabled={isProfileSaving}
-                  >
-                    {isProfileSaving ? (
-                      <span className="animate-pulse">Activating...</span>
-                    ) : (
-                      'Activate License'
-                    )}
-                  </Button>
-                )}
-              </div>
+
             </div>
           </Card>
 
@@ -523,6 +532,14 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </Card>
+
+          <Card className="p-6 mb-6" id="subscription">
+            <h2 className="text-xl font-semibold mb-4">Subscription</h2>
+            <div className="space-y-6">
+              {/* Subscription Status */}
+              <SubscriptionSection />
             </div>
           </Card>
 

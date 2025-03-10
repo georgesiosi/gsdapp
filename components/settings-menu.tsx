@@ -18,7 +18,8 @@ import {
   Settings, 
   UserCircle, 
   LogOut,
-  User
+  User,
+  CreditCard
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -133,6 +134,13 @@ export function SettingsMenu() {
           <Link href="/settings/profile" className="flex w-full cursor-pointer items-center">
             <UserCircle className="mr-2 h-4 w-4" />
             <span>Profile</span>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link href="/settings#subscription" className="flex w-full cursor-pointer items-center">
+            <CreditCard className="mr-2 h-4 w-4" />
+            <span>Subscription</span>
           </Link>
         </DropdownMenuItem>
 
