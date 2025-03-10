@@ -6,7 +6,9 @@ export default {
     applicationID: "convex",  // Match the JWT template name we created in Clerk
     // Ensure JWT verification is properly configured
     verifyToken: true,
+    // Specify required claims
+    requiredClaims: ["userId", "applicationId"],
   }],
   // Set to true to get more detailed error messages
-  debug: process.env.NODE_ENV !== "production",
+  debug: true, // Force debug on to see more details about the JWT verification
 };
