@@ -50,7 +50,12 @@
   # Clerk Domain and Configuration
   NEXT_PUBLIC_CLERK_DOMAIN = "live-glider-97.clerk.accounts.dev"
   NEXT_PUBLIC_CLERK_ISSUER_URL = "https://live-glider-97.clerk.accounts.dev"
-  NEXT_PUBLIC_CLERK_FRONTEND_API = "https://clerk.usegsd.com"
+  # Add specific Clerk configuration for staging
+  CLERK_API_HOST = "live-glider-97.clerk.accounts.dev"
+  # Add prefixed environment variables for Clerk credentials
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_bGl2ZS1nbGlkZXItOTcuY2xlcmsuYWNjb3VudHMuZGV2JA"
+  CLERK_SECRET_KEY = "sk_test_MyOFuVVjUgWiLffWK0XruDkrPr2eS012wgbdH6cCxV"
+  CLERK_ENCRYPTION_KEY = "0sOD2FJOB7xDIIt1jt7oKxHOX9FVt6ZFSICmVg2gI7o="
 
 # Cache configuration
 [build.processing]
