@@ -34,8 +34,8 @@ export function ConvexTest() {
         isLoading: isAuthLoading,
       },
       environment: {
-        convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL,
-        clerkIssuer: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL,
+        convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL,
+        clerkIssuer: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL,
       }
     }
     
