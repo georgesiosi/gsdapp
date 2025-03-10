@@ -2,7 +2,7 @@
 export default {
   providers: [{
     name: "clerk",
-    domain: process.env.NEXT_PUBLIC_CLERK_DOMAIN || "live-glider-97.clerk.accounts.dev",
+    domain: process.env.NEXT_PUBLIC_CLERK_DOMAIN,
     applicationID: "convex",  // Match the JWT template name we created in Clerk
   }],
 };
