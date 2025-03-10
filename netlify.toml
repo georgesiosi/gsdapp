@@ -48,11 +48,14 @@
   CONTEXT_STAGING_NEXT_PUBLIC_APP_URL = "https://staging.app.usegsd.com"
   # Convex Configuration
   CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL = "https://rapid-octopus-495.convex.cloud"
-  # Clerk Domain and Configuration
+  # Clerk Domain and Configuration - Using development instance for staging
   CONTEXT_STAGING_NEXT_PUBLIC_CLERK_DOMAIN = "live-glider-97.clerk.accounts.dev"
   CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL = "https://live-glider-97.clerk.accounts.dev"
   # Add specific Clerk configuration for staging
   CONTEXT_STAGING_NEXT_PUBLIC_CLERK_API_HOST = "live-glider-97.clerk.accounts.dev"
+  # Specify allowed redirect URLs for staging
+  CONTEXT_STAGING_NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL = "https://staging.app.usegsd.com"
+  CONTEXT_STAGING_NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL = "https://staging.app.usegsd.com"
   # Add prefixed environment variables for Clerk credentials
   CONTEXT_STAGING_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_cmVsZXZhbnQtZnJvZy0yNy5jbGVyay5hY2NvdW50cy5kZXYk"
   CONTEXT_STAGING_CLERK_SECRET_KEY = "sk_test_sjcOoG65Kx0gBJVJ0p9JqMqF7gMEXu70bdB2id9Pzt"
