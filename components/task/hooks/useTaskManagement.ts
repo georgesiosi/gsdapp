@@ -180,7 +180,7 @@ export function useTaskManagement() {
       };
 
       // Return immediately to show the task in Q4 and start AI analysis
-      const analyzeTask = async (retryCount = 0, maxRetries = 3) => {
+      const analyzeTask = async (retryCount = 0, maxRetries = 3, maxWaitTime = 15000) => {
         // Calculate exponential backoff delay
         const backoffDelay = retryCount > 0 ? Math.min(1000 * Math.pow(2, retryCount - 1), 10000) : 0;
         
@@ -270,7 +270,17 @@ export function useTaskManagement() {
 
           // Set up timeout for fetch request
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+          const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout to be more responsive
+          
+          // Set up global timeout to ensure we don't hang indefinitely
+          const globalTimeout = setTimeout(() => {
+            controller.abort();
+            dispatchAIEvent('aiAnalysisError', {
+              error: 'Analysis timeout',
+              message: 'Task added successfully, but AI analysis timed out. The task has been placed in Q4.'
+            });
+            dispatchThinkingState(false);
+          }, maxWaitTime);
           
           let response: Response;
           try {
@@ -329,6 +339,7 @@ export function useTaskManagement() {
             return analyzeTask(retryCount + 1, maxRetries);
           } finally {
             clearTimeout(timeout);
+            clearTimeout(globalTimeout);
           }
           
           // Handle other errors
@@ -476,12 +487,69 @@ export function useTaskManagement() {
         }
       };
 
-      // Start AI analysis in the background
-      analyzeTask();
+      // Start AI analysis in the background with fallback mechanism
+      setTimeout(() => {
+        try {
+          analyzeTask().catch(err => {
+            // This is a final fallback to make sure we never leave the user hanging
+            console.error('Uncaught error in task analysis:', err);
+            dispatchAIEvent('aiAnalysisError', {
+              error: 'Unexpected error',
+              message: 'Task added successfully, but AI analysis failed unexpectedly. The task has been placed in Q4.'
+            });
+            dispatchThinkingState(false);
+          });
+        } catch (error) {
+          // Absolute final fallback
+          console.error('Critical error starting task analysis:', error);
+          dispatchThinkingState(false);
+        }
+      }, 0);
 
       return { task, isAnalyzing: true };
     } catch (error) {
       console.error("Error in addTaskWithAIAnalysis:", error);
+      
+      // Fallback for task creation if AI integration fails entirely
+      // This allows users to still create tasks even if AI is not working
+      dispatchAIEvent('aiAnalysisError', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Task creation encountered an issue. Creating task without AI analysis.'
+      });
+      
+      dispatchThinkingState(false);
+      
+      // Create a minimal task in Q4 as fallback
+      try {
+        const taskId = await addTask({
+          text: taskData.text,
+          quadrant: "q4",
+          status: "active",
+          taskType: "personal"
+        });
+        
+        if (taskId) {
+          const now = new Date().toISOString();
+          const fallbackTask: Task = {
+            id: taskId,
+            text: taskData.text,
+            quadrant: "q4",
+            taskType: "personal",
+            needsReflection: false,
+            status: "active",
+            userId: "",
+            _creationTime: Date.now(),
+            createdAt: now,
+            updatedAt: now,
+            order: 0
+          };
+          
+          return { task: fallbackTask, isAnalyzing: false };
+        }
+      } catch (fallbackError) {
+        console.error("Critical error in fallback task creation:", fallbackError);
+      }
+      
       return { task: null, isAnalyzing: false };
     }
   }, [addTask, updateTaskMutation]);
