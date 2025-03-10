@@ -1,20 +1,17 @@
 import { authMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
  
-// Skip auth in development for API routes
-const isDev = process.env.NODE_ENV === 'development';
-
 export default authMiddleware({
   // Routes that can be accessed while signed out
   publicRoutes: [
-    "/", 
     "/sign-in", 
     "/sign-up",
-    ...(isDev ? ["/api/analyze-reflection"] : [])
+    "/api/webhooks/polar/health",
+    "/api/webhooks/polar"
   ],
   // Routes that can always be accessed, and have
   // no authentication information
-  ignoredRoutes: ["/api/webhooks/polar/health", "/api/webhooks/polar"],
+  ignoredRoutes: [],
 
   async afterAuth(auth, req) {
     // Handle preflight requests
