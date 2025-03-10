@@ -23,6 +23,17 @@
   # Optimize builds for production
   NEXT_COMPRESS = "true"
 
+# Staging context: all deploys from the staging branch
+[context.staging]
+  command = "npm run build"
+
+[context.staging.environment]
+  NODE_ENV = "production"
+  # Add staging-specific environment settings
+  NEXT_PUBLIC_ENVIRONMENT = "staging"
+  # Disable certain optimizations for faster builds
+  NEXT_COMPRESS = "false"
+
 # Cache configuration
 [build.processing]
   skip_processing = false
