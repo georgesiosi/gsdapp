@@ -45,7 +45,7 @@
   CONTEXT_STAGING_NEXT_PUBLIC_CLERK_FALLBACK_REDIRECT_URL = "/"
   # Removing deprecated props that cause warnings
   # Application URL
-  NEXT_PUBLIC_APP_URL = "https://staging.usegsd.com"
+  CONTEXT_STAGING_NEXT_PUBLIC_APP_URL = "https://staging.app.usegsd.com"
   # Convex Configuration
   NEXT_PUBLIC_CONVEX_URL = "https://rapid-octopus-495.convex.cloud"
   # Clerk Domain and Configuration
