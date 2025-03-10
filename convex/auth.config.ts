@@ -2,8 +2,8 @@
 export default {
   providers: [{
     name: "clerk",
-    // Always use the Clerk issuer URL for JWT verification
-    domain: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL?.replace(/^https?:\/\//, ''),
+    // Handle both local and staging Clerk issuer URLs for JWT verification
+    domain: (process.env.NEXT_PUBLIC_CLERK_ISSUER_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL)?.replace(/^https?:\/\//, ''),
     applicationID: "convex",
     verifyToken: true,
     // Required claims for Clerk JWT verification
