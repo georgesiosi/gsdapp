@@ -66,6 +66,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [aiReasoning, setAiReasoning] = useState<string>();
   const [targetQuadrant, setTargetQuadrant] = useState<string>();
+  const [aiError, setAiError] = useState(false);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -164,6 +165,11 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   const handleAIAnalysisError = useCallback((event: Event) => {
     const { detail } = event as CustomEvent;
     console.log('[DEBUG] AI analysis error event received:', detail);
+    
+    // Set AI error state to true
+    setAiError(true);
+    
+    // Show error toast if there's a message
     if (detail?.message) {
       toast({
         title: 'AI Analysis Error',
@@ -171,6 +177,9 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         variant: 'destructive'
       });
     }
+    
+    // Reset AI error state after 10 seconds
+    setTimeout(() => setAiError(false), 10000);
   }, [toast]);
 
   // Handle AI analysis completion
@@ -242,6 +251,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     if (!taskModalOpen) {
       setAiReasoning(undefined);
       setTargetQuadrant(undefined);
+      setAiError(false);
     }
   }, [taskModalOpen]); // Include all event handlers in deps
 
@@ -401,14 +411,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       </div>
 
       <div className="mt-4 relative">
-        {isAIThinking && (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center">
-            <div className="flex flex-col items-center space-y-4 p-6 rounded-lg bg-card shadow-lg">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="text-sm text-muted-foreground">AI is analyzing your task...</p>
-            </div>
-          </div>
-        )}
         <EisenhowerMatrix
           tasks={taskList
             .filter(t => t.status === 'active' || 
@@ -421,7 +423,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
           onEditTask={handleEditTask}
           onReorderTasks={reorderTasks}
           onTaskClick={handleTaskClick}
-          isAIThinking={isAIThinking}
         />
       </div>
 
@@ -440,6 +441,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         isAIThinking={isAIThinking}
         aiReasoning={aiReasoning}
         targetQuadrant={targetQuadrant}
+        aiError={aiError}
       />
       
       <div className="mt-6 mb-2">

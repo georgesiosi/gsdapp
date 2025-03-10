@@ -23,7 +23,6 @@ interface QuadrantProps {
   onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
   onTaskClick?: (task: Task) => void
   className?: string
-  isAIThinking?: boolean
 }
 
 function Quadrant({ 
@@ -37,8 +36,7 @@ function Quadrant({
   onEditTask, 
   onReorderTasks,
   onTaskClick,
-  className, 
-  isAIThinking 
+  className
 }: QuadrantProps) {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
@@ -106,8 +104,7 @@ function Quadrant({
     <div 
       className={cn(
         "quadrant rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all", 
-        className,
-        isAIThinking && "ring-2 ring-primary/40 transition-all duration-300"
+        className
       )}
       onDragOver={(e: DragEvent) => handleDragOver(e)}
       onDragLeave={(e: DragEvent) => {
@@ -122,9 +119,7 @@ function Quadrant({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground/80">{tasks.length} {quadrantId === "q1" ? "tasks to do now" : quadrantId === "q2" ? "tasks to schedule" : quadrantId === "q3" ? "tasks to delegate" : "tasks to avoid"}</span>
-          {isAIThinking && quadrantId === "q4" && (
-            <AIThinkingIndicator isThinking={true} className="scale-75" />
-          )}
+          {/* AI thinking indicator removed */}
         </div>
       </div>
       <div className="quadrant-content bg-card/50 dark:bg-card/50">
@@ -255,7 +250,6 @@ interface EisenhowerMatrixProps {
   onEditTask: (taskId: string, newText: string) => void
   onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
   onTaskClick?: (task: Task) => void
-  isAIThinking?: boolean
 }
 
 export function EisenhowerMatrix({ 
@@ -266,8 +260,7 @@ export function EisenhowerMatrix({
   onMoveTask, 
   onEditTask,
   onReorderTasks,
-  onTaskClick,
-  isAIThinking = false 
+  onTaskClick 
 }: EisenhowerMatrixProps) {
   // Memoize tasks by quadrant to prevent unnecessary recalculations
   const tasksByQuadrant = useMemo(() => {
@@ -309,7 +302,6 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-urgent-important border-destructive/20"
-          isAIThinking={isAIThinking}
         />
         <Quadrant
           title="Not Urgent but Important"
@@ -323,7 +315,6 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-not-urgent-important border-primary/20"
-          isAIThinking={isAIThinking}
         />
         <Quadrant
           title="Urgent but Not Important"
@@ -337,7 +328,6 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-urgent-not-important border-yellow-500/20"
-          isAIThinking={isAIThinking}
         />
         <Quadrant
           title="Not Urgent & Not Important"
@@ -351,7 +341,6 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-not-urgent-not-important border-muted-foreground/20"
-          isAIThinking={isAIThinking}
         />
       </div>
     </div>
