@@ -95,16 +95,24 @@ export function useDataMigration() {
       }
 
       if (data.settings) {
-        await savePreferencesMutation({
+        // Create a new settings object that matches the updated UserSettings type
+        const migratedSettings: UserSettings = {
           goal: data.settings.goal,
           openAIKey: data.settings.openAIKey,
-          licenseKey: data.settings.licenseKey,
           priority: data.settings.priority,
           theme: data.settings.theme,
           showCompletedTasks: data.settings.showCompletedTasks,
           autoAnalyze: data.settings.autoAnalyze,
-          taskSettings: data.settings.taskSettings,
-        });
+          isLegacyUser: true, // Mark all migrated users as legacy users
+          taskSettings: data.settings.taskSettings || {
+            endOfDayTime: '17:00',
+            autoArchiveDelay: 7,
+            gracePeriod: 24,
+            retainRecurringTasks: true,
+          }
+        };
+        
+        await savePreferencesMutation(migratedSettings);
         completedItems++;
         setProgress(100);
       }

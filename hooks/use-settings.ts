@@ -127,12 +127,12 @@ export function useSettings() {
       const settingsWithDefaults: UserSettings = {
         goal: newSettings.goal,
         openAIKey: newSettings.openAIKey,
-        licenseKey: newSettings.licenseKey,
         priority: newSettings.priority,
         theme: newSettings.theme || 'system',
         showCompletedTasks: newSettings.showCompletedTasks ?? true,
         autoAnalyze: newSettings.autoAnalyze ?? false,
         syncApiKey: newSettings.syncApiKey ?? false,
+        isLegacyUser: newSettings.isLegacyUser ?? false,
         taskSettings: {
           endOfDayTime: newSettings.taskSettings?.endOfDayTime || defaultTaskSettings.endOfDayTime,
           autoArchiveDelay: newSettings.taskSettings?.autoArchiveDelay || defaultTaskSettings.autoArchiveDelay,
