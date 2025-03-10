@@ -6,14 +6,45 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient } from "convex/react";
 import { ThemeProvider } from "next-themes";
 
-// Ensure Convex URL is available for both local and staging environments
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL;
-if (!convexUrl) {
-  throw new Error("Missing Convex URL environment variable. Expected either NEXT_PUBLIC_CONVEX_URL or CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL");
+// ENVIRONMENT VARIABLES DEBUGGING - START
+// List all available environment variables for debugging
+const envVars: Record<string, string | undefined> = {};
+for (const key in process.env) {
+  envVars[key] = process.env[key];
+}
+console.log("All available environment variables:", envVars);
+
+// With Next.js, we need to be careful about environment variables that are available at runtime
+// Hard-code staging Convex URL as a fallback if environment variables are missing
+const FALLBACK_STAGING_CONVEX_URL = "https://rapid-octopus-495.convex.cloud";
+const FALLBACK_PROD_CONVEX_URL = "https://kindhearted-basilisk-30.convex.cloud";
+
+// Try to get Convex URL from environment variables first
+let convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL;
+
+// If no environment variable is found, determine environment based on hostname
+if (!convexUrl && typeof window !== 'undefined') {
+  const hostname = window.location.hostname;
+  console.log("Current hostname:", hostname);
+  
+  // Use hostname to determine which environment we're in
+  if (hostname.includes('staging') || hostname.includes('deploy-preview') || hostname === 'localhost') {
+    console.log("Detected staging/development environment. Using staging Convex URL.");
+    convexUrl = FALLBACK_STAGING_CONVEX_URL;
+  } else {
+    console.log("Detected production environment. Using production Convex URL.");
+    convexUrl = FALLBACK_PROD_CONVEX_URL;
+  }
 }
 
-// Log Convex URL to help debug (will be logged in browser console)
+// Final check and logging
+if (!convexUrl) {
+  console.error("Could not determine Convex URL from environment variables or hostname!");
+  throw new Error("Missing Convex URL environment variable and could not determine from hostname");
+}
+
 console.log("Connecting to Convex URL:", convexUrl);
+// ENVIRONMENT VARIABLES DEBUGGING - END
 
 // Initialize Convex client with custom headers
 const convex = new ConvexReactClient(convexUrl, {

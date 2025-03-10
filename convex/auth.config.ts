@@ -1,29 +1,13 @@
 // Define auth config for Convex with Clerk best practices
 
-// Log environment variables to help debug issues
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL;
-const clerkIssuerUrl = process.env.NEXT_PUBLIC_CLERK_ISSUER_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL;
-
-// Log all relevant environment variables for debugging
-console.log('Environment Variables:', {
-  convex: {
-    local: process.env.NEXT_PUBLIC_CONVEX_URL,
-    staging: process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL,
-    final: convexUrl
-  },
-  clerk: {
-    local: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL,
-    staging: process.env.CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL,
-    final: clerkIssuerUrl,
-    domain: clerkIssuerUrl?.replace(/^https?:\/\//, '')
-  }
-});
-
+// Note: We use standard env var names here (no CONTEXT_STAGING_ prefix)
+// because Convex has a 40-char limit on env var names.
+// The actual values will be provided by Netlify's environment mapping.
 export default {
   providers: [{
     name: "clerk",
-    // Use the extracted Clerk issuer URL for JWT verification
-    domain: clerkIssuerUrl?.replace(/^https?:\/\//, ''),
+    // Use Clerk issuer URL for JWT verification
+    domain: process.env.NEXT_PUBLIC_CLERK_ISSUER_URL?.replace(/^https?:\/\//, ''),
     applicationID: "convex",
     verifyToken: true,
     // Required claims for Clerk JWT verification
