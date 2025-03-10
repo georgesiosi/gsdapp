@@ -1,7 +1,9 @@
 import { authMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
  
+// Configure Clerk auth middleware with environment-specific settings
 export default authMiddleware({
+  debug: true, // Enable debug mode to get more detailed error messages
   // Routes that can be accessed while signed out
   publicRoutes: [
     "/sign-in", 

@@ -36,7 +36,6 @@ export default async function RootLayout({
           appearance={{
             baseTheme: undefined
           }}
-          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
         >
           <Providers>
             {children}
