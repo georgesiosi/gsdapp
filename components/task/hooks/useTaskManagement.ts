@@ -1,3 +1,9 @@
+/**
+ * Task Management Hook
+ * 
+ * Provides functionality for managing tasks with Convex backend integration
+ * and AI-powered task analysis capabilities.
+ */
 import { useState, useCallback, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -5,8 +11,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Task, QuadrantType, TaskStatus, TaskType, ConvexTask } from "@/types/task";
 import { ReasoningLogService } from "@/services/ai/reasoningLogService";
 
-// Define event types and interfaces
-// Define event types and interfaces
+// Define event types and interfaces for AI functionality
 type AIEventDetail = {
   aiThinkingChanged: { thinking: boolean; message?: string };
   aiAnalysisComplete: { 
@@ -42,22 +47,25 @@ export type NewTask = {
   description?: string;
 };
 
-// Helper function to convert ConvexTask to UI Task
+/**
+ * Converts a Convex task to the UI Task format.
+ * Handles legacy tasks by deriving timestamps when needed.
+ */
 const adaptConvexTask = (convexTask: ConvexTask): Task => {
   // Convert _creationTime to ISO string if createdAt/updatedAt not present (legacy tasks)
   const creationDate = new Date(convexTask._creationTime / 1000).toISOString();
   
   return {
     id: convexTask._id.toString(),
-    text: convexTask.text,
+    text: convexTask.text || '', // Ensure text is never undefined
     description: convexTask.description,
     quadrant: convexTask.quadrant,
     taskType: convexTask.taskType,
     status: convexTask.status,
-    needsReflection: convexTask.needsReflection,
+    needsReflection: Boolean(convexTask.needsReflection), // Ensure boolean type
     reflection: convexTask.reflection,
     completedAt: convexTask.completedAt,
-    order: convexTask.order,
+    order: convexTask.order ?? 0, // Provide default order if undefined
     userId: convexTask.userId,
     _creationTime: convexTask._creationTime,
     createdAt: convexTask.createdAt || creationDate,
@@ -65,7 +73,11 @@ const adaptConvexTask = (convexTask: ConvexTask): Task => {
   };
 };
 
-// Helper function to convert string ID to Convex ID
+/**
+ * Converts a string ID to a Convex ID type.
+ * @param id The string ID to convert
+ * @returns The converted Convex ID
+ */
 const toConvexId = (id: string): Id<"tasks"> => id as unknown as Id<"tasks">;
 
 export function useTaskManagement() {
@@ -92,17 +104,31 @@ export function useTaskManagement() {
     [convexTasks]
   );
 
-  // Add a new task
+  /**
+   * Add a new task to the database
+   * @param newTask The task data to add
+   * @returns The ID of the newly created task, or null if creation failed
+   */
   const addTask = useCallback(async (newTask: NewTask): Promise<string | null> => {
+    if (!newTask.text?.trim()) {
+      console.warn("Cannot add task with empty text");
+      return null;
+    }
+
     try {
       const now = new Date().toISOString();
       const taskId = await addTaskMutation({
-        text: newTask.text,
+        // Required fields
+        text: newTask.text.trim(),
         quadrant: newTask.quadrant,
-        taskType: newTask.taskType || 'personal',
-        needsReflection: newTask.needsReflection || false,
-        status: newTask.status || 'active',
-        description: newTask.description,
+        
+        // Optional fields with defaults
+        taskType: newTask.taskType ?? 'personal',
+        needsReflection: newTask.needsReflection ?? false,
+        status: newTask.status ?? 'active',
+        description: newTask.description?.trim(),
+        
+        // Timestamps
         createdAt: now,
         updatedAt: now
       });
@@ -460,30 +486,87 @@ export function useTaskManagement() {
     }
   }, [addTask, updateTaskMutation]);
 
-  // Update a task
+  /**
+   * Update an existing task in the database
+   * @param id The ID of the task to update
+   * @param updates The fields to update on the task
+   * @returns Object with success status and error information if applicable
+   */
   const updateTask = useCallback(async (id: string, updates: Partial<Omit<Task, "id" | "_creationTime" | "userId">>) => {
+    if (!id) {
+      console.error("Cannot update task: Invalid task ID");
+      return { success: false, error: "Invalid task ID" };
+    }
+    
     try {
+      // Create a clean updates object with only the defined values
+      const cleanUpdates: Record<string, any> = {};
+      
+      // Only include defined values and ensure text is trimmed if present
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value !== undefined) {
+          if (key === 'text' && typeof value === 'string') {
+            cleanUpdates[key] = value.trim();
+          } else if (key === 'description' && typeof value === 'string') {
+            cleanUpdates[key] = value.trim();
+          } else {
+            cleanUpdates[key] = value;
+          }
+        }
+      });
+
+      // Add updated timestamp if not explicitly set
+      if (!cleanUpdates.updatedAt) {
+        cleanUpdates.updatedAt = new Date().toISOString();
+      }
+      
+      // Update the task
       await updateTaskMutation({
         id: toConvexId(id),
-        ...updates,
+        ...cleanUpdates,
       });
+      
       return { success: true };
     } catch (error) {
-      console.error("Error updating task:", error);
-      return { success: false, error: "Failed to update task" };
+      console.error(`Error updating task ${id}:`, error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to update task"
+      };
     }
   }, [updateTaskMutation]);
 
-  // Delete a task
+  /**
+   * Delete a task from the database
+   * @param id The ID of the task to delete
+   * @returns Object with success status and error information if applicable
+   */
   const deleteTask = useCallback(async (id: string) => {
+    if (!id) {
+      console.error("Cannot delete task: Invalid task ID");
+      return { success: false, error: "Invalid task ID" };
+    }
+    
     try {
-      await deleteTaskMutation({
+      const result = await deleteTaskMutation({
         id: toConvexId(id),
       });
-      return { success: true };
+      
+      // Clean up any stored reasoning logs for this task
+      ReasoningLogService.deleteLog(id);
+      
+      return { 
+        success: true,
+        taskId: id,
+        timestamp: new Date().toISOString()
+      };
     } catch (error) {
-      console.error("Error deleting task:", error);
-      return { success: false, error: "Failed to delete task" };
+      console.error(`Error deleting task ${id}:`, error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to delete task",
+        taskId: id
+      };
     }
   }, [deleteTaskMutation]);
 
