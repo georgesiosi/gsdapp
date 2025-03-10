@@ -116,7 +116,7 @@ function Quadrant({
         "flex items-center justify-between p-3 border-b",
         // Header background colors for each quadrant
         quadrantId === "q1" && "bg-destructive/10 dark:bg-destructive/20",
-        quadrantId === "q2" && "bg-primary/10 dark:bg-primary/20",
+        quadrantId === "q2" && "bg-blue-500/10 dark:bg-blue-500/20",
         quadrantId === "q3" && "bg-yellow-500/10 dark:bg-yellow-500/20",
         quadrantId === "q4" && "bg-muted/50 dark:bg-muted/30"
       )}>
@@ -133,7 +133,7 @@ function Quadrant({
         "quadrant-content p-2",
         // Base background colors for each quadrant
         quadrantId === "q1" && "bg-destructive/5 dark:bg-destructive/10",
-        quadrantId === "q2" && "bg-primary/5 dark:bg-primary/10",
+        quadrantId === "q2" && "bg-blue-500/5 dark:bg-blue-500/10",
         quadrantId === "q3" && "bg-yellow-500/5 dark:bg-yellow-500/10",
         quadrantId === "q4" && "bg-muted dark:bg-muted/20"
       )}>
@@ -328,7 +328,7 @@ export function EisenhowerMatrix({
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
-          className="quadrant-not-urgent-important border-primary/30"
+          className="quadrant-not-urgent-important border-blue-500/30"
         />
         <Quadrant
           title="Urgent but Not Important"
