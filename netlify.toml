@@ -47,7 +47,7 @@
   # Application URL
   CONTEXT_STAGING_NEXT_PUBLIC_APP_URL = "https://staging.app.usegsd.com"
   # Convex Configuration
-  NEXT_PUBLIC_CONVEX_URL = "https://rapid-octopus-495.convex.cloud"
+  CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL = "https://rapid-octopus-495.convex.cloud"
   # Clerk Domain and Configuration
   CONTEXT_STAGING_NEXT_PUBLIC_CLERK_DOMAIN = "live-glider-97.clerk.accounts.dev"
   CONTEXT_STAGING_NEXT_PUBLIC_CLERK_ISSUER_URL = "https://live-glider-97.clerk.accounts.dev"
