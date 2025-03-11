@@ -22,10 +22,11 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*", "./*"],
+      "@/*": ["./*"],
       "@/components/*": ["./components/*"],
       "@/services/*": ["./services/*"],
-      "@/lib/*": ["./lib/*"]
+      "@/lib/*": ["./lib/*"],
+      "@/hooks/*": ["./hooks/*"]
     },
     "target": "ES2017"
   },
