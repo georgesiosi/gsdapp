@@ -9,7 +9,19 @@ import { useToast } from "../../components/ui/use-toast"
 import { ArrowLeft, Trash2 } from "lucide-react"
 import Link from "next/link"
 
+// Helper function to get quadrant display text
+function getQuadrantText(quadrant: string): string {
+  switch (quadrant) {
+    case "q1": return "Q1: Urgent & Important";
+    case "q2": return "Q2: Important, Not Urgent";
+    case "q3": return "Q3: Urgent, Not Important";
+    default: return "Q4: Not Urgent & Not Important";
+  }
+}
+
 export default function AILogsPage() {
+  // Added comment to indicate this is the AI logs page component
+  // This component displays a list of AI reasoning logs with filtering by quadrant
   const [logs, setLogs] = useState<AIReasoningLog[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
@@ -39,8 +51,6 @@ export default function AILogsPage() {
       loadLogs()
     }
   }, [toast])
-
-
 
   const handleClearLogs = () => {
     try {
@@ -118,16 +128,17 @@ export default function AILogsPage() {
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
-          {isLoading ? (
+          {isLoading && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Loading logs...</p>
             </div>
-          ) : sortedLogs.length === 0 ? (
+          )}
+          {!isLoading && sortedLogs.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No logs found for this category.</p>
             </div>
-          ) : (
-            sortedLogs.map((log) => (
+          )}
+          {!isLoading && sortedLogs.length > 0 && sortedLogs.map((log) => (
               <Card key={log.taskId} className="overflow-hidden">
                 <CardHeader className={`
                   ${log.suggestedQuadrant === "q1" ? "bg-red-50 dark:bg-red-950/20" : ""}
@@ -177,12 +188,7 @@ export default function AILogsPage() {
                 </CardContent>
                 <CardFooter className="bg-muted/50 py-2">
                   <div className="text-xs text-muted-foreground">
-                    Quadrant: {
-                      log.suggestedQuadrant === "q1" ? "Q1: Urgent & Important" :
-                      log.suggestedQuadrant === "q2" ? "Q2: Important, Not Urgent" :
-                      log.suggestedQuadrant === "q3" ? "Q3: Urgent, Not Important" :
-                      "Q4: Not Urgent & Not Important"
-                    }
+                    Quadrant: {getQuadrantText(log.suggestedQuadrant)}
                   </div>
                 </CardFooter>
               </Card>

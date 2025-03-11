@@ -217,11 +217,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       
       // Show toast notification
       if (detail.message) {
-        toast({
-          title: 'AI Analysis Complete',
-          description: detail.message,
-          className: 'bg-card text-card-foreground'
-        });
+        // Don't show toast for AI analysis complete, since we have the visual indicator
+        console.log('[DEBUG] AI Analysis complete:', detail.message);
       }
       
       // Close the modal and reset states now that the task has been analyzed and moved
@@ -423,6 +420,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
           onEditTask={handleEditTask}
           onReorderTasks={reorderTasks}
           onTaskClick={handleTaskClick}
+          isAIThinking={isAIThinking}
         />
       </div>
 
@@ -438,7 +436,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         open={taskModalOpen}
         onOpenChange={setTaskModalOpen}
         onAddTask={handleAddTask}
-        isAIThinking={isAIThinking}
         aiReasoning={aiReasoning}
         targetQuadrant={targetQuadrant}
         aiError={aiError}

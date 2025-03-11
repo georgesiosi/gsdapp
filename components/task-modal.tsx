@@ -19,26 +19,26 @@ interface TaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAddTask: (text: string) => void
-  isAIThinking?: boolean
   aiReasoning?: string
   targetQuadrant?: string
   aiError?: boolean
 }
 
-export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false, aiReasoning, targetQuadrant, aiError = false }: TaskModalProps) {
+export function TaskModal({ open, onOpenChange, onAddTask, aiReasoning, targetQuadrant, aiError = false }: TaskModalProps) {
   const [newTask, setNewTask] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Debug log props
   useEffect(() => {
-    console.log('[DEBUG TaskModal] Props received:', { 
-      isOpen: open, 
-      isAIThinking, 
-      aiReasoning, 
-      targetQuadrant,
+    // Ensure all dependencies are included in a stable order
+    const debugProps = {
+      open,
+      aiReasoning: aiReasoning || null,
+      targetQuadrant: targetQuadrant || null,
       aiError
-    });
-  }, [open, isAIThinking, aiReasoning, targetQuadrant, aiError]);
+    };
+    console.log('[DEBUG TaskModal] Props received:', debugProps);
+  }, [open, aiReasoning, targetQuadrant, aiError]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -54,11 +54,10 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
       setIsSubmitting(true)
       console.log('[DEBUG] Submitting task:', newTask.trim());
       onAddTask(newTask.trim()) // The quadrant will be determined by AI
-      // Modal will stay open until AI analysis completes or errors
-      // The parent component will handle closing the modal
+      // Close modal immediately
+      onOpenChange(false)
       setNewTask("")
-      // Keep isSubmitting true until AI analysis completes
-      // This prevents multiple submissions while waiting
+      setIsSubmitting(false)
     }
   }
 
@@ -80,16 +79,7 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Add New Task
-            {isAIThinking && <AIThinkingIndicator isThinking={isAIThinking} className="ml-2" />}
-            {aiError && !isAIThinking && (
-              <div className="inline-flex items-center gap-1 text-xs font-medium text-yellow-500 ml-2">
-                <AlertTriangle className="h-4 w-4" />
-                <span>AI Unavailable</span>
-              </div>
-            )}
-          </DialogTitle>
+          <DialogTitle>Add New Task</DialogTitle>
           {/* AI reasoning section removed as per user request */}
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -102,17 +92,10 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
                   value={newTask}
                   onChange={(e) => setNewTask(e.target.value)}
                   autoFocus
-                  disabled={isSubmitting || isAIThinking}
+                  disabled={isSubmitting}
                 />
-                <p className={cn(
-                  "text-xs",
-                  isAIThinking ? "text-blue-500" : 
-                  aiError ? "text-yellow-500" : 
-                  "text-muted-foreground"
-                )}>
-                  {isAIThinking ? '🤔 AI is analyzing your task...' : 
-                   aiError ? '⚠️ AI analysis unavailable - task will be added to Q4' : 
-                   '💡 Prefix with "idea:" to save to Ideas Bank'}
+                <p className="text-xs text-muted-foreground">
+                  💡 Prefix with "idea:" to save to Ideas Bank
                 </p>
               </div>
               <TaskCreationSuggestions taskText={newTask} />
@@ -131,7 +114,7 @@ export function TaskModal({ open, onOpenChange, onAddTask, isAIThinking = false,
               type="submit" 
               disabled={!newTask.trim() || isSubmitting}
             >
-              {isAIThinking ? "Adding..." : aiError ? "Add Task (Q4)" : "Add Task"}
+              {isSubmitting ? "Adding..." : aiError ? "Add Task (Q4)" : "Add Task"}
             </Button>
           </DialogFooter>
         </form>
