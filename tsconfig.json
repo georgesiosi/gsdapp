@@ -11,7 +11,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
@@ -27,8 +27,9 @@
       "@/components/*": ["./components/*"],
       "@/services/*": ["./services/*"],
       "@/lib/*": ["./lib/*"],
-      "@/app/*": ["./app/*"],
-      "@/hooks/*": ["./components/*/hooks/*", "./hooks/*"]
+      "@/hooks/*": ["./components/*/hooks/*"],
+      "@/components/ideas/hooks/*": ["./components/ideas/hooks/*"],
+      "@/components/task/hooks/*": ["./components/task/hooks/*"]
     },
     "target": "ES2017"
   },

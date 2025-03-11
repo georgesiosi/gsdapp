@@ -5,8 +5,6 @@ const nextConfig = {
     esmExternals: true,
     // Ensure proper handling of path aliases
     forceSwcTransforms: true,
-    // Enable module resolution tracing for debugging
-    moduleResolution: 'node',
     // Enable more verbose webpack output
     webpackBuildWorker: true
   },
@@ -18,19 +16,27 @@ const nextConfig = {
     };
 
     // Add additional module resolution paths
+    if (!config.resolve.modules) {
+      config.resolve.modules = [];
+    }
+
     config.resolve.modules.push(
+      '.',
       './components',
-      './components/ideas/hooks',
-      './components/task/hooks'
+      './app'
     );
 
     // Ensure proper handling of TypeScript paths
-    config.resolve.alias = {
-      ...config.resolve.alias,
+    if (!config.resolve.alias) {
+      config.resolve.alias = {};
+    }
+
+    Object.assign(config.resolve.alias, {
       '@': '.',
       '@/components': './components',
+      '@/app': './app',
       '@/hooks': './components/*/hooks'
-    };
+    });
 
     return config;
   },
