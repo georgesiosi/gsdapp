@@ -27,21 +27,22 @@ console.log("All available environment variables:", envVars);
 const FALLBACK_STAGING_CONVEX_URL = "https://rapid-octopus-495.convex.cloud";
 const FALLBACK_PROD_CONVEX_URL = "https://kindhearted-basilisk-30.convex.cloud";
 
-// Try to get Convex URL from environment variables first
-let convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL;
+// Get Convex URL with proper fallbacks for different environments
+let convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || 
+                process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL ||
+                FALLBACK_STAGING_CONVEX_URL; // Default to staging URL for safety
 
-// If no environment variable is found, determine environment based on hostname
-if (!convexUrl && typeof window !== 'undefined') {
+// In browser context, we can determine the environment more precisely
+if (typeof window !== 'undefined') {
   const hostname = window.location.hostname;
   console.log("Current hostname:", hostname);
   
-  // Use hostname to determine which environment we're in
   if (hostname.includes('staging') || hostname.includes('deploy-preview') || hostname === 'localhost') {
-    console.log("Detected staging/development environment. Using staging Convex URL.");
-    convexUrl = FALLBACK_STAGING_CONVEX_URL;
-  } else {
-    console.log("Detected production environment. Using production Convex URL.");
-    convexUrl = FALLBACK_PROD_CONVEX_URL;
+    convexUrl = process.env.CONTEXT_STAGING_NEXT_PUBLIC_CONVEX_URL || FALLBACK_STAGING_CONVEX_URL;
+    console.log("Using staging Convex URL:", convexUrl);
+  } else if (!hostname.includes('staging') && !hostname.includes('deploy-preview')) {
+    convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || FALLBACK_PROD_CONVEX_URL;
+    console.log("Using production Convex URL:", convexUrl);
   }
 }
 
