@@ -3,9 +3,9 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
-import { TaskManager } from "@/components/task-manager"
-import { GoalSetter } from "@/components/goal-setter"
-import { SettingsMenu } from "@/components/settings-menu"
+import { TaskManager } from "../components/task-manager"
+import { GoalSetter } from "../components/goal-setter"
+import { SettingsMenu } from "../components/settings-menu"
 
 export default function HomePage() {
   const { isLoaded, isSignedIn } = useUser()
