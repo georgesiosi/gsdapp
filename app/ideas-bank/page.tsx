@@ -6,9 +6,104 @@ import { useTaskManagement } from '../../components/task/hooks/useTaskManagement
 import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
 import { formatDistanceToNow } from 'date-fns'
+import { Id } from '@/convex/_generated/dataModel'
+import { TaskType, TaskOrIdeaType } from '@/types/task'
+
+// Define a unified Idea type that handles both Convex and local formats
+type ConvexIdea = {
+  _id: Id<"ideas">;
+  _creationTime: number;
+  text: string;
+  taskType: TaskOrIdeaType; // Using TaskOrIdeaType to handle both task and idea types
+  userId: string;
+  connectedToPriority: boolean;
+}
+
+type LocalIdea = {
+  id: string;
+  text: string;
+  taskType: TaskOrIdeaType; // Using TaskOrIdeaType to handle both task and idea types
+  userId: string;
+  connectedToPriority: boolean;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+// For the actual implementation, we need a more flexible type
+type Idea = {
+  id?: string;
+  _id?: Id<"ideas">;
+  _creationTime?: number;
+  text: string;
+  taskType: TaskOrIdeaType; // Using TaskOrIdeaType to handle both task and idea types
+  userId: string;
+  connectedToPriority: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Union type for ideas that could be from either source
+type IdeaType = ConvexIdea | LocalIdea | Idea;
+
+// Helper functions for type checking
+const isConvexIdea = (idea: any): idea is ConvexIdea => {
+  return '_id' in idea && idea._id !== undefined;
+}
+
+const isLocalIdea = (idea: any): idea is LocalIdea => {
+  return 'id' in idea && idea.id !== undefined;
+}
+
+// Helper to ensure an idea has a proper TaskOrIdeaType
+const ensureValidTaskType = (idea: any): idea is IdeaType => {
+  // Make sure taskType is a valid TaskOrIdeaType
+  if (typeof idea.taskType === 'string') {
+    const validTypes = ['personal', 'work', 'business', 'idea'] as const;
+    if (!validTypes.includes(idea.taskType as TaskOrIdeaType)) {
+      // Convert any invalid string to 'idea' type
+      idea.taskType = 'idea' as TaskOrIdeaType;
+    }
+  } else {
+    // Default to 'idea' if taskType is missing or not a string
+    idea.taskType = 'idea' as TaskOrIdeaType;
+  }
+  return true;
+}
+
+// Helper function to get a consistent ID
+const getIdeaId = (idea: IdeaType): string => {
+  // Ensure the idea has a valid taskType
+  ensureValidTaskType(idea);
+  
+  if (isLocalIdea(idea)) return idea.id;
+  if (isConvexIdea(idea)) return idea._id.toString();
+  // Fallback for unexpected cases
+  return (idea as Idea).id || ((idea as Idea)._id?.toString()) || 'unknown';
+}
+
+// Helper function to get a consistent date
+const getCreationDate = (idea: IdeaType): Date => {
+  // Ensure the idea has a valid taskType
+  ensureValidTaskType(idea);
+  
+  if (isLocalIdea(idea) && idea.createdAt) return idea.createdAt;
+  if (isConvexIdea(idea)) return new Date(idea._creationTime);
+  // Handle mixed type
+  const mixedIdea = idea as Idea;
+  return mixedIdea.createdAt || (mixedIdea._creationTime ? new Date(mixedIdea._creationTime) : new Date());
+}
 
 export default function IdeasBankPage() {
-  const { ideas, setInitialIdeas, deleteIdea, convertIdeaToTask } = useIdeasManagement()
+  const { ideas: rawIdeas, setInitialIdeas, deleteIdea, convertIdeaToTask } = useIdeasManagement()
+  // Cast ideas to IdeaType and ensure valid taskType
+  const ideas = rawIdeas.map(idea => {
+    const typedIdea = {
+      ...idea,
+      taskType: idea.taskType || 'idea'
+    } as IdeaType;
+    ensureValidTaskType(typedIdea);
+    return typedIdea;
+  })
   const { addTaskWithAIAnalysis } = useTaskManagement()
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -22,16 +117,22 @@ export default function IdeasBankPage() {
           const parsedIdeas = JSON.parse(storedIdeas)
           console.log('[DEBUG] Raw ideas from localStorage:', parsedIdeas)
           
-          // Convert string dates to numbers if needed
-          const formattedIdeas = parsedIdeas.map((idea: any) => ({
-            ...idea,
-            createdAt: typeof idea.createdAt === 'string' ? 
-              (isNaN(Number(idea.createdAt)) ? new Date(idea.createdAt).getTime() : Number(idea.createdAt)) : 
-              idea.createdAt,
-            updatedAt: typeof idea.updatedAt === 'string' ? 
-              (isNaN(Number(idea.updatedAt)) ? new Date(idea.updatedAt).getTime() : Number(idea.updatedAt)) : 
-              idea.updatedAt
-          }));
+          // Convert string dates to numbers and ensure valid taskType
+          const formattedIdeas = parsedIdeas.map((idea: any) => {
+            const formattedIdea = {
+              ...idea,
+              createdAt: typeof idea.createdAt === 'string' ? 
+                (isNaN(Number(idea.createdAt)) ? new Date(idea.createdAt).getTime() : Number(idea.createdAt)) : 
+                idea.createdAt,
+              updatedAt: typeof idea.updatedAt === 'string' ? 
+                (isNaN(Number(idea.updatedAt)) ? new Date(idea.updatedAt).getTime() : Number(idea.updatedAt)) : 
+                idea.updatedAt,
+              taskType: idea.taskType || 'idea'
+            } as IdeaType;
+            
+            ensureValidTaskType(formattedIdea);
+            return formattedIdea;
+          });
           
           console.log('[DEBUG] Formatted ideas:', formattedIdeas)
           setInitialIdeas(formattedIdeas)
@@ -60,25 +161,45 @@ export default function IdeasBankPage() {
     }
   }, [ideas, loading])
 
-  const handleDeleteIdea = (id: string) => {
-    deleteIdea(id)
+  const handleDeleteIdea = (id: string | Id<"ideas">) => {
+    deleteIdea(id as any) // Cast to any to handle both string and Id<"ideas">
   }
 
-  const handleConvertToTask = async (id: string) => {
-    const ideaData = convertIdeaToTask(id)
+  const handleConvertToTask = async (id: string | Id<"ideas">) => {
+    const ideaData = convertIdeaToTask(id as any)
     if (ideaData) {
       try {
         console.log('[DEBUG] Converting idea with data:', ideaData)
+        
+        // Ensure taskType is one of the valid types recognized by the system
+        let taskType: TaskType;
+        
+        // Check if taskType exists and set it appropriately
+        if (typeof ideaData.taskType === 'string') {
+          // Valid task types according to the application's type system
+          const validTaskTypes: string[] = ['personal', 'work', 'business'];
+          
+          if (validTaskTypes.includes(ideaData.taskType)) {
+            // It's a valid task type, use it
+            taskType = ideaData.taskType as TaskType;
+          } else {
+            // Default to 'personal' if not a valid type
+            taskType = 'personal';
+          }
+        } else {
+          // Default to 'personal' if no taskType is provided
+          taskType = 'personal';
+        }
+        
         // First add it to Q4 temporarily
+        // Call addTaskWithAIAnalysis with only the parameters it expects
         const result = await addTaskWithAIAnalysis({
           text: ideaData.text,
           quadrant: 'q4',
           completed: false,
           needsReflection: false,
           status: 'active',
-          taskType: ideaData.taskType,
-          createdAt: ideaData.createdAt,
-          updatedAt: ideaData.updatedAt
+          taskType
         })
         
         if (result.task) {
@@ -113,7 +234,7 @@ export default function IdeasBankPage() {
     }
   }
 
-  const getTaskTypeLabel = (taskType: string) => {
+  const getTaskTypeLabel = (taskType: TaskOrIdeaType) => {
     switch (taskType) {
       case 'personal':
         return 'Personal'
@@ -127,7 +248,7 @@ export default function IdeasBankPage() {
     }
   }
 
-  const getTaskTypeColor = (taskType: string) => {
+  const getTaskTypeColor = (taskType: TaskOrIdeaType) => {
     switch (taskType) {
       case 'personal':
         return 'bg-purple-100 text-purple-800'
@@ -185,44 +306,46 @@ export default function IdeasBankPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {ideas.map((idea) => (
-                <tr key={idea.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-normal">
-                    <div className="text-sm text-gray-900">{idea.text}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTaskTypeColor(idea.taskType)}`}>
-                      {getTaskTypeLabel(idea.taskType)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDistanceToNow(idea.createdAt, { addSuffix: true })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${idea.connectedToPriority ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {idea.connectedToPriority ? 'Priority-related' : 'General idea'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleConvertToTask(idea.id)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Convert to Task
-                    </button>
-                    <button
-                      onClick={() => handleDeleteIdea(idea.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {ideas.map((idea) => {
+                return (
+                  <tr key={getIdeaId(idea)} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-normal">
+                      <div className="text-sm text-gray-900">{idea.text}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTaskTypeColor(idea.taskType)}`}>
+                        {getTaskTypeLabel(idea.taskType)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDistanceToNow(getCreationDate(idea), { addSuffix: true })}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${idea.connectedToPriority ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {idea.connectedToPriority ? 'Priority-related' : 'General idea'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => handleConvertToTask(getIdeaId(idea))}
+                        className="text-indigo-600 hover:text-indigo-900 mr-4"
+                      >
+                        Convert to Task
+                      </button>
+                      <button
+                        onClick={() => handleDeleteIdea(getIdeaId(idea))}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
     </div>
-  )
+  );
 }
