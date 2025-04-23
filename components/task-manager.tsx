@@ -187,47 +187,65 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
 
   // Handle AI analysis completion
   const handleAIAnalysisComplete = useCallback((event: Event) => {
-    // Extract the details from the event
     const customEvent = event as CustomEvent;
     const detail = customEvent.detail;
-    
-    console.log('[DEBUG] AI analysis complete raw event:', event);
+
     console.log('[DEBUG] AI analysis complete event detail:', detail);
-    
-    if (detail) {
-      // Log all the properties we're interested in
-      console.log('[DEBUG] Detail properties:', {
-        message: detail.message,
-        reasoning: detail.reasoning,
-        targetQuadrant: detail.targetQuadrant,
-        taskType: detail.taskType,
-        result: detail.result
+
+    if (detail && detail.taskId && detail.targetQuadrant && detail.taskType) {
+      const { taskId, targetQuadrant, taskType, reasoning, message } = detail;
+
+      // Update local taskList state immediately
+      setTaskList(prevTasks => {
+        const taskIndex = prevTasks.findIndex(t => t.id === taskId);
+        if (taskIndex === -1) {
+          console.warn(`[DEBUG] Task ${taskId} not found in local state for update.`);
+          return prevTasks; // Task not found, return previous state
+        }
+
+        const updatedTask = {
+          ...prevTasks[taskIndex],
+          quadrant: targetQuadrant as QuadrantType,
+          taskType: taskType as TaskType,
+          // Optionally update reflection if available
+          reflection: reasoning ? {
+            ...prevTasks[taskIndex].reflection, // Preserve existing reflection fields if any
+            justification: reasoning,
+            aiAnalysis: JSON.stringify(detail.result || {}), // Store full result if available
+            suggestedQuadrant: targetQuadrant,
+            finalQuadrant: targetQuadrant,
+            reflectedAt: new Date().toISOString(),
+          } : prevTasks[taskIndex].reflection,
+        };
+
+        // Create new array with the updated task
+        const newTaskList = [...prevTasks];
+        newTaskList[taskIndex] = updatedTask;
+        console.log(`[DEBUG] Updated local task ${taskId} to quadrant ${targetQuadrant} and type ${taskType}`);
+        return newTaskList;
       });
-      
-      // Update state with AI analysis results
-      if (detail.reasoning) {
-        console.log('[DEBUG] Setting AI reasoning from event:', detail.reasoning);
-        setAiReasoning(detail.reasoning);
+
+      // Update modal-related state (though modal closes immediately after)
+      if (reasoning) {
+        setAiReasoning(reasoning);
       }
-      
-      if (detail.targetQuadrant) {
-        console.log('[DEBUG] Setting target quadrant from event:', detail.targetQuadrant);
-        setTargetQuadrant(detail.targetQuadrant);
+      setTargetQuadrant(targetQuadrant);
+
+      // Show toast notification (optional, maybe redundant if UI updates instantly)
+      if (message) {
+         console.log('[DEBUG] AI Analysis complete message:', message);
+         // toast({ description: message, className: 'bg-card text-card-foreground' }); // Uncomment if toast is desired
       }
-      
-      // Show toast notification
-      if (detail.message) {
-        // Don't show toast for AI analysis complete, since we have the visual indicator
-        console.log('[DEBUG] AI Analysis complete:', detail.message);
-      }
-      
-      // Close the modal and reset states now that the task has been analyzed and moved
+
+      // Close the modal now that the task has been analyzed and moved
       console.log('[DEBUG] Closing modal after AI analysis complete');
       setTaskModalOpen(false);
     } else {
-      console.log('[DEBUG] Missing detail in aiAnalysisComplete event');
+      console.log('[DEBUG] Missing required detail (taskId, targetQuadrant, taskType) in aiAnalysisComplete event');
+      // Still close modal even if detail is incomplete to avoid getting stuck
+      setTaskModalOpen(false);
     }
-  }, [toast, setTaskModalOpen]);
+  }, [setTaskList, setTaskModalOpen]); // Removed toast dependency as it's commented out
 
   // Set up event listeners
   useEffect(() => {

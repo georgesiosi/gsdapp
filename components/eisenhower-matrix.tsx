@@ -159,8 +159,8 @@ function Quadrant({
                 className={cn(
                   "task-item group p-2 rounded-md",
                   draggedTaskId === task.id && "opacity-50",
-                  "cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors",
-                  editingTaskId === task.id && "pointer-events-none"
+                  "cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
+                  // Removed: editingTaskId === task.id && "pointer-events-none"
                 )}
                 draggable={editingTaskId !== task.id}
                 onDragStart={(e) => handleDragStart(e, task.id)}
@@ -181,6 +181,11 @@ function Quadrant({
                     target.closest('.reflection-badge')
                   ) {
                     return
+                  }
+
+                  // Also ignore clicks if this task is currently being edited inline
+                  if (editingTaskId === task.id) {
+                    return;
                   }
 
                   onTaskClick?.(task)

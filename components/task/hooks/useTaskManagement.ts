@@ -14,7 +14,8 @@ import { ReasoningLogService } from "@/services/ai/reasoningLogService";
 // Define event types and interfaces for AI functionality
 type AIEventDetail = {
   aiThinkingChanged: { thinking: boolean; message?: string };
-  aiAnalysisComplete: { 
+  aiAnalysisComplete: {
+    taskId: string; // Added taskId
     message: string;
     result?: any;
     targetQuadrant?: string;
@@ -399,8 +400,10 @@ export function useTaskManagement() {
             throw new Error(error);
           }
 
-          // Notify that AI has completed analysis
-          dispatchAIEvent('aiAnalysisComplete', { 
+          // Notify that AI has completed analysis (intermediate step)
+          // This dispatch might be redundant now, but keeping for potential UI feedback
+          dispatchAIEvent('aiAnalysisComplete', {
+            taskId: taskId, // Add taskId here too
             message: 'AI analysis complete',
             result,
             targetQuadrant: result.suggestedQuadrant,
@@ -413,7 +416,8 @@ export function useTaskManagement() {
           const taskType = result.taskType || taskData.taskType || "personal";
           
           const now = new Date().toISOString();
-          try {
+          // --- Start of Fix ---
+          try { 
             await updateTaskMutation({
               id: toConvexId(taskId),
               quadrant: targetQuadrant,
@@ -427,63 +431,55 @@ export function useTaskManagement() {
                 reflectedAt: now,
               } : undefined,
             });
-            
+
             // Store reasoning data in the ReasoningLogService for the task card display
             console.log('[DEBUG] Storing AI reasoning log for task:', taskId);
-            if (result.reasoning) {
+            if (result.reasoning) { // Ensure reasoning exists before logging
               ReasoningLogService.storeLog({
                 taskId: taskId,
                 taskText: taskData.text,
-                timestamp: Date.now(),
-                suggestedQuadrant: targetQuadrant,
-                taskType: taskType,
+                timestamp: Date.now(), // Use consistent timestamp
+                suggestedQuadrant: targetQuadrant, // Use consistent variable
+                taskType: taskType, // Use consistent variable
                 reasoning: result.reasoning,
-                alignmentScore: result.alignmentScore,
-                urgencyScore: result.urgencyScore,
-                importanceScore: result.importanceScore
+                alignmentScore: result.alignmentScore, // Pass alignment score
+                urgencyScore: result.urgencyScore, // Pass urgency score
+                importanceScore: result.importanceScore // Pass importance score
               });
             }
 
-            // Notify of successful update
-            window.dispatchEvent(new CustomEvent('aiAnalysisComplete', { 
-              detail: { 
-                message: `Task analyzed and moved to ${targetQuadrant.toUpperCase()} as ${taskType} task`,
-                result,
-                targetQuadrant,
-                taskType,
-                reasoning: result.reasoning?.split('.')[0] || 'Based on AI analysis'
-              } 
-            }));
-          } catch (updateError) {
-            // Handle task update errors
-            const error = `Failed to update task with AI analysis: ${updateError instanceof Error ? updateError.message : 'Unknown error'}`;
-            console.error('Task update error:', updateError);
-            
-            dispatchAIEvent('aiAnalysisError', { 
-              error,
-              message: 'Failed to update task with AI analysis results. Please try again.' 
+            // Notify of successful update AND analysis completion
+            // Dispatch the final 'aiAnalysisComplete' event ONLY after successful update
+            dispatchAIEvent('aiAnalysisComplete', {
+              taskId: taskId, // Add taskId here
+              message: `Task analyzed and moved to ${targetQuadrant.toUpperCase()} as ${taskType} task`,
+              result,
+              targetQuadrant,
+              taskType,
+              reasoning: result.reasoning?.split('.')[0] || 'Based on AI analysis'
             });
-            
-            throw new Error(error);
+
+          } catch (updateError) {
+            // Handle task update errors specifically
+            const error = `Failed to update task after AI analysis: ${updateError instanceof Error ? updateError.message : 'Unknown error'}`;
+            console.error('Task update error after analysis:', updateError);
+            dispatchAIEvent('aiAnalysisError', {
+              error,
+              message: 'AI analysis succeeded, but failed to update the task. Please try moving it manually.'
+            });
+            // Do not rethrow, let finally block handle thinking state
           }
-          
-          // Notify that analysis is complete
-          dispatchAIEvent('aiAnalysisComplete', { 
-            message: `Task analyzed and moved to ${targetQuadrant.toUpperCase()} as ${taskType} task`,
-            result,
-            targetQuadrant,
-            taskType,
-            reasoning: result.reasoning?.split('.')[0] || 'Based on AI analysis'
-          });
+          // --- End of Fix ---
         } catch (analysisError) {
           console.error("Error analyzing task:", analysisError);
-          dispatchAIEvent('aiAnalysisError', { 
+          dispatchAIEvent('aiAnalysisError', {
             error: analysisError instanceof Error ? analysisError.message : 'Unknown error',
-            message: 'AI analysis failed. Task will remain in Q4. Please check your API key and try again.' 
+            message: 'AI analysis failed. Task will remain in Q4. Please check your API key and try again.'
           });
         } finally {
           // Always notify that AI has finished thinking
-          dispatchThinkingState(false, 'AI analysis complete');
+          // This remains potentially problematic for concurrency, but let's fix the update reliability first.
+          dispatchThinkingState(false, 'AI analysis processing finished'); // Changed message slightly
         }
       };
 
@@ -509,16 +505,16 @@ export function useTaskManagement() {
       return { task, isAnalyzing: true };
     } catch (error) {
       console.error("Error in addTaskWithAIAnalysis:", error);
-      
+
       // Fallback for task creation if AI integration fails entirely
       // This allows users to still create tasks even if AI is not working
       dispatchAIEvent('aiAnalysisError', {
         error: error instanceof Error ? error.message : 'Unknown error',
         message: 'Task creation encountered an issue. Creating task without AI analysis.'
       });
-      
+
       dispatchThinkingState(false);
-      
+
       // Create a minimal task in Q4 as fallback
       try {
         const taskId = await addTask({
@@ -527,7 +523,7 @@ export function useTaskManagement() {
           status: "active",
           taskType: "personal"
         });
-        
+
         if (taskId) {
           const now = new Date().toISOString();
           const fallbackTask: Task = {
@@ -543,13 +539,13 @@ export function useTaskManagement() {
             updatedAt: now,
             order: 0
           };
-          
+
           return { task: fallbackTask, isAnalyzing: false };
         }
       } catch (fallbackError) {
         console.error("Critical error in fallback task creation:", fallbackError);
       }
-      
+
       return { task: null, isAnalyzing: false };
     }
   }, [addTask, updateTaskMutation]);
@@ -565,11 +561,11 @@ export function useTaskManagement() {
       console.error("Cannot update task: Invalid task ID");
       return { success: false, error: "Invalid task ID" };
     }
-    
+
     try {
       // Create a clean updates object with only the defined values
       const cleanUpdates: Record<string, any> = {};
-      
+
       // Only include defined values and ensure text is trimmed if present
       Object.entries(updates).forEach(([key, value]) => {
         if (value !== undefined) {
@@ -587,18 +583,18 @@ export function useTaskManagement() {
       if (!cleanUpdates.updatedAt) {
         cleanUpdates.updatedAt = new Date().toISOString();
       }
-      
+
       // Update the task
       await updateTaskMutation({
         id: toConvexId(id),
         ...cleanUpdates,
       });
-      
+
       return { success: true };
     } catch (error) {
       console.error(`Error updating task ${id}:`, error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error instanceof Error ? error.message : "Failed to update task"
       };
     }
@@ -614,24 +610,24 @@ export function useTaskManagement() {
       console.error("Cannot delete task: Invalid task ID");
       return { success: false, error: "Invalid task ID" };
     }
-    
+
     try {
       const result = await deleteTaskMutation({
         id: toConvexId(id),
       });
-      
+
       // Clean up any stored reasoning logs for this task
       ReasoningLogService.deleteLog(id);
-      
-      return { 
+
+      return {
         success: true,
         taskId: id,
         timestamp: new Date().toISOString()
       };
     } catch (error) {
       console.error(`Error deleting task ${id}:`, error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error instanceof Error ? error.message : "Failed to delete task",
         taskId: id
       };
@@ -643,10 +639,10 @@ export function useTaskManagement() {
     try {
       const task = convexTasks.find(t => t._id.toString() === id);
       if (!task) return { success: false, error: "Task not found" };
-      
+
       const isQ1Task = task.quadrant === "q1";
       const wasCompleted = task.status === "completed";
-      
+
       await updateTaskMutation({
         id: toConvexId(id),
         status: wasCompleted ? "active" : "completed",
@@ -657,7 +653,7 @@ export function useTaskManagement() {
       if (isQ1Task && !wasCompleted) {
         setShowConfetti(true);
       }
-      
+
       return { success: true };
     } catch (error) {
       console.error("Error toggling task:", error);

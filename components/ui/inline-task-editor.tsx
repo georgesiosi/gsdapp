@@ -60,7 +60,10 @@ export function InlineTaskEditor({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={onCancel}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent click from bubbling up
+            onCancel();
+          }}
           className="h-7 px-2"
         >
           <X className="h-4 w-4" />
@@ -70,7 +73,10 @@ export function InlineTaskEditor({
           type="button"
           variant="default"
           size="sm"
-          onClick={handleSave}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent click from bubbling up
+            handleSave();
+          }}
           className="h-7 px-2"
           disabled={!text.trim()}
         >
