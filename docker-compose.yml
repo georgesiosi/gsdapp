@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: .
-      target: runner # Use production-ready image
+      target: builder # Use development-ready image
     ports:
       - "3050:3050"
     volumes:
@@ -13,9 +13,10 @@ services:
     env_file:
       - .env.local
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=3050
       - NEXT_TELEMETRY_DISABLED=1
+    command: npm run dev
     deploy:
       resources:
         limits:
