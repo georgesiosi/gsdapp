@@ -26,6 +26,7 @@ This document outlines the core technologies, frameworks, and configurations use
     *   Targets ES2017.
 *   **Linting/Type Checking:** ESLint and TypeScript checks are configured but **ignored during builds** (`eslint.ignoreDuringBuilds: true`, `typescript.ignoreBuildErrors: true` in `next.config.mjs`).
 *   **Testing:** Jest with React Testing Library (`@testing-library/react`) and `ts-jest`. Setup configured in `jest.setup.js` and `package.json`.
+*   **Configuration Consistency:** Ensure environment variables (e.g., `PORT`, `NEXT_PUBLIC_APP_URL` in `.env.*` files) align with runtime configurations (e.g., ports in `package.json` scripts, `docker-compose.yml`). Mismatches can cause initialization or runtime errors.
 
 ## Deployment & Environment
 

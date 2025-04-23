@@ -62,7 +62,7 @@ const nextConfig = {
       },
     ],
   },
-  headers: async () => {
+  async headers() {
     return [
       {
         source: "/:path*",

@@ -18,7 +18,7 @@ export default authMiddleware({
   // no authentication information
   ignoredRoutes: [],
 
-  async afterAuth(auth, req) {
+  afterAuth(auth, req) {
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
       const response = new NextResponse(null, { status: 204 });
