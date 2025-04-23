@@ -77,7 +77,23 @@ npm run dev
 yarn dev
 ```
 
-1. Open [http://localhost:3000](http://localhost:3000) in your browser
+1. Open [http://localhost:3050](http://localhost:3050) in your browser
+
+## 🐳 Docker
+
+1. Copy `.env.example` to `.env.local` and update variables:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. Start the application with Docker:
+
+   ```bash
+   docker-compose up --build
+   ```
+
+3. Open [http://localhost:3050](http://localhost:3050) in your browser.
 
 ## 🛠 Tech Stack
 
