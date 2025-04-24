@@ -6,10 +6,6 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-  [plugins.inputs]
-    # Enable persistent caching
-    persistentCache = true
-    cacheDirectory = ".next/cache"
 
 [build.environment]
   NEXT_CACHE_DIR = ".next/cache"
