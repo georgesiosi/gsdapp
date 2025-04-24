@@ -1,7 +1,7 @@
 import { Id } from "../convex/_generated/dataModel";
 
 // Task quadrant types
-export type QuadrantType = "q1" | "q2" | "q3" | "q4";
+export type QuadrantKeys = 'q1' | 'q2' | 'q3' | 'q4';
 
 // Task types
 export type TaskType = "personal" | "work" | "business";
@@ -31,7 +31,7 @@ export interface Task {
   /** Detailed description of the task */
   description?: string;
   /** Eisenhower quadrant classification */
-  quadrant: QuadrantType;
+  quadrant: QuadrantKeys;
   /** Optional categorization of the task */
   taskType?: TaskOrIdeaType;
   /** Current status of the task */
@@ -48,6 +48,8 @@ export interface Task {
   userId: string;
   /** Creation timestamp */
   _creationTime: number;
+  /** Optional identifier linking the task to a specific goal */
+  goalId?: string; // Mapped from Convex _id
   /** ISO string of when the task was created */
   createdAt: string;
   /** ISO string of when the task was last updated */
@@ -62,7 +64,7 @@ export interface ConvexTask {
   _creationTime: number;
   text: string;
   description?: string;
-  quadrant: QuadrantType;
+  quadrant: QuadrantKeys;
   taskType?: TaskType;
   status: TaskStatus;
   needsReflection: boolean;
@@ -70,6 +72,7 @@ export interface ConvexTask {
   completedAt?: string;
   order?: number;
   userId: string;
+  goalId?: Id<"goals">; // Optional reference to the goals table
   createdAt: string;
   updatedAt: string;
 }
@@ -88,8 +91,8 @@ export interface Idea {
 export interface TaskReflection {
   justification: string;
   aiAnalysis?: string;
-  suggestedQuadrant?: QuadrantType;
-  finalQuadrant: QuadrantType;
+  suggestedQuadrant?: QuadrantKeys;
+  finalQuadrant: QuadrantKeys;
   feedback?: string;
   content?: string;
   reflectedAt: string;
@@ -100,7 +103,7 @@ export interface ReasoningLog {
   taskId: Id<"tasks">;
   taskText: string;
   timestamp: number;
-  suggestedQuadrant: QuadrantType;
+  suggestedQuadrant: QuadrantKeys;
   taskType: TaskOrIdeaType;
   reasoning: string;
   alignmentScore?: number;
@@ -114,9 +117,9 @@ export interface TaskManagerContextType {
   addTask: (task: Omit<Task, 'id' | '_creationTime'>) => Task | null;
   updateTask: (id: Id<"tasks">, updates: Partial<Omit<Task, 'id' | '_creationTime'>>) => boolean;
   deleteTask: (id: Id<"tasks">) => boolean;
-  moveTask: (id: Id<"tasks">, quadrant: QuadrantType) => boolean;
+  moveTask: (id: Id<"tasks">, quadrant: QuadrantKeys) => boolean;
   completeTask: (id: Id<"tasks">) => boolean;
-  addTaskWithAIAnalysis: (text: string, initialQuadrant?: QuadrantType, userGoal?: string, userPriority?: string) => Promise<{ task: Task | null, isAnalyzing: boolean }>;
+  addTaskWithAIAnalysis: (text: string, initialQuadrant?: QuadrantKeys, userGoal?: string, userPriority?: string) => Promise<{ task: Task | null, isAnalyzing: boolean }>;
 }
 
 // Task settings interface
@@ -151,7 +154,7 @@ export interface ConvexUserPreferences extends Omit<UserSettings, 'theme'> {
 // AI Analysis Result interface
 export interface AIAnalysisResult {
   isIdea: boolean;
-  suggestedQuadrant?: QuadrantType;
+  suggestedQuadrant?: QuadrantKeys;
   taskType?: TaskOrIdeaType;
   connectedToPriority?: boolean;
   reasoning?: string;

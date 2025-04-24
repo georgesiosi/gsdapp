@@ -6,9 +6,9 @@
  */
 import { useState, useCallback, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
-import { Task, QuadrantType, TaskStatus, TaskType, ConvexTask } from "@/types/task";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { Task, QuadrantKeys, TaskType, TaskStatus, ConvexTask } from "@/types/task";
 import { ReasoningLogService } from "@/services/ai/reasoningLogService";
 
 // Define event types and interfaces for AI functionality
@@ -41,11 +41,16 @@ const dispatchThinkingState = (thinking: boolean, message?: string) => {
 
 export type NewTask = {
   text: string;
-  quadrant: QuadrantType;
+  quadrant: QuadrantKeys;
   taskType?: TaskType;
   needsReflection?: boolean;
   status?: TaskStatus;
   description?: string;
+  goalId?: Id<"goals">; // Add goalId
+};
+
+type TaskUpdate = Partial<Omit<Task, '_id' | '_creationTime' | 'userId' | 'goalId'>> & { 
+  goalId?: Id<"goals"> | undefined; // Explicitly include optional goalId
 };
 
 /**
@@ -98,7 +103,7 @@ export function useTaskManagement() {
   const tasks = useMemo(() => 
     convexTasks.map((task) => adaptConvexTask({
       ...task,
-      quadrant: task.quadrant as QuadrantType,
+      quadrant: task.quadrant as QuadrantKeys,
       taskType: task.taskType as TaskType,
       status: task.status as TaskStatus,
     } as ConvexTask)),
@@ -111,27 +116,22 @@ export function useTaskManagement() {
    * @returns The ID of the newly created task, or null if creation failed
    */
   const addTask = useCallback(async (newTask: NewTask): Promise<string | null> => {
+    // Destructure goalId from newTask
+    const { goalId, ...restOfTask } = newTask;
+
     if (!newTask.text?.trim()) {
       console.warn("Cannot add task with empty text");
       return null;
     }
 
     try {
-      const now = new Date().toISOString();
-      const taskId = await addTaskMutation({
-        // Required fields
-        text: newTask.text.trim(),
-        quadrant: newTask.quadrant,
-        
-        // Optional fields with defaults
-        taskType: newTask.taskType ?? 'personal',
-        needsReflection: newTask.needsReflection ?? false,
-        status: newTask.status ?? 'active',
-        description: newTask.description?.trim(),
-        
-        // Timestamps
-        createdAt: now,
-        updatedAt: now
+      // Include goalId in the mutation call if it exists
+      const taskId = await addTaskMutation({ 
+        ...restOfTask,
+        ...(goalId && { goalId }), // Conditionally add goalId
+        status: newTask.status || 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
 
       return taskId.toString();
@@ -143,12 +143,13 @@ export function useTaskManagement() {
 
   // Add a new task with AI analysis
   const addTaskWithAIAnalysis = useCallback(async (taskData: {
-    text: string,
-    quadrant?: QuadrantType,
-    completed?: boolean,
-    needsReflection?: boolean,
-    status?: TaskStatus,
-    taskType?: TaskType,
+    text: string;
+    quadrant?: QuadrantKeys;
+    completed?: boolean;
+    needsReflection?: boolean;
+    status?: TaskStatus;
+    taskType?: TaskType;
+    goalId?: Id<"goals">; // Add goalId
   }): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
     try {
       // Add the task with provided or default values
@@ -158,6 +159,7 @@ export function useTaskManagement() {
         needsReflection: taskData.needsReflection || false,
         status: taskData.status || "active",
         taskType: taskData.taskType || "personal",
+        goalId: taskData.goalId, // Pass the goalId here
       });
       
       if (!taskId) {
@@ -556,43 +558,14 @@ export function useTaskManagement() {
    * @param updates The fields to update on the task
    * @returns Object with success status and error information if applicable
    */
-  const updateTask = useCallback(async (id: string, updates: Partial<Omit<Task, "id" | "_creationTime" | "userId">>) => {
-    if (!id) {
-      console.error("Cannot update task: Invalid task ID");
-      return { success: false, error: "Invalid task ID" };
-    }
-
+  const updateTask = useCallback(async (taskId: Id<"tasks">, updates: TaskUpdate) => {
     try {
-      // Create a clean updates object with only the defined values
-      const cleanUpdates: Record<string, any> = {};
-
-      // Only include defined values and ensure text is trimmed if present
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value !== undefined) {
-          if (key === 'text' && typeof value === 'string') {
-            cleanUpdates[key] = value.trim();
-          } else if (key === 'description' && typeof value === 'string') {
-            cleanUpdates[key] = value.trim();
-          } else {
-            cleanUpdates[key] = value;
-          }
-        }
-      });
-
-      // Add updated timestamp if not explicitly set
-      if (!cleanUpdates.updatedAt) {
-        cleanUpdates.updatedAt = new Date().toISOString();
-      }
-
-      // Update the task
-      await updateTaskMutation({
-        id: toConvexId(id),
-        ...cleanUpdates,
-      });
-
-      return { success: true };
+      // Ensure goalId is included correctly, even if undefined
+      const updatePayload = { ...updates, id: taskId };
+      await updateTaskMutation(updatePayload);
+      console.log(`Task ${taskId} updated successfully with:`, updates);
     } catch (error) {
-      console.error(`Error updating task ${id}:`, error);
+      console.error(`Error updating task ${taskId}:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to update task"
@@ -662,7 +635,7 @@ export function useTaskManagement() {
   }, [convexTasks, updateTaskMutation]);
 
   // Reorder tasks within a quadrant
-  const reorderTasks = useCallback(async (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => {
+  const reorderTasks = useCallback(async (quadrant: QuadrantKeys, sourceIndex: number, destinationIndex: number) => {
     try {
       await reorderTasksMutation({
         quadrant,
@@ -685,7 +658,7 @@ export function useTaskManagement() {
     tasks,
     addTask,
     addTaskWithAIAnalysis,
-    updateTask,
+    updateTask, // Return the updated updateTask function
     deleteTask,
     toggleTask,
     reorderTasks,

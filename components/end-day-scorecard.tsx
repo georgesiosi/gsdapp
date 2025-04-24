@@ -77,11 +77,16 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
         metrics: data.metrics,
         insights: data.insights,
         notes: notes, // Include any existing notes
-        trends: [] // Add empty trends as it's required by the type
+        trends: {
+          completionRateTrend: 'stable', // Or null, or fetch actual initial value
+          highValueCompletionTrend: 'stable', // Or null
+          priorityAlignmentTrend: 'stable' // Or null
+        }
       });
 
       if (result.success) {
-        setScorecard(result.scorecard);
+        // Ensure result.scorecard is not undefined
+        setScorecard(result.scorecard ?? null);
       } else {
         throw new Error("Failed to save scorecard");
       }
@@ -117,7 +122,8 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
       
       if (todayScorecard) {
         // If a scorecard already exists for today, ask for confirmation
-        setExistingScorecard(todayScorecard);
+        // Map _id to id for the Scorecard type
+        setExistingScorecard({ ...todayScorecard, id: todayScorecard._id });
         setShowOverwriteConfirm(true);
         // If there are notes in the existing scorecard, populate the notes field
         if (todayScorecard.notes) {
@@ -147,8 +153,8 @@ export function EndDayScorecard({ isOpen, onClose, tasks }: EndDayScorecardProps
     
     // If we have a scorecard, update its notes
     if (scorecard) {
-      updateScorecard({
-        id: scorecard.id,
+      // Pass ID as first argument, update object as second
+      updateScorecard(scorecard.id, {
         notes: e.target.value
       });
     }

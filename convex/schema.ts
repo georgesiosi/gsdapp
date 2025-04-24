@@ -24,6 +24,7 @@ export default defineSchema({
     userId: v.string(),
     createdAt: v.string(), // ISO string of when the task was created
     updatedAt: v.string(), // ISO string of when the task was last updated
+    goalId: v.optional(v.id("goals")), // Add optional link to goals table
   }).index("by_user", ["userId"]),
   
   // Ideas table
@@ -36,9 +37,7 @@ export default defineSchema({
   
   // User preferences table
   userPreferences: defineTable({
-    goal: v.optional(v.string()),
     openAIKey: v.optional(v.string()),
-    priority: v.optional(v.string()),
     isLegacyUser: v.optional(v.boolean()),
     theme: v.optional(v.union(v.literal('light'), v.literal('dark'), v.literal('system'))),
     showCompletedTasks: v.optional(v.boolean()),
@@ -51,6 +50,19 @@ export default defineSchema({
       retainRecurringTasks: v.boolean(),
     })),
     userId: v.string(),
+  }).index("by_user", ["userId"]),
+  
+  // Goals table
+  goals: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(
+      v.literal('active'), 
+      v.literal('achieved'), 
+      v.literal('archived')
+    ), // 'active', 'achieved', 'archived'
+    updatedAt: v.optional(v.string()), // ISO string timestamp
   }).index("by_user", ["userId"]),
   
   // Scorecards table
