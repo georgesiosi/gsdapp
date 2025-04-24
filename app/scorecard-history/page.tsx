@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ScorecardService } from "@/services/scorecard/scorecardService";
+import { ScorecardService } from "../../services/scorecard/scorecardService"; // Corrected relative path
 import type { Scorecard } from "@/types/scorecard";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card } from "../../components/ui/card"; // Relative path
+import { Button } from "../../components/ui/button"; // Relative path
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { ScorecardHistoryChart } from "@/components/scorecard-history-chart";
-import { ScorecardHistoryList } from "@/components/scorecard-history-list";
+import { ScorecardHistoryChart } from "../../components/scorecard-history-chart"; // Relative path
+import { ScorecardHistoryList } from "../../components/scorecard-history-list"; // Relative path
 
 export default function ScorecardHistoryPage() {
   const [scorecards, setScorecards] = useState<Scorecard[]>([]);
