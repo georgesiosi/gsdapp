@@ -5,7 +5,7 @@ import { useProfile } from "@/hooks/use-profile"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
-import type { Task, TaskStatus, QuadrantType, TaskType } from "@/types/task"
+import type { Task, TaskStatus, QuadrantKeys, TaskType } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Plus, MessageCircle } from "lucide-react"
@@ -21,7 +21,7 @@ import { EndDayScorecard } from "@/components/end-day-scorecard"
 import { ChatDialog } from "@/components/ui/chat-dialog"
 import { Id } from "../convex/_generated/dataModel"
 import { api } from "../convex/_generated/api"
-import { useMutation } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 
 interface TaskManagerProps {
   tasks?: Task[];
@@ -65,17 +65,20 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [aiReasoning, setAiReasoning] = useState<string>();
-  const [targetQuadrant, setTargetQuadrant] = useState<string>();
+  const [targetQuadrant, setTargetQuadrant] = useState<QuadrantKeys>();
   const [aiError, setAiError] = useState(false);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+
+  // Fetch active goals to pass down for display
+  const activeGoals = useQuery(api.goals.getActiveGoals);
 
   const handleTaskClick = (task: Task) => {
     router.push(`/tasks/${task.id}`);
   };
 
   // Shared quadrant names mapping - memoized to prevent unnecessary re-renders
-  const quadrantNames = useMemo<Record<QuadrantType, string>>(() => ({
+  const quadrantNames = useMemo<Record<QuadrantKeys, string>>(() => ({
     q1: 'Urgent & Important',
     q2: 'Important, Not Urgent',
     q3: 'Urgent, Not Important',
@@ -111,7 +114,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     
     // Show quadrant change notification
     if (detail.updates?.quadrant && typeof detail.updates.quadrant === 'string') {
-      const quadrant = detail.updates.quadrant as QuadrantType;
+      const quadrant = detail.updates.quadrant as QuadrantKeys;
       toast({
         title: "Task Moved",
         description: `Task moved to ${quadrantNames[quadrant]}`,
@@ -205,7 +208,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
 
         const updatedTask = {
           ...prevTasks[taskIndex],
-          quadrant: targetQuadrant as QuadrantType,
+          quadrant: targetQuadrant as QuadrantKeys,
           taskType: taskType as TaskType,
           // Optionally update reflection if available
           reflection: reasoning ? {
@@ -277,14 +280,15 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     }
   }, [taskModalOpen]); // Include all event handlers in deps
 
-  const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus) => {
+  const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus, goalId?: Id<"goals">) => {
     const task = taskList.find(t => t.id === taskId);
     if (!task) return;
     
     try {
       await updateTask(toConvexId(taskId), {
         status,
-        completedAt: status === 'completed' ? new Date().toISOString() : undefined
+        completedAt: status === 'completed' ? new Date().toISOString() : undefined,
+        goalId,
       });
     } catch (error) {
       console.error('Error updating task status:', error);
@@ -295,7 +299,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     }
   };
 
-  const handleAddTask = async (text: string) => {
+  const handleAddTask = async (text: string, goalId?: Id<"goals">) => {
     if (!text.trim()) return;
     
     console.log('[DEBUG handleAddTask] Starting task creation:', text);
@@ -312,7 +316,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         quadrant: 'q4',
         status: 'active',
         taskType: 'personal',
-        needsReflection: false
+        needsReflection: false,
+        goalId,
       });
       
       console.log('[DEBUG handleAddTask] Task creation result:', task);
@@ -346,7 +351,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     }
   };
 
-  const handleMoveTask = async (taskId: string, newQuadrant: QuadrantType) => {
+  const handleMoveTask = async (taskId: string, newQuadrant: QuadrantKeys) => {
     try {
       await updateTask(toConvexId(taskId), { quadrant: newQuadrant });
       const quadrantName = quadrantNames[newQuadrant];
@@ -439,6 +444,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
           onReorderTasks={reorderTasks}
           onTaskClick={handleTaskClick}
           isAIThinking={isAIThinking}
+          goals={activeGoals} // Pass goals down
         />
       </div>
 
@@ -457,6 +463,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         aiReasoning={aiReasoning}
         targetQuadrant={targetQuadrant}
         aiError={aiError}
+        availableGoals={activeGoals} // Pass fetched goals
       />
       
       <div className="mt-6 mb-2">

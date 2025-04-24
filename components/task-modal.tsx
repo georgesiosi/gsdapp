@@ -14,23 +14,36 @@ import { AIThinkingIndicator } from "@/components/ui/ai-thinking-indicator"
 import { TaskCreationSuggestions } from "@/components/ui/task-creation-suggestions"
 import { AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox";
+import { QuadrantKeys } from "@/types/task";
+import { Task } from '@/types/task';
+import { Textarea } from "@/components/ui/textarea";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface TaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddTask: (text: string) => void
+  onAddTask: (text: string, goalId?: Id<"goals">) => void
+  onDeleteTask?: (taskId: Id<"tasks">) => void
   aiReasoning?: string
   targetQuadrant?: string
   aiError?: boolean
+  availableGoals?: { _id: Id<"goals">, title: string }[]
 }
 
-export function TaskModal({ open, onOpenChange, onAddTask, aiReasoning, targetQuadrant, aiError = false }: TaskModalProps) {
+export function TaskModal({ open, onOpenChange, onAddTask, onDeleteTask, aiReasoning, targetQuadrant, aiError = false, availableGoals }: TaskModalProps) {
   const [newTask, setNewTask] = useState("")
+  const [selectedGoalId, setSelectedGoalId] = useState<string>("none");
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Debug log props
+  const activeGoals = useQuery(api.goals.getActiveGoals);
+  const goals = availableGoals || activeGoals;
+
   useEffect(() => {
-    // Ensure all dependencies are included in a stable order
     const debugProps = {
       open,
       aiReasoning: aiReasoning || null,
@@ -40,10 +53,10 @@ export function TaskModal({ open, onOpenChange, onAddTask, aiReasoning, targetQu
     console.log('[DEBUG TaskModal] Props received:', debugProps);
   }, [open, aiReasoning, targetQuadrant, aiError]);
 
-  // Reset form when modal opens
   useEffect(() => {
     if (open) {
       setNewTask("")
+      setSelectedGoalId("none");
       setIsSubmitting(false)
     }
   }, [open])
@@ -53,20 +66,18 @@ export function TaskModal({ open, onOpenChange, onAddTask, aiReasoning, targetQu
     if (newTask.trim() && !isSubmitting) {
       setIsSubmitting(true)
       console.log('[DEBUG] Submitting task:', newTask.trim());
-      onAddTask(newTask.trim()) // The quadrant will be determined by AI
-      // Close modal immediately
+      const goalIdToSubmit = selectedGoalId === "none" ? undefined : selectedGoalId as Id<"goals">;
+      onAddTask(newTask.trim(), goalIdToSubmit); 
       onOpenChange(false)
       setNewTask("")
       setIsSubmitting(false)
     }
   }
 
-  // Handle keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Command+N (Mac) or Ctrl+N (Windows/Linux)
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
-        e.preventDefault() // Prevent default browser behavior
+        e.preventDefault() 
         onOpenChange(true)
       }
     }
@@ -80,7 +91,6 @@ export function TaskModal({ open, onOpenChange, onAddTask, aiReasoning, targetQu
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Task</DialogTitle>
-          {/* AI reasoning section removed as per user request */}
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -97,6 +107,26 @@ export function TaskModal({ open, onOpenChange, onAddTask, aiReasoning, targetQu
                 <p className="text-xs text-muted-foreground">
                   💡 Prefix with "idea:" to save to Ideas Bank
                 </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="goal-select">Link to Goal (Optional)</Label>
+                <Select 
+                  value={selectedGoalId}
+                  onValueChange={setSelectedGoalId}
+                  disabled={isSubmitting || !goals}
+                >
+                  <SelectTrigger id="goal-select">
+                    <SelectValue placeholder="Select a goal..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {goals?.map((goal) => (
+                      <SelectItem key={goal._id.toString()} value={goal._id.toString()}>
+                        {goal.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <TaskCreationSuggestions taskText={newTask} />
             </div>

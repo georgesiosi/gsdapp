@@ -79,6 +79,7 @@ export const addTask = mutation({
     order: v.optional(v.float64()),
     createdAt: v.string(),
     updatedAt: v.string(),
+    goalId: v.optional(v.id("goals")), // Add goalId argument
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -101,7 +102,8 @@ export const addTask = mutation({
       order: args.order ?? nextOrder,
       createdAt,
       updatedAt,
-      needsReflection: args.needsReflection ?? false
+      needsReflection: args.needsReflection ?? false,
+      goalId: args.goalId // Include goalId in the insert
     });
   },
 });
@@ -133,6 +135,7 @@ export const updateTask = mutation({
     order: v.optional(v.number()),
     createdAt: v.optional(v.string()),
     updatedAt: v.optional(v.string()),
+    goalId: v.optional(v.id("goals")), // Add goalId argument
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -147,20 +150,32 @@ export const updateTask = mutation({
       throw new Error("Not authorized to update this task");
     }
 
-    // Create update object with only provided fields
-    const { id, createdAt, ...updates } = args;
-    const now = new Date().toISOString();
-    
-    // Apply updates but preserve certain values that shouldn't be changed
-    const updatedTask = await ctx.db.patch(args.id, {
-      ...updates,
-      updatedAt: now,
-      // Don't allow changing userId or createdAt
-      userId: task.userId,
-      createdAt: task.createdAt
-    });
-    
-    return updatedTask;
+    // Construct the update object dynamically
+    const updates: any = {};
+    if (args.text !== undefined) updates.text = args.text;
+    if (args.quadrant !== undefined) updates.quadrant = args.quadrant;
+    if (args.taskType !== undefined) updates.taskType = args.taskType;
+    if (args.needsReflection !== undefined) updates.needsReflection = args.needsReflection;
+    if (args.status !== undefined) updates.status = args.status;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.reflection !== undefined) updates.reflection = args.reflection;
+    if (args.completedAt !== undefined) updates.completedAt = args.completedAt;
+    if (args.order !== undefined) updates.order = args.order;
+    if (args.createdAt !== undefined) updates.createdAt = args.createdAt;
+    if (args.goalId !== undefined) updates.goalId = args.goalId; // Include goalId if provided
+
+    // Always update the 'updatedAt' timestamp
+    updates.updatedAt = new Date().toISOString();
+
+    // Perform the patch operation
+    await ctx.db.patch(args.id, updates);
+
+    return { 
+      success: true,
+      message: "Task updated successfully",
+      id: args.id.toString(),
+      timestamp: updates.updatedAt
+    };
   },
 });
 

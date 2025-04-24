@@ -2,302 +2,271 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Target, Flag, Calendar, Pencil, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react"
+import { Target, Pencil, CheckCircle2, ChevronDown, ChevronUp, PlusCircle, Trash2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { FrontendGoal } from "@/types/goal"; 
+import { Id } from "@/convex/_generated/dataModel";
+import { Input } from "@/components/ui/input";
 
-interface SavedData {
-  goal: string
-  priority: string
-  completed: boolean
-  lastModified: string
+// Helper function to map Convex Goal to FrontendGoal (if needed elsewhere)
+// For this component, we'll mostly use the raw Convex data directly
+function mapGoal(convexGoal: any): FrontendGoal {
+  return {
+    ...convexGoal,
+    id: convexGoal._id.toString(), 
+  };
 }
 
 export function GoalSetter() {
-  const [savedGoal, setSavedGoal] = useState("")
-  const [savedPriority, setSavedPriority] = useState("")
-  const [tempGoal, setTempGoal] = useState("")
-  const [tempPriority, setTempPriority] = useState("")
-  const [isEditingGoal, setIsEditingGoal] = useState(false)
-  const [isEditingPriority, setIsEditingPriority] = useState(false)
-  const [isCompleted, setIsCompleted] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const { toast } = useToast()
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { toast } = useToast();
+  const [newGoalTitle, setNewGoalTitle] = useState("");
+  const [isAddingGoal, setIsAddingGoal] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState<Id<"goals"> | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<Id<"goals"> | null>(null); // For delete confirmation
 
-  // Load saved data and preferences on mount
+  const activeGoalsData = useQuery(api.goals.getActiveGoals);
+
+  const addGoal = useMutation(api.goals.addGoal);
+  const updateGoal = useMutation(api.goals.updateGoal);
+  const deleteGoalMutation = useMutation(api.goals.deleteGoal); // Add delete mutation
+
   useEffect(() => {
-    // Load collapse state
-    const savedCollapsed = localStorage.getItem("goalSectionCollapsed")
+    const savedCollapsed = localStorage.getItem("goalSectionCollapsed");
     if (savedCollapsed !== null) {
-      setIsCollapsed(JSON.parse(savedCollapsed))
+      setIsCollapsed(JSON.parse(savedCollapsed));
     }
-    try {
-      const savedData = localStorage.getItem("goalData")
-      if (savedData) {
-        const { goal, priority, completed } = JSON.parse(savedData) as SavedData
-        
-        if (goal) {
-          setSavedGoal(goal)
-          setTempGoal(goal)
-        }
-        
-        if (priority) {
-          setSavedPriority(priority)
-          setTempPriority(priority)
-        }
+  }, []);
 
-        setIsCompleted(completed || false)
+  const handleAddGoal = async () => {
+    if (newGoalTitle.trim()) {
+      try {
+        await addGoal({ title: newGoalTitle });
+        setNewGoalTitle("");
+        setIsAddingGoal(false);
+        toast({
+          title: "Goal Added",
+          description: `New goal '${newGoalTitle}' created successfully.`,
+        });
+      } catch (error) {
+        console.error("Failed to add goal:", error);
+        toast({
+          title: "Error Adding Goal",
+          description: (error instanceof Error ? error.message : "Could not add goal."),
+          variant: "destructive",
+        });
       }
+    }
+  };
+
+  const handleEditClick = (goal: { _id: Id<"goals">, title: string }) => {
+    setEditingGoalId(goal._id);
+    setEditingTitle(goal.title);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingGoalId && editingTitle.trim()) {
+      try {
+        await updateGoal({ id: editingGoalId, title: editingTitle });
+        toast({
+          title: "Goal Updated",
+          description: `Goal title changed successfully.`,
+        });
+        setEditingGoalId(null);
+      } catch (error) {
+        console.error("Failed to update goal title:", error);
+        toast({
+          title: "Error Updating Goal",
+          description: (error instanceof Error ? error.message : "Could not update goal."),
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleToggleComplete = async (goal: { _id: Id<"goals">, status: 'active' | 'achieved' | 'archived' }) => {
+    const newStatus = goal.status === 'active' ? 'achieved' : 'active';
+    try {
+      await updateGoal({ 
+        id: goal._id, 
+        status: newStatus,
+      });
+      toast({ description: `Goal marked as ${newStatus === 'achieved' ? 'achieved' : 'active'}.` });
     } catch (error) {
-      console.error("Error loading saved data:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load saved data",
-        variant: "destructive",
-      })
+      console.error("Error updating goal status:", error);
+      toast({ description: "Failed to update goal status.", variant: "destructive" });
     }
-  }, [toast])
+  };
 
-  // Save all data to localStorage
-  const saveData = (newGoal?: string, newPriority?: string, completed?: boolean) => {
-    const goal = newGoal ?? savedGoal;
-    const priority = newPriority ?? savedPriority;
-    
-    const data: SavedData = {
-      goal,
-      priority,
-      completed: completed ?? isCompleted,
-      lastModified: new Date().toISOString(),
+  const handleDeleteGoal = async (id: Id<"goals">) => {
+    try {
+      await deleteGoalMutation({ id });
+      toast({ description: "Goal deleted successfully." });
+      setConfirmDeleteId(null); // Close confirmation
+    } catch (error) {
+      console.error("Error deleting goal:", error);
+      toast({ description: "Failed to delete goal.", variant: "destructive" });
     }
-    
-    // Save the combined data
-    localStorage.setItem("goalData", JSON.stringify(data))
-    
-    // Also save individual items for API access
-    localStorage.setItem("savedGoal", goal)
-    localStorage.setItem("savedPriority", priority)
-  }
-
-  const handleStartEditingGoal = () => {
-    setTempGoal(savedGoal)
-    setIsEditingGoal(true)
-  }
-
-  const handleCancelEditingGoal = () => {
-    setTempGoal(savedGoal)
-    setIsEditingGoal(false)
-  }
-
-  const handleStartEditingPriority = () => {
-    setTempPriority(savedPriority)
-    setIsEditingPriority(true)
-  }
-
-  const handleCancelEditingPriority = () => {
-    setTempPriority(savedPriority)
-    setIsEditingPriority(false)
-  }
-
-  const saveGoal = () => {
-    if (!tempGoal.trim()) {
-      toast({
-        title: "Goal Required",
-        description: "Please enter your goal",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setSavedGoal(tempGoal)
-    saveData(tempGoal)
-    setIsEditingGoal(false)
-    toast({
-      title: "Goal Saved",
-      description: "Your main goal has been updated",
-    })
-  }
-
-  const savePriority = () => {
-    if (!tempPriority.trim()) {
-      toast({
-        title: "Priority Required",
-        description: "Please enter today's priority",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setSavedPriority(tempPriority)
-    saveData(undefined, tempPriority)
-    setIsEditingPriority(false)
-    toast({
-      title: "Priority Saved",
-      description: "Your daily priority has been updated",
-    })
-  }
-
-  const toggleCompletion = () => {
-    const newCompleted = !isCompleted
-    setIsCompleted(newCompleted)
-    saveData(undefined, undefined, newCompleted)
-    toast({
-      title: newCompleted ? "Goal Completed" : "Goal Reopened",
-      description: newCompleted ? "Congratulations!" : "Keep working towards your goal!",
-    })
-  }
+  };
 
   const toggleCollapse = () => {
-    const newState = !isCollapsed
-    setIsCollapsed(newState)
-    localStorage.setItem("goalSectionCollapsed", JSON.stringify(newState))
-  }
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem("goalSectionCollapsed", JSON.stringify(newState));
+  };
+
+  const renderGoalItem = (goal: NonNullable<typeof activeGoalsData>[number]) => (
+    <div key={goal._id.toString()} className="flex items-center justify-between p-3 bg-card rounded-lg shadow-sm border border-border mb-2">
+      {editingGoalId === goal._id ? (
+        // Editing View
+        <div className="flex-grow flex items-center space-x-2 mr-2">
+          <Input
+            type="text"
+            value={editingTitle}
+            onChange={(e) => setEditingTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSaveEdit()}
+            className="text-sm h-8 border-indigo-500/20"
+            placeholder="Enter goal title"
+            autoFocus
+          />
+          <div className="flex justify-end gap-1">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={handleSaveEdit}
+              className="h-7 text-xs"
+            >
+              Save
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => setEditingGoalId(null)}
+              className="h-7 text-xs"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        // Display View
+        <>
+          <div className="flex-grow flex items-center space-x-2 mr-2">
+            <Target className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
+            <span className={goal.status === 'achieved' ? 'line-through text-muted-foreground' : ''}> 
+              {goal.title}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            {/* Edit Button */} 
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => handleEditClick(goal)} 
+              disabled={goal.status === 'achieved'} // Disable edit if achieved
+              aria-label="Edit goal"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            {/* Toggle Complete Button */} 
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => handleToggleComplete(goal)}
+              aria-label={goal.status === 'active' ? "Mark as achieved" : "Mark as active"}
+            >
+              {goal.status === 'active' ? (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              )}
+            </Button>
+            {/* Delete Button */} 
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-destructive hover:text-destructive/80"
+              onClick={() => setConfirmDeleteId(goal._id)} 
+              aria-label="Delete goal"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </>
+      )}
+      {/* Delete Confirmation */} 
+      {confirmDeleteId === goal._id && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center rounded-lg p-2 z-50">
+           <div className="flex flex-col items-center space-y-2">
+             <p className="text-sm font-medium text-center">Delete this goal?</p>
+             <div className="flex space-x-2">
+               <Button size="sm" variant="destructive" onClick={() => handleDeleteGoal(goal._id)}>Confirm</Button>
+               <Button size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+             </div>
+           </div>
+         </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="goal-setter-container border rounded-lg overflow-hidden relative bg-card" style={{ zIndex: 20 }}>
-      <div 
-        className="goal-setter-header flex items-center justify-between p-3 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors dark:hover:bg-muted/30 border-b"
-        onClick={toggleCollapse}
-      >
-        <div className="flex items-center gap-2">
-          <Target className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-foreground">Focus & Priority</h3>
-          {isCollapsed ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-          )}
+    <div className="border rounded-lg shadow-sm mb-6 bg-card text-card-foreground">
+      <div className="flex justify-between items-center p-4 cursor-pointer" onClick={toggleCollapse}>
+        <h2 className="text-lg font-semibold">Current Goals</h2>
+        <div className="flex items-center space-x-1">
+          {/* Add Goal Button */} 
+          <Button 
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsAddingGoal(prev => !prev)} 
+            className="rounded-full"
+            aria-label={isAddingGoal ? "Cancel adding goal" : "Add new goal"}
+          >
+            <PlusCircle className={`h-5 w-5 transition-transform duration-200 ${isAddingGoal ? 'rotate-45 text-destructive' : ''}`} />
+          </Button>
+          {/* Collapse/Expand Button */} 
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={toggleCollapse}
+            className="rounded-full"
+            aria-label={isCollapsed ? "Expand" : "Collapse"}
+          >
+            {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
 
-      <div 
-        className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'} overflow-hidden`}
-      >
-        <div className="space-y-8 p-3 relative bg-card/50 dark:bg-card/50">
-          {/* Main Goal Section */}
-          <div className="relative group rounded-lg border bg-primary/5 dark:bg-primary/10 border-primary/20 p-3 transition-all duration-200 mb-8 hover:bg-primary/10 dark:hover:bg-primary/20">
-            <div className="flex items-center gap-2 mb-1">
-              <Flag className="h-4 w-4 text-primary" />
-              <span className="text-xs font-medium text-primary">Main Goal</span>
-              {isCompleted && (
-                <span className="inline-flex items-center rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 px-1.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                  <CheckCircle2 className="h-3 w-3 mr-0.5" />
-                  Done
-                </span>
-              )}
+      <div className={`px-4 pb-4 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0 pb-0' : 'max-h-[500px]'}`}>
+        <div className="border-t pt-4">
+          {activeGoalsData && activeGoalsData.length > 0 ? (
+            <div className="space-y-2">
+              {activeGoalsData.map(renderGoalItem)}
             </div>
-
-            {isEditingGoal ? (
-              <div className="space-y-2">
-                <Input
-                  value={tempGoal}
-                  onChange={(e) => setTempGoal(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && saveGoal()}
-                  className="text-sm h-8 border-primary/20"
-                  placeholder="Enter your main goal"
-                  autoFocus
-                />
-                <div className="flex justify-end gap-1">
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={handleCancelEditingGoal}
-                    className="h-7 text-xs"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    onClick={saveGoal}
-                    className="h-7 text-xs"
-                  >
-                    Save
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="group-hover:pr-16 relative">
-                <p className="text-sm text-foreground/90 mb-2">{savedGoal || "Set your main goal"}</p>
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 dark:bg-background/80 rounded-md px-1.5 py-1 shadow-sm backdrop-blur-sm" style={{ zIndex: 30 }}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleStartEditingGoal}
-                    className="h-7 w-7 p-0 relative z-50"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleCompletion}
-                    className={`h-7 w-7 p-0 ${isCompleted ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/70'}`}
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Daily Priority Section */}
-          <div className="relative group rounded-lg border bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20 p-3 transition-all duration-200 mb-8 hover:bg-amber-500/10 dark:hover:bg-amber-500/20">
-            <div className="flex items-center gap-2 mb-1">
-              <Calendar className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">Today's Priority</span>
+          ) : (
+            <div className="text-center text-muted-foreground py-4">
+              No active goals. Add one below!
             </div>
-
-            {isEditingPriority ? (
-              <div className="space-y-2">
-                <Input
-                  value={tempPriority}
-                  onChange={(e) => setTempPriority(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && savePriority()}
-                  className="text-sm h-8 border-amber-500/20"
-                  placeholder="Enter today's priority"
-                  autoFocus
-                />
-                <div className="flex justify-end gap-1">
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={handleCancelEditingPriority}
-                    className="h-7 text-xs"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    onClick={savePriority}
-                    className="h-7 text-xs"
-                  >
-                    Save
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="group-hover:pr-16 relative">
-                <p className="text-sm text-foreground/90 mb-2">{savedPriority || "Set your daily priority"}</p>
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 dark:bg-background/80 rounded-md px-1.5 py-1 shadow-sm backdrop-blur-sm" style={{ zIndex: 30 }}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleStartEditingPriority}
-                    className="h-7 w-7 p-0"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleCompletion}
-                    className={`h-7 w-7 p-0 ${isCompleted ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/70'}`}
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
+          {/* Add New Goal Input (Collapsible) */} 
+          {isAddingGoal && (
+            <div className="flex items-center space-x-2 pt-4 border-t border-border">
+              <Target className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+              <Input
+                type="text"
+                placeholder="Enter new goal title..."
+                value={newGoalTitle}
+                onChange={(e) => setNewGoalTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddGoal(); }}
+                className="flex-grow"
+                autoFocus
+              />
+              <Button onClick={handleAddGoal} size="sm">Add Goal</Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

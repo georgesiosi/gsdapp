@@ -107,6 +107,7 @@ function SubscriptionSection() {
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings() as { settings: UserSettings, updateSettings: (newSettings: UserSettings) => Promise<any> }
   const { profile, setProfile } = useProfile()
+  const [localPersonalContext, setLocalPersonalContext] = useState('')
   const { toast } = useToast()
   const [isTaskSettingsSaving, setIsTaskSettingsSaving] = useState(false)
   const [isApiKeySaving, setIsApiKeySaving] = useState(false)
@@ -130,7 +131,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    // Initialize local personal context from profile if available
+    if (profile?.personalContext) {
+      setLocalPersonalContext(profile.personalContext)
+    }
+  }, [profile])
 
   // Handle API key initialization and updates
   useEffect(() => {
@@ -278,7 +283,6 @@ export default function SettingsPage() {
       const updatedSettings: UserSettings = {
         goal: settings.goal,
         openAIKey: keyToSave,
-        licenseKey: settings.licenseKey,
         priority: settings.priority,
         theme: settings.theme as 'light' | 'dark' | 'system',
         showCompletedTasks: settings.showCompletedTasks ?? true,
@@ -388,13 +392,17 @@ export default function SettingsPage() {
                   id="personal-context"
                   placeholder="Share your context, priorities, and what makes tasks urgent or important to you..."
                   className="min-h-[160px] resize-y"
-                  value={profile?.personalContext || ''}
+                  value={localPersonalContext}
                   onChange={(e) => {
+                    const newValue = e.target.value;
+                    setLocalPersonalContext(newValue);
+                    
+                    // Also update profile if it exists
                     if (profile) {
                       setProfile({
                         ...profile,
-                        personalContext: e.target.value
-                      })
+                        personalContext: newValue
+                      });
                     }
                   }}
                 />
@@ -405,6 +413,24 @@ export default function SettingsPage() {
                 <Button 
                   onClick={() => {
                     setIsProfileSaving(true);
+                    // Ensure profile exists before saving
+                    if (!profile) {
+                      const defaultProfile = {
+                        name: '',
+                        email: '',
+                        theme: 'system' as 'light' | 'dark' | 'system',
+                        personalContext: localPersonalContext,
+                        isLegacyUser: false
+                      };
+                      setProfile(defaultProfile);
+                    } else {
+                      // Update profile with local personal context
+                      setProfile({
+                        ...profile,
+                        personalContext: localPersonalContext
+                      });
+                    }
+                    
                     setTimeout(() => {
                       toast({
                         title: "Success",
