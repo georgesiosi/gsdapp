@@ -37,7 +37,12 @@ const nextConfig = {
       '@': '.',
       '@/components': './components',
       '@/app': './app',
-      '@/hooks': './components/*/hooks'
+      '@/hooks': './hooks',
+      '@/lib': './lib',
+      '@/services': './services',
+      '@/components/ui': './components/ui',
+      '@/components/ideas/hooks': './components/ideas/hooks',
+      '@/components/task/hooks': './components/task/hooks'
     });
 
     return config;
