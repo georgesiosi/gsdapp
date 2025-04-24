@@ -23,9 +23,6 @@ const nextConfig = {
     if (!isServer) {
       config.cache = {
         type: 'filesystem',
-        buildDependencies: {
-          config: [__filename]
-        },
         cacheDirectory: '.next/cache'
       };
     }
