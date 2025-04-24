@@ -25,7 +25,10 @@ const nextConfig = {
     config.resolve.modules.push(
       '.',
       './components',
-      './app'
+      './app',
+      './hooks',
+      './lib',
+      './services'
     );
 
     // Ensure proper handling of TypeScript paths
@@ -33,11 +36,24 @@ const nextConfig = {
       config.resolve.alias = {};
     }
 
+    // Add persistent caching for non-server builds
+    if (!isServer) {
+      config.cache = {
+        type: 'filesystem',
+        cacheDirectory: '.next/cache'
+      };
+    }
+
     Object.assign(config.resolve.alias, {
       '@': '.',
       '@/components': './components',
       '@/app': './app',
-      '@/hooks': './components/*/hooks'
+      '@/hooks': './hooks',
+      '@/lib': './lib',
+      '@/services': './services',
+      '@/components/ui': './components/ui',
+      '@/components/ideas/hooks': './components/ideas/hooks',
+      '@/components/task/hooks': './components/task/hooks'
     });
 
     return config;

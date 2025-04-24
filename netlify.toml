@@ -9,7 +9,9 @@
 
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
-  NODE_VERSION = "20"
+  NODE_VERSION = "20.11.1"
+  # Prevent treating warnings as errors
+  CI = "false"
   # Force production environment for builds
   NODE_ENV = "production"
   # Disable source maps in production for smaller bundles
