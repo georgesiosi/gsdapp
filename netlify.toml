@@ -1,5 +1,5 @@
 [build]
-  command = "npm install && npm run build"
+  command = "NODE_PATH=. npm install && NODE_PATH=. npm run build"
   publish = ".next"
   # Add timeout to prevent premature build termination
   timeout = "30m"
@@ -9,6 +9,9 @@
 
 [build.environment]
   NEXT_CACHE_DIR = ".next/cache"
+  NODE_PATH = "."
+  # Force Node to resolve modules from the project root
+  NODE_OPTIONS = "--preserve-symlinks --preserve-symlinks-main"
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "20"
   # Force production environment for builds

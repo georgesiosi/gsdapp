@@ -35,7 +35,10 @@ const nextConfig = {
     config.resolve.modules.push(
       '.',
       './components',
-      './app'
+      './app',
+      './hooks',
+      './lib',
+      './services'
     );
 
     // Ensure proper handling of TypeScript paths
