@@ -32,6 +32,22 @@ export const getActiveGoals = query({
   },
 });
 
+// Fetch all goals (active, achieved, archived) for the user
+export const getAllGoals = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("User must be authenticated to fetch goals.");
+    }
+
+    // Fetch goals associated with the user's identity subject (their unique ID)
+    return await ctx.db
+      .query("goals")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .order("desc") // Optional: order by creation time or another field
+      .collect();
+  },
+});
 
 // --- Mutations ---
 
