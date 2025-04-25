@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { DashboardLayout } from "@/components/dashboard-layout";
 
 // Subscription section component
 function SubscriptionSection() {
@@ -343,410 +344,412 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/" className="-ml-2">
-          <Button variant="ghost" size="icon">
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Settings</h1>
-      </div>
-
-      <div className="flex flex-col lg:flex-row lg:gap-8">
-        <div className="lg:w-1/4">
-          <SettingsNav />
+    <DashboardLayout>
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <Link href="/" className="-ml-2">
+            <Button variant="ghost" size="icon">
+              <ChevronLeft className="h-4 w-4" />
+              <span className="sr-only">Back</span>
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-bold">Settings</h1>
         </div>
-        
-        <div className="flex-1 space-y-6">
-          <Card className="p-6 mb-6" id="user-preferences">
-            <h2 className="text-xl font-semibold mb-4">User Preferences</h2>
-            <div className="space-y-6">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="theme">Theme</Label>
-                <Select
-                  value={settings.theme || 'system'}
-                  onValueChange={(value) => updateSettings({
-                    ...settings,
-                    theme: value as 'light' | 'dark' | 'system',
-                  })}
-                >
-                  <SelectTrigger id="theme" className="w-full max-w-[240px]">
-                    <SelectValue placeholder="Select theme" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  Set the theme for the application. System uses your device preference.
-                </p>
-              </div>
 
-              <div className="flex flex-col gap-2 pt-4 border-t">
-                <Label htmlFor="personal-context">Personal Context</Label>
-                <Textarea
-                  id="personal-context"
-                  placeholder="Share your context, priorities, and what makes tasks urgent or important to you..."
-                  className="min-h-[160px] resize-y"
-                  value={localPersonalContext}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    setLocalPersonalContext(newValue);
-                    
-                    // Also update profile if it exists
-                    if (profile) {
-                      setProfile({
-                        ...profile,
-                        personalContext: newValue
-                      });
-                    }
-                  }}
-                />
-                <p className="text-sm text-muted-foreground">
-                  This helps our AI better understand how to categorize your tasks.
-                </p>
-                
-                <Button 
-                  onClick={() => {
-                    setIsProfileSaving(true);
-                    // Ensure profile exists before saving
-                    if (!profile) {
-                      const defaultProfile = {
-                        name: '',
-                        email: '',
-                        theme: 'system' as 'light' | 'dark' | 'system',
-                        personalContext: localPersonalContext,
-                        isLegacyUser: false
-                      };
-                      setProfile(defaultProfile);
-                    } else {
-                      // Update profile with local personal context
-                      setProfile({
-                        ...profile,
-                        personalContext: localPersonalContext
-                      });
-                    }
-                    
-                    setTimeout(() => {
-                      toast({
-                        title: "Success",
-                        description: "Your personal context has been updated successfully.",
-                        variant: "default",
-                      });
-                      setIsProfileSaving(false);
-                    }, 500);
-                  }}
-                  className="w-fit mt-2"
-                  disabled={isProfileSaving}
-                >
-                  {isProfileSaving ? (
-                    <span className="animate-pulse">Saving...</span>
-                  ) : (
-                    'Save Context'
-                  )}
-                </Button>
-              </div>
-
-
-            </div>
-          </Card>
-
-          <Card className="p-6 mb-6" id="ai-integration">
-            <h2 className="text-xl font-semibold mb-4">AI Integration</h2>
-            <div className="space-y-6">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="openAIKey">OpenAI API Key</Label>
-                  {mounted && localKey && localKey.startsWith('sk-') && !isEditingKey && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setIsEditingKey(true)
-                        setNewApiKey('')
-                      }}
-                    >
-                      Change Key
-                    </Button>
-                  )}
+        <div className="flex flex-col lg:flex-row lg:gap-8">
+          <div className="lg:w-1/4">
+            <SettingsNav />
+          </div>
+          
+          <div className="flex-1 space-y-6">
+            <Card className="p-6 mb-6" id="user-preferences">
+              <h2 className="text-xl font-semibold mb-4">User Preferences</h2>
+              <div className="space-y-6">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="theme">Theme</Label>
+                  <Select
+                    value={settings.theme || 'system'}
+                    onValueChange={(value) => updateSettings({
+                      ...settings,
+                      theme: value as 'light' | 'dark' | 'system',
+                    })}
+                  >
+                    <SelectTrigger id="theme" className="w-full max-w-[240px]">
+                      <SelectValue placeholder="Select theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="system">System</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Set the theme for the application. System uses your device preference.
+                  </p>
                 </div>
-                <div className="flex gap-2">
-                  <Input
-                    id="openAIKey"
-                    type="password"
-                    value={!mounted ? '' : (isEditingKey ? newApiKey : localKey)}
-                    onChange={handleKeyChange}
-                    placeholder="sk-..."
-                    className={`font-mono ${(!localKey || !localKey.startsWith('sk-') || isEditingKey) ? 'border-yellow-500' : ''}`}
-                    disabled={!!(localKey && localKey.startsWith('sk-') && !isEditingKey)}
+
+                <div className="flex flex-col gap-2 pt-4 border-t">
+                  <Label htmlFor="personal-context">Personal Context</Label>
+                  <Textarea
+                    id="personal-context"
+                    placeholder="Share your context, priorities, and what makes tasks urgent or important to you..."
+                    className="min-h-[160px] resize-y"
+                    value={localPersonalContext}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setLocalPersonalContext(newValue);
+                      
+                      // Also update profile if it exists
+                      if (profile) {
+                        setProfile({
+                          ...profile,
+                          personalContext: newValue
+                        });
+                      }
+                    }}
                   />
-                  {isEditingKey && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="default"
-                        size="default"
-                        onClick={handleSaveKey}
-                        disabled={isApiKeySaving}
-                      >
-                        {isApiKeySaving ? (
-                          <span className="inline-flex items-center">
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Saving...
-                          </span>
-                        ) : (
-                          'Save'
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="default"
-                        onClick={handleCancelEdit}
-                        disabled={isApiKeySaving}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
+                  <p className="text-sm text-muted-foreground">
+                    This helps our AI better understand how to categorize your tasks.
+                  </p>
+                  
+                  <Button 
+                    onClick={() => {
+                      setIsProfileSaving(true);
+                      // Ensure profile exists before saving
+                      if (!profile) {
+                        const defaultProfile = {
+                          name: '',
+                          email: '',
+                          theme: 'system' as 'light' | 'dark' | 'system',
+                          personalContext: localPersonalContext,
+                          isLegacyUser: false
+                        };
+                        setProfile(defaultProfile);
+                      } else {
+                        // Update profile with local personal context
+                        setProfile({
+                          ...profile,
+                          personalContext: localPersonalContext
+                        });
+                      }
+                      
+                      setTimeout(() => {
+                        toast({
+                          title: "Success",
+                          description: "Your personal context has been updated successfully.",
+                          variant: "default",
+                        });
+                        setIsProfileSaving(false);
+                      }, 500);
+                    }}
+                    className="w-fit mt-2"
+                    disabled={isProfileSaving}
+                  >
+                    {isProfileSaving ? (
+                      <span className="animate-pulse">Saving...</span>
+                    ) : (
+                      'Save Context'
+                    )}
+                  </Button>
                 </div>
-                <div className="text-sm text-muted-foreground space-y-2">
-                  {localKey ? (
-                    <p>Your API key is securely stored. Click "Change Key" to update it.</p>
-                  ) : (
-                    <>
-                      <p>Required for AI-powered task analysis and idea detection.</p>
-                      <p>
-                        <a 
-                          href="https://platform.openai.com/api-keys" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          Get your API key from OpenAI →
-                        </a>
-                      </p>
-                    </>
-                  )}
-                  <div className="pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="syncApiKey">Cloud Sync</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Sync your API key across devices (less secure)
-                        </p>
-                      </div>
-                      <Switch
-                        id="syncApiKey"
-                        checked={settings.syncApiKey || false}
-                        onCheckedChange={(checked) => {
-                          const updatedSettings = {
-                            ...settings,
-                            syncApiKey: checked,
-                            // Only include API key in cloud if sync is enabled
-                            openAIKey: checked ? localKey : undefined
-                          };
-                          updateSettings(updatedSettings);
+
+
+              </div>
+            </Card>
+
+            <Card className="p-6 mb-6" id="ai-integration">
+              <h2 className="text-xl font-semibold mb-4">AI Integration</h2>
+              <div className="space-y-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="openAIKey">OpenAI API Key</Label>
+                    {mounted && localKey && localKey.startsWith('sk-') && !isEditingKey && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setIsEditingKey(true)
+                          setNewApiKey('')
                         }}
-                      />
+                      >
+                        Change Key
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      id="openAIKey"
+                      type="password"
+                      value={!mounted ? '' : (isEditingKey ? newApiKey : localKey)}
+                      onChange={handleKeyChange}
+                      placeholder="sk-..."
+                      className={`font-mono ${(!localKey || !localKey.startsWith('sk-') || isEditingKey) ? 'border-yellow-500' : ''}`}
+                      disabled={!!(localKey && localKey.startsWith('sk-') && !isEditingKey)}
+                    />
+                    {isEditingKey && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          size="default"
+                          onClick={handleSaveKey}
+                          disabled={isApiKeySaving}
+                        >
+                          {isApiKeySaving ? (
+                            <span className="inline-flex items-center">
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Saving...
+                            </span>
+                          ) : (
+                            'Save'
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="default"
+                          onClick={handleCancelEdit}
+                          disabled={isApiKeySaving}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    {localKey ? (
+                      <p>Your API key is securely stored. Click "Change Key" to update it.</p>
+                    ) : (
+                      <>
+                        <p>Required for AI-powered task analysis and idea detection.</p>
+                        <p>
+                          <a 
+                            href="https://platform.openai.com/api-keys" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Get your API key from OpenAI →
+                          </a>
+                        </p>
+                      </>
+                    )}
+                    <div className="pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="syncApiKey">Cloud Sync</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Sync your API key across devices (less secure)
+                          </p>
+                        </div>
+                        <Switch
+                          id="syncApiKey"
+                          checked={settings.syncApiKey || false}
+                          onCheckedChange={(checked) => {
+                            const updatedSettings = {
+                              ...settings,
+                              syncApiKey: checked,
+                              // Only include API key in cloud if sync is enabled
+                              openAIKey: checked ? localKey : undefined
+                            };
+                            updateSettings(updatedSettings);
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </Card>
+            </Card>
 
-          <Card className="p-6 mb-6" id="subscription">
-            <h2 className="text-xl font-semibold mb-4">Subscription</h2>
-            <div className="space-y-6">
-              {/* Subscription Status */}
-              <SubscriptionSection />
-            </div>
-          </Card>
-
-          <Card className="p-6" id="task-management">
-            <h2 className="text-xl font-semibold mb-4">Task Management</h2>
-            
-            <div className="space-y-6">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="endOfDayTime">End of Day Time</Label>
-                <Input
-                  id="endOfDayTime"
-                  type="time"
-                  value={taskSettings.endOfDayTime}
-                  onChange={(e) => setTaskSettings({ ...taskSettings, endOfDayTime: e.target.value })}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Tasks will be reviewed at this time each day
-                </p>
+            <Card className="p-6 mb-6" id="subscription">
+              <h2 className="text-xl font-semibold mb-4">Subscription</h2>
+              <div className="space-y-6">
+                {/* Subscription Status */}
+                <SubscriptionSection />
               </div>
+            </Card>
 
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="autoArchiveDelay">Auto-archive Delay (Days)</Label>
-                <Input
-                  id="autoArchiveDelay"
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={taskSettings.autoArchiveDelay}
-                  onChange={(e) => setTaskSettings({ ...taskSettings, autoArchiveDelay: parseInt(e.target.value) })}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Number of days to wait before auto-archiving completed tasks
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="gracePeriod">Grace Period (Days)</Label>
-                <Input
-                  id="gracePeriod"
-                  type="number"
-                  min="1"
-                  max="90"
-                  value={taskSettings.gracePeriod}
-                  onChange={(e) => setTaskSettings({ ...taskSettings, gracePeriod: parseInt(e.target.value) })}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Days to keep archived tasks before permanent deletion
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="retainRecurringTasks">Retain Recurring Tasks</Label>
+            <Card className="p-6" id="task-management">
+              <h2 className="text-xl font-semibold mb-4">Task Management</h2>
+              
+              <div className="space-y-6">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="endOfDayTime">End of Day Time</Label>
+                  <Input
+                    id="endOfDayTime"
+                    type="time"
+                    value={taskSettings.endOfDayTime}
+                    onChange={(e) => setTaskSettings({ ...taskSettings, endOfDayTime: e.target.value })}
+                  />
                   <p className="text-sm text-muted-foreground">
-                    Keep completed tasks that appear to be recurring
+                    Tasks will be reviewed at this time each day
                   </p>
                 </div>
-                <Switch
-                  id="retainRecurringTasks"
-                  checked={taskSettings.retainRecurringTasks}
-                  onCheckedChange={(checked) => setTaskSettings({ ...taskSettings, retainRecurringTasks: checked })}
-                />
-              </div>
 
-              <Button 
-                onClick={handleSave} 
-                className="w-full relative" 
-                disabled={isTaskSettingsSaving}
-              >
-                {isTaskSettingsSaving ? (
-                  <span className="inline-flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Saving...
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center">
-                    {taskSettingsSaveSuccess ? (
-                      <span className="text-green-500 flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Saved Successfully
-                      </span>
-                    ) : (
-                      <>
-                        Save Changes
-                        {JSON.stringify(settings.taskSettings) !== JSON.stringify(taskSettings) && (
-                          <span className="ml-2 text-xs bg-primary/20 px-1.5 py-0.5 rounded">
-                            Unsaved Changes
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </span>
-                )}
-              </Button>
-            </div>
-          </Card>
-
-          <Card className="p-6" id="data-management">
-            <h2 className="text-xl font-semibold mb-4">Data Management</h2>
-            <div className="space-y-6">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <Label>Export Tasks</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const event = new CustomEvent('exportTasks');
-                      window.dispatchEvent(event);
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Export to CSV
-                  </Button>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="autoArchiveDelay">Auto-archive Delay (Days)</Label>
+                  <Input
+                    id="autoArchiveDelay"
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={taskSettings.autoArchiveDelay}
+                    onChange={(e) => setTaskSettings({ ...taskSettings, autoArchiveDelay: parseInt(e.target.value) })}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Number of days to wait before auto-archiving completed tasks
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Export your tasks to a CSV file for backup or analysis
-                </p>
-              </div>
 
-              <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="gracePeriod">Grace Period (Days)</Label>
+                  <Input
+                    id="gracePeriod"
+                    type="number"
+                    min="1"
+                    max="90"
+                    value={taskSettings.gracePeriod}
+                    onChange={(e) => setTaskSettings({ ...taskSettings, gracePeriod: parseInt(e.target.value) })}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Days to keep archived tasks before permanent deletion
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between">
-                  <Label>Restore Backup</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const backupKeys = Object.keys(localStorage)
-                        .filter(k => k.startsWith('tasks_backup_'))
-                        .sort()
-                        .reverse()
-                        .slice(0, 10);
+                  <div className="space-y-0.5">
+                    <Label htmlFor="retainRecurringTasks">Retain Recurring Tasks</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Keep completed tasks that appear to be recurring
+                    </p>
+                  </div>
+                  <Switch
+                    id="retainRecurringTasks"
+                    checked={taskSettings.retainRecurringTasks}
+                    onCheckedChange={(checked) => setTaskSettings({ ...taskSettings, retainRecurringTasks: checked })}
+                  />
+                </div>
 
-                      if (backupKeys.length === 0) {
-                        alert('No backups available');
-                        return;
-                      }
+                <Button 
+                  onClick={handleSave} 
+                  className="w-full relative" 
+                  disabled={isTaskSettingsSaving}
+                >
+                  {isTaskSettingsSaving ? (
+                    <span className="inline-flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center">
+                      {taskSettingsSaveSuccess ? (
+                        <span className="text-green-500 flex items-center">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Saved Successfully
+                        </span>
+                      ) : (
+                        <>
+                          Save Changes
+                          {JSON.stringify(settings.taskSettings) !== JSON.stringify(taskSettings) && (
+                            <span className="ml-2 text-xs bg-primary/20 px-1.5 py-0.5 rounded">
+                              Unsaved Changes
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </Card>
 
-                      const backupList = backupKeys.map(key => {
-                        const date = key.split('_backup_')[1];
-                        return new Date(date).toLocaleString();
-                      }).join('\n');
+            <Card className="p-6" id="data-management">
+              <h2 className="text-xl font-semibold mb-4">Data Management</h2>
+              <div className="space-y-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Export Tasks</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const event = new CustomEvent('exportTasks');
+                        window.dispatchEvent(event);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export to CSV
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Export your tasks to a CSV file for backup or analysis
+                  </p>
+                </div>
 
-                      if (confirm(`Choose a backup to restore:\n\n${backupList}\n\nThis will replace your current tasks. Continue?`)) {
-                        const tasks = recoverFromBackup('TASKS');
-                        if (tasks) {
-                          window.dispatchEvent(new CustomEvent('tasksRestored'));
-                        } else {
-                          alert('Failed to restore tasks');
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Restore Backup</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const backupKeys = Object.keys(localStorage)
+                          .filter(k => k.startsWith('tasks_backup_'))
+                          .sort()
+                          .reverse()
+                          .slice(0, 10);
+
+                        if (backupKeys.length === 0) {
+                          alert('No backups available');
+                          return;
                         }
-                      }
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <History className="h-4 w-4" />
-                    Restore Backup
-                  </Button>
+
+                        const backupList = backupKeys.map(key => {
+                          const date = key.split('_backup_')[1];
+                          return new Date(date).toLocaleString();
+                        }).join('\n');
+
+                        if (confirm(`Choose a backup to restore:\n\n${backupList}\n\nThis will replace your current tasks. Continue?`)) {
+                          const tasks = recoverFromBackup('TASKS');
+                          if (tasks) {
+                            window.dispatchEvent(new CustomEvent('tasksRestored'));
+                          } else {
+                            alert('Failed to restore tasks');
+                          }
+                        }
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <History className="h-4 w-4" />
+                      Restore Backup
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Restore your tasks from a previous backup
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Restore your tasks from a previous backup
-                </p>
+                
+                <div className="flex flex-col gap-4 pt-4 border-t">
+                  <Label>Convex Database Integration Test</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Test the connection to Convex database and verify user authentication.
+                    This will create a test task and verify your user account is properly synced.
+                  </p>
+                  <ConvexTest />
+                </div>
               </div>
-              
-              <div className="flex flex-col gap-4 pt-4 border-t">
-                <Label>Convex Database Integration Test</Label>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Test the connection to Convex database and verify user authentication.
-                  This will create a test task and verify your user account is properly synced.
-                </p>
-                <ConvexTest />
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }

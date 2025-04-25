@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { TaskManager } from "../components/task-manager"
 import { GoalSetter } from "../components/goal-setter"
-import { SettingsMenu } from "../components/settings-menu"
+import { DashboardLayout } from "../components/dashboard-layout"
 
 export default function HomePage() {
   const { isLoaded, isSignedIn } = useUser()
@@ -35,15 +35,12 @@ export default function HomePage() {
 
   // Show the full app UI once authenticated or in dev mode
   return (
-    <main className="container mx-auto px-4 py-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold tracking-tight">GSDapp</h1>
-        <SettingsMenu key="settings-menu" />
-      </div>
+    <DashboardLayout>
+      {/* Container and padding are now handled by DashboardLayout */}
       <div className="space-y-6">
         <GoalSetter />
         <TaskManager />
       </div>
-    </main>
+    </DashboardLayout>
   )
 }
