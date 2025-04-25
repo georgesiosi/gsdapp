@@ -1,4 +1,5 @@
 "use client";
+console.log("--- providers.tsx starting ---"); // Log added for debugging
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
