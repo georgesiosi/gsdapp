@@ -15,6 +15,7 @@
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "20.12.2"
   NPM_VERSION = "10.5.0" # Explicitly set npm version
+  NPM_FLAGS = "--legacy-peer-deps" # Attempt to resolve install issues
   # Force production environment for builds
   NODE_ENV = "production"
   # Disable source maps in production for smaller bundles
