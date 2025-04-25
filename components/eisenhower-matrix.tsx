@@ -7,7 +7,7 @@ import { AIReasoningTooltip } from "@/components/ui/ai-reasoning-tooltip"
 import { TaskTypeIndicator } from "@/components/ui/task-type-indicator"
 import { InlineTaskEditor } from "@/components/ui/inline-task-editor"
 import { QuadrantInfoTooltip } from "@/components/ui/quadrant-info-tooltip"
-import { Task, QuadrantType } from "@/types/task"
+import { Task, QuadrantKeys } from "@/types/task"
 import { Id } from "@/convex/_generated/dataModel"; 
 import { DragEvent } from "react"
 import { Edit2 } from "lucide-react"
@@ -21,14 +21,14 @@ type FrontendGoal = {
 
 interface QuadrantProps {
   title: string
-  quadrantId: QuadrantType
+  quadrantId: QuadrantKeys
   tasks: Task[]
   onToggleTask: (id: string) => void
   onDeleteTask: (id: string) => void
   onReflectionRequested?: (task: Task) => void
-  onMoveTask: (taskId: string, newQuadrant: QuadrantType) => void
+  onMoveTask: (taskId: string, newQuadrant: QuadrantKeys) => void
   onEditTask: (taskId: string, newText: string) => void
-  onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
+  onReorderTasks: (quadrant: QuadrantKeys, sourceIndex: number, destinationIndex: number) => void
   onTaskClick?: (task: Task) => void
   className?: string
   isAIThinking?: boolean
@@ -115,7 +115,7 @@ function Quadrant({
   return (
     <div 
       className={cn(
-        "quadrant rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all", 
+        "quadrant rounded-lg border shadow-sm hover:shadow-md transition-all", 
         className
       )}
       onDragOver={(e: DragEvent) => handleDragOver(e)}
@@ -169,7 +169,7 @@ function Quadrant({
                 className={cn(
                   "task-item flex items-center justify-between p-2 rounded-md transition-colors duration-150 ease-in-out",
                   "group", // Add group for hover effects
-                  task.status === "completed" ? "bg-muted/50 text-muted-foreground line-through" : "bg-card hover:bg-accent",
+                  task.status === "completed" ? "bg-muted/50 text-muted-foreground line-through" : "hover:bg-accent",
                   draggedTaskId === task.id ? "opacity-50" : ""
                 )}
                 draggable={editingTaskId !== task.id}
@@ -303,9 +303,9 @@ interface EisenhowerMatrixProps {
   onToggleTask: (id: string) => void
   onDeleteTask: (id: string) => void
   onReflectionRequested?: (task: Task) => void
-  onMoveTask: (taskId: string, newQuadrant: QuadrantType) => void
+  onMoveTask: (taskId: string, newQuadrant: QuadrantKeys) => void
   onEditTask: (taskId: string, newText: string) => void
-  onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
+  onReorderTasks: (quadrant: QuadrantKeys, sourceIndex: number, destinationIndex: number) => void
   onTaskClick?: (task: Task) => void
   isAIThinking?: boolean
 }
