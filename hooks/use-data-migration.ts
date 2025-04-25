@@ -75,7 +75,6 @@ export function useDataMigration() {
             description: task.description,
             createdAt: task.createdAt || task._creationTime?.toString() || now,
             updatedAt: task.updatedAt || now,
-            ...(task.reflection && { reflection: task.reflection })
           });
           completedItems++;
           setProgress(Math.floor((completedItems / totalItems) * 100));
@@ -119,6 +118,12 @@ export function useDataMigration() {
 
       localStorage.setItem(STORAGE_KEYS.MIGRATION_COMPLETED, 'true');
       localStorage.removeItem(STORAGE_KEYS.MIGRATION_IN_PROGRESS);
+      
+      // Clear original data from localStorage after successful migration
+      localStorage.removeItem(STORAGE_KEYS.TASKS);
+      localStorage.removeItem(STORAGE_KEYS.IDEAS);
+      localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+      
       setNeedsMigration(false);
 
     } catch (error) {

@@ -5,7 +5,7 @@ const getEnvVar = (name: string) =>
   process.env[name] || process.env[`CONTEXT_STAGING_${name}`] || process.env[`CONTEXT_PRODUCTION_${name}`];
 
 // Get Clerk issuer URL with fallback handling
-const clerkIssuerUrl = getEnvVar('NEXT_PUBLIC_CLERK_ISSUER_URL');
+const clerkIssuerUrl = getEnvVar('CLERK_JWT_ISSUER_DOMAIN');
 
 export default {
   providers: [{
