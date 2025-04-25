@@ -360,7 +360,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex flex-col lg:flex-row lg:gap-8">
-          <div className="lg:w-1/4">
+          <div className="lg:w-1/4 sticky top-0 h-screen">
             <SettingsNav />
           </div>
           

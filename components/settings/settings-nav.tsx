@@ -7,14 +7,19 @@ import { usePathname } from "next/navigation"
 
 const sections = [
   {
-    id: "subscription",
-    label: "Subscription",
-    hash: "#subscription"
+    id: "user-preferences",
+    label: "User Preferences",
+    hash: "#user-preferences"
   },
   {
     id: "ai-integration",
     label: "AI Integration",
     hash: "#ai-integration"
+  },
+  {
+    id: "subscription",
+    label: "Subscription",
+    hash: "#subscription"
   },
   {
     id: "task-management",

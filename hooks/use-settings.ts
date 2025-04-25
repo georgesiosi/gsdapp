@@ -116,31 +116,44 @@ export function useSettings() {
 
   const updateSettings = useCallback(async (newSettings: UserSettings) => {
     try {
-      console.log('[DEBUG-SETTINGS] Updating settings with:', {
-        hasOpenAIKey: !!newSettings.openAIKey,
-        openAIKeyLength: newSettings.openAIKey?.length,
-        hasTaskSettings: !!newSettings.taskSettings,
-        syncApiKey: newSettings.syncApiKey
-      });
+      console.log('[DEBUG-SETTINGS] Attempting to update settings:', newSettings);
       
-      // Create clean settings object without Convex metadata
-      const settingsWithDefaults: UserSettings = {
+      // Validate settings before saving
+      validateSettings(newSettings);
+
+      // --- Prepare payload specifically for Convex --- 
+      const payloadForConvex = {
+        // Only include fields defined in the mutation schema
         goal: newSettings.goal,
-        openAIKey: newSettings.openAIKey,
+        openAIKey: newSettings.openAIKey, // Key handling logic exists in the mutation
         priority: newSettings.priority,
-        theme: newSettings.theme || 'system',
-        showCompletedTasks: newSettings.showCompletedTasks ?? true,
-        autoAnalyze: newSettings.autoAnalyze ?? false,
-        syncApiKey: newSettings.syncApiKey ?? false,
-        isLegacyUser: newSettings.isLegacyUser ?? false,
+        // Ensure theme has the correct union type for the mutation
+        theme: newSettings.theme as 'light' | 'dark' | 'system' | undefined,
+        showCompletedTasks: newSettings.showCompletedTasks,
+        autoAnalyze: newSettings.autoAnalyze,
+        syncApiKey: newSettings.syncApiKey,
+        taskSettings: newSettings.taskSettings, // Pass the nested object
+      };
+      
+      // Remove undefined fields explicitly to avoid sending nulls if not intended
+      Object.keys(payloadForConvex).forEach(key => {
+        if (payloadForConvex[key as keyof typeof payloadForConvex] === undefined) {
+          delete payloadForConvex[key as keyof typeof payloadForConvex];
+        }
+      });
+      // --------------------------------------------------
+
+      // Use defaults for any missing fields - ensure type compatibility for validateSettings
+      const settingsWithDefaults: UserSettings = { 
+        ...DEFAULT_SETTINGS, 
+        ...payloadForConvex,
+        // Ensure taskSettings is fully defined even if payloadForConvex.taskSettings is partial/undefined
         taskSettings: {
-          endOfDayTime: newSettings.taskSettings?.endOfDayTime || defaultTaskSettings.endOfDayTime,
-          autoArchiveDelay: newSettings.taskSettings?.autoArchiveDelay || defaultTaskSettings.autoArchiveDelay,
-          gracePeriod: newSettings.taskSettings?.gracePeriod || defaultTaskSettings.gracePeriod,
-          retainRecurringTasks: newSettings.taskSettings?.retainRecurringTasks ?? defaultTaskSettings.retainRecurringTasks
+          ...DEFAULT_SETTINGS.taskSettings,
+          ...(payloadForConvex.taskSettings || {})
         }
       };
-
+      
       console.log('[DEBUG-SETTINGS] Settings with defaults prepared');
       validateSettings(settingsWithDefaults);
       
@@ -184,7 +197,10 @@ export function useSettings() {
       
       while (retryCount <= maxRetries) {
         try {
-          result = await savePreferencesMutation(settingsWithDefaults);
+          // --- Pass the cleaned payload --- 
+          // Explicitly cast payload to match mutation args if needed, though types should align now
+          result = await savePreferencesMutation(payloadForConvex as any);
+          // --------------------------------
           console.log('[DEBUG-SETTINGS] Convex mutation success on attempt', retryCount + 1);
           break; // Exit loop if successful
         } catch (retryError) {
@@ -208,9 +224,9 @@ export function useSettings() {
         throw new Error('Invalid response from Convex mutation');
       }
 
-      // Double-check the result contains our API key
-      if (settingsWithDefaults.openAIKey && !result.openAIKey) {
-        console.error('[DEBUG-SETTINGS] API key missing from Convex response!');
+      // Double-check the result contains our API key *if* sync was enabled
+      if (settingsWithDefaults.syncApiKey && settingsWithDefaults.openAIKey && !result.openAIKey) {
+        console.error('[DEBUG-SETTINGS] API key missing from Convex response despite sync being enabled!');
       }
 
       // Double-check localStorage has the key
