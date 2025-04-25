@@ -13,8 +13,8 @@
   # Force Node to resolve modules from the project root
   NODE_OPTIONS = "--preserve-symlinks --preserve-symlinks-main"
   NEXT_USE_NETLIFY_EDGE = "true"
-  NODE_VERSION = "20.12.2"
-  NPM_VERSION = "10.5.0" # Explicitly set npm version
+  NODE_VERSION = "18.19.1" # Switch to Node 18 LTS
+  NPM_VERSION = "10.2.4" # Corresponding npm version
   NPM_FLAGS = "--legacy-peer-deps" # Attempt to resolve install issues
   # Force production environment for builds
   NODE_ENV = "production"
