@@ -8,9 +8,6 @@ const nextConfig = {
     webpackBuildWorker: true,
     // Add new optimizations
     optimizePackageImports: ['@/components', '@/hooks'],
-    turbotrace: {
-      logLevel: 'error'
-    }
   },
   webpack: (config, { isServer }) => {
     // Enable detailed module resolution logs
@@ -18,14 +15,6 @@ const nextConfig = {
       level: 'verbose',
       debug: true
     };
-
-    // Add persistent caching for non-server builds
-    if (!isServer) {
-      config.cache = {
-        type: 'filesystem',
-        cacheDirectory: '.next/cache'
-      };
-    }
 
     // Add additional module resolution paths
     if (!config.resolve.modules) {
