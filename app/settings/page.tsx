@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSettings } from '@/hooks/use-settings'
 import { useProfile } from '@/hooks/use-profile'
+import useLocalStorage from '@/hooks/useLocalStorage';
 import { useQuery } from 'convex/react'
 import { useUser } from '@clerk/nextjs'
 import { TaskSettings, UserSettings } from '@/types/task'
@@ -129,6 +130,8 @@ export default function SettingsPage() {
   const [taskSettings, setTaskSettings] = useState<TaskSettings>(
     settings.taskSettings || defaultTaskSettings
   )
+
+  const [showSidebars, setShowSidebars] = useLocalStorage<boolean>('showEisenhowerSidebars', true);
 
   useEffect(() => {
     setMounted(true)
@@ -453,6 +456,18 @@ export default function SettingsPage() {
                   </Button>
                 </div>
 
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Eisenhower Matrix Sidebars</Label>
+                    <Switch
+                      checked={showSidebars}
+                      onCheckedChange={setShowSidebars}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Show or hide the vertical context bars on the sides of the matrix.
+                  </p>
+                </div>
 
               </div>
             </Card>
