@@ -14,6 +14,7 @@
   NODE_OPTIONS = "--preserve-symlinks --preserve-symlinks-main"
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "20.12.2"
+  NPM_VERSION = "10.5.0" # Explicitly set npm version
   # Force production environment for builds
   NODE_ENV = "production"
   # Disable source maps in production for smaller bundles
