@@ -347,7 +347,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout tasks={[]}>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <Link href="/" className="-ml-2">
