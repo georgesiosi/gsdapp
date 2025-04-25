@@ -61,6 +61,7 @@ export const getTasks = query({
     return await ctx.db
       .query("tasks")
       .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc") // Sort by _creationTime descending (newest first)
       .collect();
   },
 });
