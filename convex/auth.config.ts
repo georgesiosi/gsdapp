@@ -11,7 +11,7 @@ export default {
   providers: [{
     name: "clerk",
     // Use Clerk issuer URL for JWT verification
-    domain: clerkIssuerUrl?.replace(/^https?:\/\//, ''),
+    domain: clerkIssuerUrl, // Use the full URL
     applicationID: "convex",
     verifyToken: true,
     // Required claims for Clerk JWT verification
