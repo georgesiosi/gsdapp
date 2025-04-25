@@ -9,8 +9,6 @@ export default authMiddleware({
   jwtKey: undefined, // Force re-fetching keys
   // Routes that can be accessed while signed out
   publicRoutes: [
-    "/sign-in", 
-    "/sign-up",
     "/api/webhooks/polar/health",
     "/api/webhooks/polar"
   ],
