@@ -1,11 +1,11 @@
 // Define auth config for Convex with Clerk best practices
 
 // Try both prefixed and unprefixed environment variables
-const getEnvVar = (name: string) => 
-  process.env[name] || process.env[`CONTEXT_STAGING_${name}`] || process.env[`CONTEXT_PRODUCTION_${name}`];
+// const getEnvVar = (name: string) => 
+//   process.env[name] || process.env[`CONTEXT_STAGING_${name}`] || process.env[`CONTEXT_PRODUCTION_${name}`];
 
-// Get Clerk issuer URL with fallback handling
-const clerkIssuerUrl = getEnvVar('CLERK_JWT_ISSUER_DOMAIN');
+// Get Clerk issuer URL directly from expected production environment variable
+const clerkIssuerUrl = process.env.CLERK_JWT_ISSUER_DOMAIN;
 
 export default {
   providers: [{
