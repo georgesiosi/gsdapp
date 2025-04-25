@@ -5,6 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient } from "convex/react";
 import { ThemeProvider } from "next-themes";
+import { ThemeSyncProvider } from "@/components/theme-sync-provider";
 
 // ENVIRONMENT VARIABLES DEBUGGING - START
 // List all available environment variables for debugging
@@ -141,7 +142,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ConvexClientProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        {children}
+        <ThemeSyncProvider>
+          {children} 
+        </ThemeSyncProvider>
       </ThemeProvider>
     </ConvexClientProvider>
   );
