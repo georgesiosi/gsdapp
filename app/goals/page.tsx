@@ -7,6 +7,8 @@ import { Id } from '@/convex/_generated/dataModel';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Task, QuadrantKeys, TaskOrIdeaType, TaskStatus, TaskReflection } from '@/types/task';
+import { useMemo } from 'react';
 
 export default function GoalsPage() {
   const allGoals = useQuery(api.goals.getAllGoals);
@@ -22,9 +24,27 @@ export default function GoalsPage() {
     }
   };
 
+  const rawTaskList = useQuery(api.tasks.getTasks);
+  const taskList: Task[] = useMemo(() => {
+    return (rawTaskList ?? []).map((task) => ({
+      ...task,
+      id: task._id, 
+      quadrant: task.quadrant as QuadrantKeys,
+      taskType: task.taskType as TaskOrIdeaType,
+      status: task.status as TaskStatus,
+      needsReflection: task.needsReflection ?? false,
+      reflection: task.reflection ? {
+        ...task.reflection,
+        suggestedQuadrant: task.reflection.suggestedQuadrant as QuadrantKeys | undefined,
+        finalQuadrant: task.reflection.finalQuadrant as QuadrantKeys 
+      } : undefined,
+    }));
+  }, [rawTaskList]);
+
   return (
-    <DashboardLayout>
-      <h1 className="text-2xl font-semibold mb-6">All Goals</h1>
+    <DashboardLayout tasks={taskList}>
+      {/* Changed mb-6 to pb-6 and added border-b-0 */}
+      <h1 className="text-2xl font-semibold pb-6 border-b-0">All Goals</h1>
 
       {allGoals === undefined && <p>Loading goals...</p>} 
 

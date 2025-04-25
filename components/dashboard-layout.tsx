@@ -2,12 +2,17 @@ import React, { useState } from 'react';
 import { AppSidebar } from './app-sidebar';
 import { AppHeader } from './app-header'; // Import AppHeader
 import { cn } from '@/lib/utils'; // Correct import for cn utility
+import { Task } from '@/types/task'; // Import Task type
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
+  tasks: Task[];
 }
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout({ 
+  children,
+  tasks
+}: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // On larger screens, we might want the sidebar open by default.
@@ -31,6 +36,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <AppHeader
           isSidebarOpen={isSidebarOpen} // Pass state down
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} // Toggle function
+          tasks={tasks} // Pass tasks down
         />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
