@@ -240,8 +240,10 @@ export function GoalSetter() {
         </div>
       </div>
 
-      <div className={`px-4 pb-4 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0 pb-0' : 'max-h-[500px]'}`}>
-        <div className="border-t pt-4">
+      {/* Apply p-0 when collapsed, px-4 pb-4 when expanded */}
+      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0 p-0' : 'max-h-[500px] px-4 pb-4'}`}>
+        {/* Restored pt-4, border-t remains removed */}
+        <div className="pt-4">
           {activeGoalsData && activeGoalsData.length > 0 ? (
             <div className="space-y-2">
               {activeGoalsData.map(renderGoalItem)}
@@ -253,7 +255,7 @@ export function GoalSetter() {
           )}
           {/* Add New Goal Input (Collapsible) */} 
           {isAddingGoal && (
-            <div className="flex items-center space-x-2 pt-4 border-t border-border">
+            <div className="flex items-center space-x-2 border-t border-border">
               <Target className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               <Input
                 type="text"
