@@ -7,23 +7,32 @@ import { AIReasoningTooltip } from "@/components/ui/ai-reasoning-tooltip"
 import { TaskTypeIndicator } from "@/components/ui/task-type-indicator"
 import { InlineTaskEditor } from "@/components/ui/inline-task-editor"
 import { QuadrantInfoTooltip } from "@/components/ui/quadrant-info-tooltip"
-import { Task, QuadrantType } from "@/types/task"
+import { Task, QuadrantKeys } from "@/types/task"
+import { Id } from "@/convex/_generated/dataModel"; 
 import { DragEvent } from "react"
 import { Edit2 } from "lucide-react"
 
+// Define the expected shape of a goal object from the query
+type FrontendGoal = {
+  _id: Id<"goals">;
+  title: string;
+  // Add other potential fields if needed for type safety
+}; 
+
 interface QuadrantProps {
   title: string
-  quadrantId: QuadrantType
+  quadrantId: QuadrantKeys
   tasks: Task[]
   onToggleTask: (id: string) => void
   onDeleteTask: (id: string) => void
   onReflectionRequested?: (task: Task) => void
-  onMoveTask: (taskId: string, newQuadrant: QuadrantType) => void
+  onMoveTask: (taskId: string, newQuadrant: QuadrantKeys) => void
   onEditTask: (taskId: string, newText: string) => void
-  onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
+  onReorderTasks: (quadrant: QuadrantKeys, sourceIndex: number, destinationIndex: number) => void
   onTaskClick?: (task: Task) => void
   className?: string
   isAIThinking?: boolean
+  goals?: FrontendGoal[]; 
 }
 
 function Quadrant({ 
@@ -38,7 +47,8 @@ function Quadrant({
   onReorderTasks,
   onTaskClick,
   className,
-  isAIThinking
+  isAIThinking,
+  goals, 
 }: QuadrantProps) {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
@@ -105,7 +115,7 @@ function Quadrant({
   return (
     <div 
       className={cn(
-        "quadrant rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all", 
+        "quadrant rounded-lg border shadow-sm hover:shadow-md transition-all", 
         className
       )}
       onDragOver={(e: DragEvent) => handleDragOver(e)}
@@ -157,10 +167,10 @@ function Quadrant({
               <li 
                 key={task.id} 
                 className={cn(
-                  "task-item group p-2 rounded-md",
-                  draggedTaskId === task.id && "opacity-50",
-                  "cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
-                  // Removed: editingTaskId === task.id && "pointer-events-none"
+                  "task-item flex items-center justify-between p-2 rounded-md transition-colors duration-150 ease-in-out",
+                  "group", // Add group for hover effects
+                  task.status === "completed" ? "bg-muted/50 text-muted-foreground line-through" : "hover:bg-accent",
+                  draggedTaskId === task.id ? "opacity-50" : ""
                 )}
                 draggable={editingTaskId !== task.id}
                 onDragStart={(e) => handleDragStart(e, task.id)}
@@ -212,13 +222,61 @@ function Quadrant({
                       }}
                       className="task-checkbox rounded-sm"
                     />
-                    <span 
-                      className={cn(
-                        "task-text text-sm transition-colors",
-                        task.status === 'completed' ? "line-through text-muted-foreground" : "text-foreground/90 group-hover:text-accent-foreground"
+                    <div className="flex items-center space-x-2 flex-grow min-w-0 mr-2">
+                      {/* Task Text and Goal Link */} 
+                      <span 
+                        className={cn(
+                          "task-text text-sm transition-colors",
+                          task.status === 'completed' ? "line-through text-muted-foreground" : "text-foreground/90 group-hover:text-accent-foreground"
+                        )}
+                      >
+                        {task.text}
+                      </span>
+                      {/* Display Goal Title if linked */} 
+                      {task.goalId && goals && (
+                        (() => {
+                          const linkedGoal = goals.find(g => g._id.toString() === task.goalId?.toString());
+                          return linkedGoal ? (
+                            <span className="ml-2 text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded">
+                              🎯 {linkedGoal.title}
+                            </span>
+                          ) : null;
+                        })()
                       )}
-                    >
-                      {task.text}
+                    </div>
+
+                    {/* Badges and Actions */} 
+                    <div className="flex items-center space-x-2 ml-auto flex-shrink-0">
+                      <div className="task-actions">
+                        <div className="task-action-hover">
+                          <TaskTypeIndicator taskId={task.id} className="mr-1" />
+                        </div>
+                        <AIReasoningTooltip taskId={task.id} className="mr-1" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingTaskId(task.id)
+                          }}
+                          className="task-action-button edit-button mr-1"
+                          aria-label="Edit task"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onDeleteTask(task.id)
+                          }}
+                          className="task-action-button delete-button"
+                          aria-label="Delete task"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18"></path>
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
                       {task.needsReflection && onReflectionRequested && (
                         <ReflectionBadge 
                           onClick={(e) => {
@@ -227,36 +285,6 @@ function Quadrant({
                           }}
                         />
                       )}
-                    </span>
-                    <div className="task-actions">
-                      <div className="task-action-hover">
-                        <TaskTypeIndicator taskId={task.id} className="mr-1" />
-                      </div>
-                      <AIReasoningTooltip taskId={task.id} className="mr-1" />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditingTaskId(task.id)
-                        }}
-                        className="task-action-button edit-button mr-1"
-                        aria-label="Edit task"
-                      >
-                        <Edit2 size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onDeleteTask(task.id)
-                        }}
-                        className="task-action-button delete-button"
-                        aria-label="Delete task"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18"></path>
-                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                        </svg>
-                      </button>
                     </div>
                   </>
                 )}
@@ -271,18 +299,20 @@ function Quadrant({
 
 interface EisenhowerMatrixProps {
   tasks: Task[]
+  goals?: FrontendGoal[]; 
   onToggleTask: (id: string) => void
   onDeleteTask: (id: string) => void
   onReflectionRequested?: (task: Task) => void
-  onMoveTask: (taskId: string, newQuadrant: QuadrantType) => void
+  onMoveTask: (taskId: string, newQuadrant: QuadrantKeys) => void
   onEditTask: (taskId: string, newText: string) => void
-  onReorderTasks: (quadrant: QuadrantType, sourceIndex: number, destinationIndex: number) => void
+  onReorderTasks: (quadrant: QuadrantKeys, sourceIndex: number, destinationIndex: number) => void
   onTaskClick?: (task: Task) => void
   isAIThinking?: boolean
 }
 
 export function EisenhowerMatrix({ 
   tasks, 
+  goals, 
   onToggleTask, 
   onDeleteTask, 
   onReflectionRequested, 
@@ -332,6 +362,7 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-urgent-important border-destructive/30"
+          goals={goals} 
         />
         <Quadrant
           title="Not Urgent but Important"
@@ -345,6 +376,7 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-not-urgent-important border-blue-500/30"
+          goals={goals} 
         />
         <Quadrant
           title="Urgent but Not Important"
@@ -358,6 +390,7 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-urgent-not-important border-yellow-500/30"
+          goals={goals} 
         />
         <Quadrant
           title="Not Urgent & Not Important"
@@ -371,6 +404,7 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-not-urgent-not-important border-muted-foreground/30"
+          goals={goals} 
           isAIThinking={isAIThinking}
         />
       </div>

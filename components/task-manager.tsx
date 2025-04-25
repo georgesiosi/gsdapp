@@ -5,7 +5,8 @@ import { useProfile } from "@/hooks/use-profile"
 import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
-import type { Task, TaskStatus, QuadrantType, TaskType } from "@/types/task"
+import useLocalStorage from '@/hooks/useLocalStorage';
+import type { Task, TaskStatus, QuadrantKeys, TaskType } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Plus, MessageCircle } from "lucide-react"
@@ -16,27 +17,28 @@ import { TaskModal } from "@/components/task-modal"
 import { ReflectionCard } from "@/components/ui/reflection-card"
 import { TaskCompletionConfetti } from "@/components/ui/task-completion-confetti"
 import { VelocityMeters } from "@/components/velocity-meters"
-import { ScorecardButton } from "@/components/scorecard-button"
 import { EndDayScorecard } from "@/components/end-day-scorecard"
 import { ChatDialog } from "@/components/ui/chat-dialog"
-import { Id } from "../convex/_generated/dataModel"
+import { Id } from "../convex/_generated/dataModel"; // Import Id type
 import { api } from "../convex/_generated/api"
-import { useMutation } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 
 interface TaskManagerProps {
-  tasks?: Task[];
+  tasks: Task[];
 }
 
-// Helper function to convert string ID to Convex ID
-const toConvexId = (id: string): Id<"tasks"> => id as unknown as Id<"tasks">;
-
-export const TaskManager: React.FC<TaskManagerProps> = () => {
+export const TaskManager: React.FC<TaskManagerProps> = ({ tasks }) => {
   const router = useRouter();
   const { toast } = useToast();
-  const [taskList, setTaskList] = useState<Task[]>([]);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [isAIThinking, setIsAIThinking] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState<string>();
+  const [targetQuadrant, setTargetQuadrant] = useState<QuadrantKeys>();
+  const [aiError, setAiError] = useState(false);
+  const [scorecardOpen, setScorecardOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const { 
-    tasks: hookTasks, 
     addTask, 
     addTaskWithAIAnalysis,
     updateTask, 
@@ -46,36 +48,20 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     hideConfetti
   } = useTaskManagement();
 
-  // Keep local state in sync with hook state and handle updates
-  useEffect(() => {
-    // Only update if the tasks have actually changed
-    if (hookTasks) {
-      // Deep comparison to prevent unnecessary updates
-      const tasksChanged = JSON.stringify(hookTasks) !== JSON.stringify(taskList);
-      if (tasksChanged) {
-        setTaskList(hookTasks);
-      }
-    }
-  }, [hookTasks, taskList]); // Include taskList to satisfy eslint, deep comparison prevents infinite loops
-
-  // Import ideas management but disable for now while fixing Convex DB setup
-  const { } = useIdeasManagement(); // Destructure nothing since we're not using ideas yet
   const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem();
 
-  const [taskModalOpen, setTaskModalOpen] = useState(false);
-  const [isAIThinking, setIsAIThinking] = useState(false);
-  const [aiReasoning, setAiReasoning] = useState<string>();
-  const [targetQuadrant, setTargetQuadrant] = useState<string>();
-  const [aiError, setAiError] = useState(false);
-  const [scorecardOpen, setScorecardOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  // Fetch active goals to pass down for display
+  const activeGoals = useQuery(api.goals.getActiveGoals);
+
+  // Read sidebar visibility setting
+  const [showSidebars] = useLocalStorage<boolean>('showEisenhowerSidebars', true);
 
   const handleTaskClick = (task: Task) => {
     router.push(`/tasks/${task.id}`);
   };
 
   // Shared quadrant names mapping - memoized to prevent unnecessary re-renders
-  const quadrantNames = useMemo<Record<QuadrantType, string>>(() => ({
+  const quadrantNames = useMemo<Record<QuadrantKeys, string>>(() => ({
     q1: 'Urgent & Important',
     q2: 'Important, Not Urgent',
     q3: 'Urgent, Not Important',
@@ -89,29 +75,13 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     
     // Update UI immediately for pre-update events
     if (detail.source?.includes('pre')) {
-      setTaskList(prevTasks => {
-        const taskIndex = prevTasks.findIndex(t => t.id === detail.taskId);
-        if (taskIndex === -1) return prevTasks;
-        
-        // Only update if the task data has actually changed
-        const updatedTask = {
-          ...prevTasks[taskIndex],
-          ...detail.updates,
-        };
-        
-        if (JSON.stringify(updatedTask) === JSON.stringify(prevTasks[taskIndex])) {
-          return prevTasks;
-        }
-        
-        const updatedTasks = [...prevTasks];
-        updatedTasks[taskIndex] = updatedTask;
-        return updatedTasks;
-      });
+      // Update local taskList state immediately
+      // Removed, as we are now using the tasks prop directly
     }
     
     // Show quadrant change notification
     if (detail.updates?.quadrant && typeof detail.updates.quadrant === 'string') {
-      const quadrant = detail.updates.quadrant as QuadrantType;
+      const quadrant = detail.updates.quadrant as QuadrantKeys;
       toast({
         title: "Task Moved",
         description: `Task moved to ${quadrantNames[quadrant]}`,
@@ -196,34 +166,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       const { taskId, targetQuadrant, taskType, reasoning, message } = detail;
 
       // Update local taskList state immediately
-      setTaskList(prevTasks => {
-        const taskIndex = prevTasks.findIndex(t => t.id === taskId);
-        if (taskIndex === -1) {
-          console.warn(`[DEBUG] Task ${taskId} not found in local state for update.`);
-          return prevTasks; // Task not found, return previous state
-        }
-
-        const updatedTask = {
-          ...prevTasks[taskIndex],
-          quadrant: targetQuadrant as QuadrantType,
-          taskType: taskType as TaskType,
-          // Optionally update reflection if available
-          reflection: reasoning ? {
-            ...prevTasks[taskIndex].reflection, // Preserve existing reflection fields if any
-            justification: reasoning,
-            aiAnalysis: JSON.stringify(detail.result || {}), // Store full result if available
-            suggestedQuadrant: targetQuadrant,
-            finalQuadrant: targetQuadrant,
-            reflectedAt: new Date().toISOString(),
-          } : prevTasks[taskIndex].reflection,
-        };
-
-        // Create new array with the updated task
-        const newTaskList = [...prevTasks];
-        newTaskList[taskIndex] = updatedTask;
-        console.log(`[DEBUG] Updated local task ${taskId} to quadrant ${targetQuadrant} and type ${taskType}`);
-        return newTaskList;
-      });
+      // Removed, as we are now using the tasks prop directly
 
       // Update modal-related state (though modal closes immediately after)
       if (reasoning) {
@@ -245,7 +188,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       // Still close modal even if detail is incomplete to avoid getting stuck
       setTaskModalOpen(false);
     }
-  }, [setTaskList, setTaskModalOpen]); // Removed toast dependency as it's commented out
+  }, [setTaskModalOpen]); // Removed toast dependency as it's commented out
 
   // Set up event listeners
   useEffect(() => {
@@ -277,15 +220,13 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     }
   }, [taskModalOpen]); // Include all event handlers in deps
 
-  const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus) => {
-    const task = taskList.find(t => t.id === taskId);
+  const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus, goalId?: Id<"goals">) => {
+    const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     
     try {
-      await updateTask(toConvexId(taskId), {
-        status,
-        completedAt: status === 'completed' ? new Date().toISOString() : undefined
-      });
+      const updates = { status, completedAt: status === 'completed' ? new Date().toISOString() : undefined, goalId };
+      await updateTask(taskId as Id<"tasks">, updates);
     } catch (error) {
       console.error('Error updating task status:', error);
       toast({
@@ -295,7 +236,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     }
   };
 
-  const handleAddTask = async (text: string) => {
+  const handleAddTask = async (text: string, goalId?: Id<"goals">) => {
     if (!text.trim()) return;
     
     console.log('[DEBUG handleAddTask] Starting task creation:', text);
@@ -312,7 +253,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         quadrant: 'q4',
         status: 'active',
         taskType: 'personal',
-        needsReflection: false
+        needsReflection: false,
+        goalId,
       });
       
       console.log('[DEBUG handleAddTask] Task creation result:', task);
@@ -346,9 +288,9 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     }
   };
 
-  const handleMoveTask = async (taskId: string, newQuadrant: QuadrantType) => {
+  const handleMoveTask = async (taskId: string, newQuadrant: QuadrantKeys) => {
     try {
-      await updateTask(toConvexId(taskId), { quadrant: newQuadrant });
+      await updateTask(taskId as Id<"tasks">, { quadrant: newQuadrant });
       const quadrantName = quadrantNames[newQuadrant];
       
       toast({
@@ -365,7 +307,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
 
   const handleDeleteTask = async (taskId: string) => {
     try {
-      await deleteTask(toConvexId(taskId));
+      await deleteTask(taskId as Id<"tasks">);
     } catch (error) {
       console.error('Error deleting task:', error);
       toast({
@@ -377,7 +319,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
 
   const handleEditTask = async (taskId: string, text: string) => {
     try {
-      await updateTask(toConvexId(taskId), { text });
+      await updateTask(taskId as Id<"tasks">, { text });
     } catch (error) {
       console.error('Error editing task:', error);
       toast({
@@ -389,7 +331,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
 
   // Wrapper for onToggleTask to match EisenhowerMatrix's expected signature
   const handleToggleTask = (taskId: string) => {
-    const task = taskList.find(t => t.id === taskId);
+    const task = tasks.find(t => t.id === taskId);
     if (task) {
       handleUpdateTaskStatus(taskId, task.status === 'completed' ? 'active' : 'completed');
     }
@@ -418,16 +360,9 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         </Button>
       </div>
 
-      <div className="mb-4 flex justify-between items-center space-x-2">
-        <ScorecardButton
-          tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed')}
-          className="w-auto"
-        />
-      </div>
-
       <div className="mt-4 relative">
         <EisenhowerMatrix
-          tasks={taskList
+          tasks={tasks
             .filter(t => t.status === 'active' || 
               (t.status === 'completed' && t.completedAt && 
                new Date(t.completedAt).toDateString() === new Date().toDateString()))}
@@ -439,6 +374,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
           onReorderTasks={reorderTasks}
           onTaskClick={handleTaskClick}
           isAIThinking={isAIThinking}
+          goals={activeGoals} // Pass goals down
         />
       </div>
 
@@ -457,26 +393,27 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         aiReasoning={aiReasoning}
         targetQuadrant={targetQuadrant}
         aiError={aiError}
+        availableGoals={activeGoals} // Pass fetched goals
       />
       
       <div className="mt-6 mb-2">
         <EndDayScorecard
           isOpen={scorecardOpen}
           onClose={() => setScorecardOpen(false)}
-          tasks={taskList}
+          tasks={tasks}
         />
 
         <ChatDialog
           open={chatOpen}
           onOpenChange={setChatOpen}
-          tasks={taskList}
+          tasks={tasks}
           userContext={useProfile.getState().getPersonalContext()}
         />
       </div>
 
       {/* Velocity Meters */}
       <VelocityMeters 
-        tasks={taskList.filter(t => t.status === 'active' || t.status === 'completed')} 
+        tasks={tasks.filter(t => t.status === 'active' || t.status === 'completed')} 
       />
     </div>
   );
