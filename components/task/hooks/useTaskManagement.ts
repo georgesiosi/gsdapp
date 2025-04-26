@@ -6,6 +6,7 @@
  */
 import { useState, useCallback, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useUser } from "@clerk/nextjs"; // Import useUser
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Task, QuadrantKeys, TaskType, TaskStatus, ConvexTask } from "@/types/task";
@@ -87,10 +88,15 @@ const adaptConvexTask = (convexTask: ConvexTask): Task => {
 const toConvexId = (id: string): Id<"tasks"> => id as unknown as Id<"tasks">;
 
 export function useTaskManagement() {
+  const { user } = useUser(); // Get user
+  const userId = user?.id; // Get userId
   const [showConfetti, setShowConfetti] = useState(false);
   
   // Convex queries and mutations
-  const rawConvexTasks = useQuery(api.tasks.getTasks);
+  const rawConvexTasks = useQuery(
+    api.tasks.getTasks,
+    userId ? undefined : "skip" // Skip if logged out
+  );
   const addTaskMutation = useMutation(api.tasks.addTask);
   const updateTaskMutation = useMutation(api.tasks.updateTask);
   const deleteTaskMutation = useMutation(api.tasks.deleteTask);

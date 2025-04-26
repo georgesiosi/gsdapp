@@ -12,12 +12,16 @@ import { DashboardLayout } from "../components/dashboard-layout"
 import useLocalStorage from "../hooks/useLocalStorage" 
 
 export default function HomePage() {
-  const { isLoaded, isSignedIn } = useUser()
+  const { isLoaded, isSignedIn, user } = useUser()
+  const userId = user?.id;
   const [showEisenhowerSidebars] = useLocalStorage<boolean>('showEisenhowerSidebars', true);
   const router = useRouter()
 
   // Fetch tasks here
-  const rawTaskList = useQuery(api.tasks.getTasks);
+  const rawTaskList = useQuery(
+    api.tasks.getTasks,
+    userId ? undefined : "skip" // Skip if logged out
+  );
   const taskList: Task[] = useMemo(() => {
     return (rawTaskList ?? []).map((task) => ({
       ...task,

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useQuery } from 'convex/react';
+import { useUser } from '@clerk/nextjs';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel'; 
 import { DashboardLayout } from '@/components/dashboard-layout';
@@ -11,6 +12,8 @@ import { Task, QuadrantKeys, TaskOrIdeaType, TaskStatus, TaskReflection } from '
 import { useMemo } from 'react';
 
 export default function GoalsPage() {
+  const { user } = useUser();
+  const userId = user?.id;
   const allGoals = useQuery(api.goals.getAllGoals);
 
   // Helper to format status
@@ -24,7 +27,10 @@ export default function GoalsPage() {
     }
   };
 
-  const rawTaskList = useQuery(api.tasks.getTasks);
+  const rawTaskList = useQuery(
+    api.tasks.getTasks,
+    userId ? undefined : "skip"
+  );
   const taskList: Task[] = useMemo(() => {
     return (rawTaskList ?? []).map((task) => ({
       ...task,
