@@ -1,6 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../convex/_generated/api";
+import { useTheme } from "next-themes";
+import { useUser } from "@clerk/nextjs"; 
+
+import { api } from "@/convex/_generated/api";
 import { UserSettings, TaskSettings, ConvexUserPreferences } from "@/types/task";
 
 // Default settings when data is loading
@@ -18,7 +21,14 @@ const DEFAULT_SETTINGS: UserSettings = {
 };
 
 export function useSettings() {
-  const preferences = useQuery(api.userPreferences.getUserPreferences) as ConvexUserPreferences | null;
+  const { user } = useUser(); 
+  const userId = user?.id; 
+
+  const preferences = useQuery(
+    api.userPreferences.getUserPreferences, 
+    userId ? undefined : "skip" 
+  ) as ConvexUserPreferences | null;
+  
   const savePreferencesMutation = useMutation(api.userPreferences.saveUserPreferences);
   const deletePreferencesMutation = useMutation(api.userPreferences.deleteUserPreferences);
 
