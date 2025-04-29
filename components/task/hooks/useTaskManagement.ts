@@ -4,42 +4,17 @@
  * Provides functionality for managing tasks with Convex backend integration
  * and AI-powered task analysis capabilities.
  */
-import { useState, useCallback, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useUser } from "@clerk/clerk-react";
 import { useMutation, useQuery } from "convex/react";
-import { useUser } from "@clerk/nextjs"; // Import useUser
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { Task, QuadrantKeys, TaskType, TaskStatus, ConvexTask } from "@/types/task";
-import { ReasoningLogService } from "@/services/ai/reasoningLogService";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel"; 
+import type { Task, TaskStatus, QuadrantKeys, TaskType, ConvexTask, TaskOrIdeaType, TaskReflection } from "@/types/task"; 
+import { useToast } from "@/components/ui/use-toast"; 
 
-// Define event types and interfaces for AI functionality
-type AIEventDetail = {
-  aiThinkingChanged: { thinking: boolean; message?: string };
-  aiAnalysisComplete: {
-    taskId: string; // Added taskId
-    message: string;
-    result?: any;
-    targetQuadrant?: string;
-    taskType?: string;
-    reasoning?: string;
-  };
-  aiAnalysisError: { error: string; message: string };
-};
+// --- Start: Local Definitions ---
 
-type AIEventType = keyof AIEventDetail;
-
-// Helper function to dispatch events
-const dispatchAIEvent = <T extends AIEventType>(eventType: T, detail: AIEventDetail[T]) => {
-  console.log(`[DEBUG] Dispatching ${eventType} event with detail:`, detail);
-  const event = new CustomEvent(eventType, { detail });
-  window.dispatchEvent(event);
-};
-
-// Helper function to dispatch AI thinking state
-const dispatchThinkingState = (thinking: boolean, message?: string) => {
-  dispatchAIEvent('aiThinkingChanged', { thinking, message });
-};
-
+// Locally defined NewTask type based on usage
 export type NewTask = {
   text: string;
   quadrant: QuadrantKeys;
@@ -48,50 +23,89 @@ export type NewTask = {
   status?: TaskStatus;
   description?: string;
   goalId?: Id<"goals">; // Add goalId
+  createdAt?: string;
+  updatedAt?: string;
 };
 
-type TaskUpdate = Partial<Omit<Task, '_id' | '_creationTime' | 'userId' | 'goalId'>> & { 
-  goalId?: Id<"goals"> | undefined; // Explicitly include optional goalId
-};
-
-/**
- * Converts a Convex task to the UI Task format.
- * Handles legacy tasks by deriving timestamps when needed.
- */
+// Locally defined function to adapt ConvexTask to Task
 const adaptConvexTask = (convexTask: ConvexTask): Task => {
-  // Convert _creationTime to ISO string if createdAt/updatedAt not present (legacy tasks)
-  const creationDate = new Date(convexTask._creationTime / 1000).toISOString();
-  
   return {
-    id: convexTask._id.toString(),
-    text: convexTask.text || '', // Ensure text is never undefined
-    description: convexTask.description,
-    quadrant: convexTask.quadrant,
-    taskType: convexTask.taskType,
-    status: convexTask.status,
-    needsReflection: Boolean(convexTask.needsReflection), // Ensure boolean type
-    reflection: convexTask.reflection,
-    completedAt: convexTask.completedAt,
-    order: convexTask.order ?? 0, // Provide default order if undefined
-    userId: convexTask.userId,
-    _creationTime: convexTask._creationTime,
-    createdAt: convexTask.createdAt || creationDate,
-    updatedAt: convexTask.updatedAt || creationDate
+    ...convexTask,
+    id: convexTask._id.toString(), // Convert Convex Id to string
+    goalId: convexTask.goalId?.toString(), // Convert optional Convex Id to string
+    // Ensure quadrant, taskType, status are correctly typed if needed
+    quadrant: convexTask.quadrant as QuadrantKeys,
+    taskType: convexTask.taskType as TaskOrIdeaType, // Use TaskOrIdeaType if applicable
+    status: convexTask.status as TaskStatus,
   };
 };
 
-/**
- * Converts a string ID to a Convex ID type.
- * @param id The string ID to convert
- * @returns The converted Convex ID
- */
+// Locally defined event types and interfaces for AI functionality
+type AIEventDetail = {
+  aiThinkingChanged: { thinking: boolean; message?: string };
+  aiAnalysisComplete: {
+    taskId: string; // Added taskId
+    message: string;
+    result?: any; // Keep flexible for now
+    targetQuadrant?: QuadrantKeys; // Use QuadrantKeys
+    taskType?: TaskOrIdeaType; // Use TaskOrIdeaType
+    reasoning?: string;
+  };
+  aiAnalysisError: { 
+    error: string; 
+    message: string;
+    // taskId?: string; // Optional taskId based on previous lint errors/usage
+  };
+};
+
+type AIEventType = keyof AIEventDetail;
+
+// Locally defined helper function to dispatch events
+const dispatchAIEvent = <T extends AIEventType>(eventType: T, detail: AIEventDetail[T]) => {
+  console.log(`[DEBUG] Dispatching ${eventType} event with detail:`, detail);
+  const event = new CustomEvent(eventType, { detail });
+  window.dispatchEvent(event);
+};
+
+// Locally defined helper function to dispatch AI thinking state
+const dispatchThinkingState = (thinking: boolean, message?: string) => {
+  dispatchAIEvent('aiThinkingChanged', { thinking, message });
+};
+
+// Locally defined function to cast string ID to Convex ID
 const toConvexId = (id: string): Id<"tasks"> => id as unknown as Id<"tasks">;
+
+// Locally defined helper function to ensure goalId is correctly typed
+const ensureGoalId = (goalId: string | Id<"goals"> | undefined): Id<"goals"> | undefined => {
+  if (goalId === undefined) return undefined;
+  if (typeof goalId === "string") return goalId as Id<"goals">;
+  return goalId;
+};
+
+// --- End: Local Definitions ---
+
+
+// Helper function for goal ID handling (assuming it exists or should be added)
+// const ensureGoalId = (goalId: string | Id<"goals"> | undefined): Id<"goals"> | undefined => {
+//   if (goalId === undefined) return undefined;
+//   if (typeof goalId === "string") return goalId as Id<"goals">;
+//   return goalId;
+// };
 
 export function useTaskManagement() {
   const { user } = useUser(); // Get user
   const userId = user?.id; // Get userId
   const [showConfetti, setShowConfetti] = useState(false);
+  const { toast } = useToast(); // Get toast function
   
+  // Define quadrant names locally for toast messages
+  const quadrantNames = useMemo<Record<QuadrantKeys, string>>(() => ({
+    q1: 'Urgent & Important',
+    q2: 'Important, Not Urgent',
+    q3: 'Urgent, Not Important',
+    q4: 'Neither Urgent nor Important'
+  }), []);
+
   // Convex queries and mutations
   const rawConvexTasks = useQuery(
     api.tasks.getTasks,
@@ -105,14 +119,9 @@ export function useTaskManagement() {
   // Memoize convex tasks to prevent unnecessary re-renders
   const convexTasks = useMemo(() => rawConvexTasks || [], [rawConvexTasks]);
 
-  // Convert Convex tasks to UI tasks
+  // Convert Convex tasks to UI tasks using local adapter
   const tasks = useMemo(() => 
-    convexTasks.map((task) => adaptConvexTask({
-      ...task,
-      quadrant: task.quadrant as QuadrantKeys,
-      taskType: task.taskType as TaskType,
-      status: task.status as TaskStatus,
-    } as ConvexTask)),
+    convexTasks.map((task) => adaptConvexTask(task as ConvexTask)), // Use local adaptConvexTask
     [convexTasks]
   );
 
@@ -134,7 +143,7 @@ export function useTaskManagement() {
       // Include goalId in the mutation call if it exists
       const taskId = await addTaskMutation({ 
         ...restOfTask,
-        ...(goalId && { goalId }), // Conditionally add goalId
+        ...(goalId && { goalId: ensureGoalId(goalId) }), // Conditionally add goalId
         status: newTask.status || 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -148,415 +157,222 @@ export function useTaskManagement() {
   }, [addTaskMutation]);
 
   // Add a new task with AI analysis
-  const addTaskWithAIAnalysis = useCallback(async (taskData: {
-    text: string;
-    quadrant?: QuadrantKeys;
-    completed?: boolean;
-    needsReflection?: boolean;
-    status?: TaskStatus;
-    taskType?: TaskType;
-    goalId?: Id<"goals">; // Add goalId
-  }): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
-    try {
-      // Add the task with provided or default values
-      const taskId = await addTask({
-        text: taskData.text,
-        quadrant: taskData.quadrant || "q4",
-        needsReflection: taskData.needsReflection || false,
-        status: taskData.status || "active",
-        taskType: taskData.taskType || "personal",
-        goalId: taskData.goalId, // Pass the goalId here
-      });
-      
-      if (!taskId) {
-        throw new Error("Failed to add task");
-      }
-
-      // Create a temporary task object
-      const now = new Date().toISOString();
-      const task: Task = {
-        id: taskId,
-        text: taskData.text,
-        quadrant: taskData.quadrant || "q4",
-        taskType: taskData.taskType || "personal",
-        needsReflection: taskData.needsReflection || false,
-        status: taskData.status || "active",
-        userId: "", // Will be set by Convex
-        _creationTime: Date.now(),
-        createdAt: now,
-        updatedAt: now,
-        order: 0 // Default order for new tasks
-      };
-
-      // Return immediately to show the task in Q4 and start AI analysis
-      const analyzeTask = async (retryCount = 0, maxRetries = 3, maxWaitTime = 15000) => {
-        // Calculate exponential backoff delay
-        const backoffDelay = retryCount > 0 ? Math.min(1000 * Math.pow(2, retryCount - 1), 10000) : 0;
-        
-        if (retryCount > 0) {
-          // Wait for backoff delay before retrying
-          await new Promise(resolve => setTimeout(resolve, backoffDelay));
-          
-          dispatchThinkingState(true, `Retrying AI analysis (attempt ${retryCount + 1} of ${maxRetries + 1})...`);
-        }
-        // Don't retry more than maxRetries times
-        if (retryCount >= maxRetries) {
-          dispatchAIEvent('aiAnalysisError', { 
-            error: 'Max retries exceeded',
-            message: `Failed to analyze task after ${maxRetries + 1} attempts. The task will remain in Q4. Please try again later or check your settings.` 
-          });
-          return;
-        }
-        
-        // Track start time for this attempt
-        const startTime = Date.now();
-        // Get OpenAI API key and sync preference from localStorage
-        const openAIKey = localStorage.getItem('openai-api-key');
-        const userPrefs = localStorage.getItem('user-preferences');
-        let syncApiKey = false;
-        
-        try {
-          if (userPrefs) {
-            const prefs = JSON.parse(userPrefs);
-            syncApiKey = prefs.syncApiKey || false;
-          }
-        } catch (e) {
-          console.warn("Failed to parse user preferences:", e);
-        }
-        
-        if (!openAIKey) {
-          dispatchAIEvent('aiAnalysisError', { 
-            error: 'No OpenAI API key found',
-            message: `Task added to Q4. AI analysis skipped: No OpenAI API key found. ${syncApiKey ? 'Please set up your API key in Settings.' : 'Add your API key in Settings to enable AI analysis.'}`
-          });
-          return;
-        }
-        
-        // Validate API key format
-        if (!openAIKey.startsWith('sk-')) {
-          dispatchAIEvent('aiAnalysisError', { 
-            error: 'Invalid API key format',
-            message: 'Task added to Q4. AI analysis skipped: Invalid API key format. API keys should start with "sk-".' 
-          });
-          return;
-        }
-
-        // Notify that AI is starting analysis
-        dispatchAIEvent('aiThinkingChanged', { 
-          thinking: true,
-          message: 'Analyzing task with AI...' 
-        });
-
-        try {
-          // Get user preferences for analysis
-          const userPrefs = localStorage.getItem('user-preferences');
-          let goal = "";
-          let priority = "";
-          let personalContext = "";
-          
-          if (userPrefs) {
-            try {
-              const prefs = JSON.parse(userPrefs);
-              goal = prefs.goal || "";
-              priority = prefs.priority || "";
-              
-              // Build a comprehensive personal context
-              const contexts = [];
-              if (goal) contexts.push(`Working towards: ${goal}`);
-              if (priority) contexts.push(`Current priority: ${priority}`);
-              if (prefs.taskSettings?.focusAreas) {
-                contexts.push(`Focus areas: ${prefs.taskSettings.focusAreas.join(', ')}`);
-              }
-              personalContext = contexts.join('. ');
-            } catch (e) {
-              console.warn("Failed to parse user preferences:", e);
-              dispatchAIEvent('aiAnalysisError', { 
-                error: e instanceof Error ? e.message : 'Failed to parse preferences',
-                message: 'Warning: Could not load user preferences. AI analysis may be less accurate.' 
-              });
-            }
-          }
-
-          // Set up timeout for fetch request
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout to be more responsive
-          
-          // Set up global timeout to ensure we don't hang indefinitely
-          const globalTimeout = setTimeout(() => {
-            controller.abort();
-            dispatchAIEvent('aiAnalysisError', {
-              error: 'Analysis timeout',
-              message: 'Task added successfully, but AI analysis timed out. The task has been placed in Q4.'
-            });
-            dispatchThinkingState(false);
-          }, maxWaitTime);
-          
-          let response: Response;
-          try {
-            response = await fetch("/api/analyze-reflection", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-openai-key": openAIKey,
-              },
-              signal: controller.signal,
-              body: JSON.stringify({
-              task: taskData.text,
-              justification: "",
-              goal,
-              priority,
-              currentQuadrant: "q4", // Always start in Q4 during analysis
-              personalContext: personalContext || undefined
-            }),
-          });
-          
-          // Handle rate limiting and retries
-          if (response.status === 429) {
-            const retryAfter = response.headers.get('retry-after') || '5';
-            const waitTime = parseInt(retryAfter, 10) * 1000;
-            
-            dispatchAIEvent('aiAnalysisError', { 
-              error: 'Rate limit exceeded',
-              message: `Rate limit exceeded. Retrying in ${Math.ceil(waitTime/1000)} seconds...` 
-            });
-            
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-            const elapsedTime = Date.now() - startTime;
-            console.log(`AI analysis attempt ${retryCount + 1} failed after ${elapsedTime}ms. Retrying...`);
-            return analyzeTask(retryCount + 1, maxRetries);
-          }
-          } catch (error: unknown) {
-            // Handle network errors and timeouts
-            const networkError = error as Error;
-            const isTimeout = networkError instanceof Error && networkError.name === 'AbortError';
-            const elapsedTime = Date.now() - startTime;
-            
-            console.error(
-              `AI analysis network error after ${elapsedTime}ms:`,
-              networkError,
-              `Retry count: ${retryCount}`
-            );
-            
-            dispatchAIEvent('aiAnalysisError', { 
-              error: networkError instanceof Error ? networkError.message : 'Unknown error',
-              message: isTimeout 
-                ? 'AI analysis timed out. Please try again.'
-                : 'Network error during AI analysis. Please check your connection.'
-            });
-            
-            // Retry on network errors
-            return analyzeTask(retryCount + 1, maxRetries);
-          } finally {
-            clearTimeout(timeout);
-            clearTimeout(globalTimeout);
-          }
-          
-          // Handle other errors
-          if (!response.ok) {
-            const errorText = await response.text();
-            const error = `Failed to analyze task: ${response.status} ${response.statusText}\n${errorText}`;
-            
-            // Check if it's an authentication error
-            if (response.status === 401 || response.status === 403) {
-              dispatchAIEvent('aiAnalysisError', { 
-                error,
-                message: 'Authentication failed. Please check your API key in Settings.' 
-              });
-            } else {
-              dispatchAIEvent('aiAnalysisError', { 
-                error,
-                message: 'Failed to analyze task. Using default values.' 
-              });
-            }
-            
-            throw new Error(error);
-          }
-          
-          let result;
-          try {
-            result = await response.json();
-          } catch (parseError) {
-            const error = `Failed to parse API response: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}`;
-            window.dispatchEvent(new CustomEvent('aiAnalysisError', { 
-              detail: { 
-                error,
-                message: 'AI analysis failed due to invalid response. Using default values.' 
-              } 
-            }));
-            throw new Error(error);
-          }
-          
-          if (!result || typeof result !== 'object') {
-            const error = 'API returned invalid response format';
-            window.dispatchEvent(new CustomEvent('aiAnalysisError', { 
-              detail: { 
-                error,
-                message: 'AI analysis failed due to invalid response format. Using default values.' 
-              } 
-            }));
-            throw new Error(error);
-          }
-          
-          if (result.error) {
-            const error = `API returned error: ${result.error}`;
-            window.dispatchEvent(new CustomEvent('aiAnalysisError', { 
-              detail: { 
-                error,
-                message: 'AI analysis failed. Using default values.' 
-              } 
-            }));
-            throw new Error(error);
-          }
-
-          // Notify that AI has completed analysis (intermediate step)
-          // This dispatch might be redundant now, but keeping for potential UI feedback
-          dispatchAIEvent('aiAnalysisComplete', {
-            taskId: taskId, // Add taskId here too
-            message: 'AI analysis complete',
-            result,
-            targetQuadrant: result.suggestedQuadrant,
-            taskType: result.taskType,
-            reasoning: result.reasoning
-          });
-
-          // Update task with AI analysis results
-          const targetQuadrant = result.suggestedQuadrant || "q4";
-          const taskType = result.taskType || taskData.taskType || "personal";
-          
-          const now = new Date().toISOString();
-          // --- Start of Fix ---
-          try { 
-            await updateTaskMutation({
-              id: toConvexId(taskId),
-              quadrant: targetQuadrant,
-              taskType: taskType,
-              updatedAt: now,
-              reflection: result.reasoning ? {
-                justification: result.reasoning,
-                aiAnalysis: JSON.stringify(result),
-                suggestedQuadrant: targetQuadrant,
-                finalQuadrant: targetQuadrant,
-                reflectedAt: now,
-              } : undefined,
-            });
-
-            // Store reasoning data in the ReasoningLogService for the task card display
-            console.log('[DEBUG] Storing AI reasoning log for task:', taskId);
-            if (result.reasoning) { // Ensure reasoning exists before logging
-              ReasoningLogService.storeLog({
-                taskId: taskId,
-                taskText: taskData.text,
-                timestamp: Date.now(), // Use consistent timestamp
-                suggestedQuadrant: targetQuadrant, // Use consistent variable
-                taskType: taskType, // Use consistent variable
-                reasoning: result.reasoning,
-                alignmentScore: result.alignmentScore, // Pass alignment score
-                urgencyScore: result.urgencyScore, // Pass urgency score
-                importanceScore: result.importanceScore // Pass importance score
-              });
-            }
-
-            // Notify of successful update AND analysis completion
-            // Dispatch the final 'aiAnalysisComplete' event ONLY after successful update
-            dispatchAIEvent('aiAnalysisComplete', {
-              taskId: taskId, // Add taskId here
-              message: `Task analyzed and moved to ${targetQuadrant.toUpperCase()} as ${taskType} task`,
-              result,
-              targetQuadrant,
-              taskType,
-              reasoning: result.reasoning?.split('.')[0] || 'Based on AI analysis'
-            });
-
-          } catch (updateError) {
-            // Handle task update errors specifically
-            const error = `Failed to update task after AI analysis: ${updateError instanceof Error ? updateError.message : 'Unknown error'}`;
-            console.error('Task update error after analysis:', updateError);
-            dispatchAIEvent('aiAnalysisError', {
-              error,
-              message: 'AI analysis succeeded, but failed to update the task. Please try moving it manually.'
-            });
-            // Do not rethrow, let finally block handle thinking state
-          }
-          // --- End of Fix ---
-        } catch (analysisError) {
-          console.error("Error analyzing task:", analysisError);
-          dispatchAIEvent('aiAnalysisError', {
-            error: analysisError instanceof Error ? analysisError.message : 'Unknown error',
-            message: 'AI analysis failed. Task will remain in Q4. Please check your API key and try again.'
-          });
-        } finally {
-          // Always notify that AI has finished thinking
-          // This remains potentially problematic for concurrency, but let's fix the update reliability first.
-          dispatchThinkingState(false, 'AI analysis processing finished'); // Changed message slightly
-        }
-      };
-
-      // Start AI analysis in the background with fallback mechanism
-      setTimeout(() => {
-        try {
-          analyzeTask().catch(err => {
-            // This is a final fallback to make sure we never leave the user hanging
-            console.error('Uncaught error in task analysis:', err);
-            dispatchAIEvent('aiAnalysisError', {
-              error: 'Unexpected error',
-              message: 'Task added successfully, but AI analysis failed unexpectedly. The task has been placed in Q4.'
-            });
-            dispatchThinkingState(false);
-          });
-        } catch (error) {
-          // Absolute final fallback
-          console.error('Critical error starting task analysis:', error);
-          dispatchThinkingState(false);
-        }
-      }, 0);
-
-      return { task, isAnalyzing: true };
-    } catch (error) {
-      console.error("Error in addTaskWithAIAnalysis:", error);
-
-      // Fallback for task creation if AI integration fails entirely
-      // This allows users to still create tasks even if AI is not working
-      dispatchAIEvent('aiAnalysisError', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: 'Task creation encountered an issue. Creating task without AI analysis.'
-      });
-
-      dispatchThinkingState(false);
-
-      // Create a minimal task in Q4 as fallback
-      try {
-        const taskId = await addTask({
-          text: taskData.text,
-          quadrant: "q4",
-          status: "active",
-          taskType: "personal"
-        });
-
-        if (taskId) {
-          const now = new Date().toISOString();
-          const fallbackTask: Task = {
-            id: taskId,
-            text: taskData.text,
-            quadrant: "q4",
-            taskType: "personal",
-            needsReflection: false,
-            status: "active",
-            userId: "",
-            _creationTime: Date.now(),
-            createdAt: now,
-            updatedAt: now,
-            order: 0
-          };
-
-          return { task: fallbackTask, isAnalyzing: false };
-        }
-      } catch (fallbackError) {
-        console.error("Critical error in fallback task creation:", fallbackError);
-      }
-
+  const addTaskWithAIAnalysis = useCallback(async (
+    text: string, 
+    initialQuadrant: QuadrantKeys = 'q4' // Default to Q4 if not provided
+  ): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
+    
+    // Avoid using .trim() directly on text
+    console.log("[DEBUG] addTaskWithAIAnalysis called with text:", text, "typeof text:", typeof text);
+    
+    // Check if text is empty without using .trim()
+    const isEmpty = !text || text === "" || (typeof text === 'string' && text.replace(/\s/g, '') === "");
+    if (isEmpty) {
+      toast({ title: "Error", description: "Task text cannot be empty.", variant: "destructive" });
       return { task: null, isAnalyzing: false };
     }
-  }, [addTask, updateTaskMutation]);
+
+    if (!userId) {
+      toast({ title: "Error", description: "You must be logged in to add tasks.", variant: "destructive" });
+      return { task: null, isAnalyzing: false };
+    }
+    // if (!text?.trim()) { <-- Moved check up
+    //   toast({ title: "Error", description: "Task text cannot be empty.", variant: "destructive" });
+    //   return { task: null, isAnalyzing: false };
+    // }
+
+    let taskId: Id<"tasks"> | null = null;
+    let newTask: Task | null = null;
+    let isAnalyzing = false; // Initialize isAnalyzing
+
+    try {
+      const now = new Date().toISOString();
+      const safeText = typeof text === 'string' ? text : String(text); // Convert to string safely
+      
+      console.log("[DEBUG] Calling addTaskMutation with text:", safeText); // <-- Add log 2
+      
+      taskId = await addTaskMutation({
+        text: safeText,
+        quadrant: 'q4', // Initially place in Q4
+        status: 'active',
+        needsReflection: true, // Mark for AI analysis
+        createdAt: now,
+        updatedAt: now
+      });
+
+      if (!taskId) {
+        throw new Error("Failed to create task ID.");
+      }
+      
+      console.log("[DEBUG] Task created with ID:", taskId); // <-- Add log 3
+
+      // Retrieve the newly created task data if needed immediately
+      // This might be inefficient if adaptConvexTask isn't readily available or needed here
+      // const createdConvexTask = await getTaskById(taskId); // Hypothetical query needed
+      // if (createdConvexTask) {
+      //   newTask = adaptConvexTask(createdConvexTask); 
+      // } else {
+      //   console.warn("Could not retrieve newly created task immediately.");
+      //   // Fallback or handle as needed
+      // }
+
+      // --- Start AI Analysis ---
+      isAnalyzing = true; 
+      
+      console.log("[DEBUG] Dispatching aiThinkingChanged(true)"); // <-- Add log 4
+      dispatchThinkingState(true, "AI analyzing task placement..."); // Dispatch thinking state
+      toast({ title: "Analyzing Task", description: "AI analyzing task placement..." });
+
+      console.log("[DEBUG] Calling /api/analyze-reflection"); // <-- Add log 5
+      const response = await fetch("/api/analyze-reflection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          task: typeof text === 'string' ? text : String(text), // Convert to string safely
+        }),
+      });
+
+      console.log("[DEBUG] /api/analyze-reflection response status:", response.status); // <-- Add log 6
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Unknown fetch error" }));
+        throw new Error(`API Error (${response.status}): ${errorData.message || response.statusText}`);
+      }
+
+      const analysis = await response.json();
+      console.log("[DEBUG] AI Analysis Result:", analysis); // <-- Add log 7
+
+      // --- Update Task --- 
+      const updateTime = new Date().toISOString();
+      const validatedQuadrant = analysis.suggestedQuadrant as QuadrantKeys; // Validate/cast quadrant
+      const validatedTaskType = analysis.taskType as TaskOrIdeaType; // Validate/cast task type
+      const reasoning = analysis.reasoning || "AI analysis provided no reasoning.";
+      
+      // Store the reasoning log for the TaskTypeIndicator and AIReasoningTooltip components
+      if (taskId) {
+        const reasoningLog = {
+          taskId: taskId.toString(),
+          taskText: safeText,
+          timestamp: Date.now(),
+          suggestedQuadrant: validatedQuadrant || 'q4',
+          taskType: validatedTaskType as "personal" | "work" | "business",
+          reasoning: reasoning,
+          alignmentScore: analysis.alignmentScore,
+          urgencyScore: analysis.urgencyScore,
+          importanceScore: analysis.importanceScore
+        };
+        
+        // Import the ReasoningLogService
+        const { ReasoningLogService } = require("@/services/ai/reasoningLogService");
+        
+        // Store the reasoning log
+        ReasoningLogService.storeLog(reasoningLog);
+        console.log("[DEBUG] Stored reasoning log:", reasoningLog);
+      }
+
+      console.log("[DEBUG] Calling updateTaskMutation for task ID:", taskId); // <-- Add log 8
+      await updateTaskMutation({
+        id: taskId,
+        quadrant: validatedQuadrant || 'q4', // Default to Q4 if analysis fails
+        taskType: validatedTaskType, 
+        needsReflection: false, // Analysis complete
+        reflection: {
+          justification: "Initial AI analysis.", // Or use reasoning?
+          aiAnalysis: reasoning,
+          suggestedQuadrant: validatedQuadrant,
+          finalQuadrant: validatedQuadrant || 'q4', // Store final placement
+          reflectedAt: updateTime,
+          content: typeof text === 'string' ? text : String(text) // Add original task content to reflection
+        },
+        updatedAt: updateTime
+      });
+      
+      console.log("[DEBUG] Task updated successfully."); // <-- Add log 9
+
+      // Create a basic task object to return with all necessary properties
+      if (taskId) {
+        newTask = {
+          id: taskId.toString(),
+          text: safeText,
+          quadrant: validatedQuadrant || 'q4',
+          status: 'active',
+          needsReflection: false,
+          userId: userId || '',
+          _creationTime: Date.now(),
+          createdAt: updateTime,
+          updatedAt: updateTime,
+          taskType: validatedTaskType, // Include the task type from AI analysis
+          reflection: {  // Include the reflection with AI reasoning
+            justification: "Initial AI analysis.",
+            aiAnalysis: reasoning,
+            suggestedQuadrant: validatedQuadrant,
+            finalQuadrant: validatedQuadrant || 'q4',
+            reflectedAt: updateTime,
+            content: safeText
+          }
+        };
+      }
+
+      toast({ title: "Analysis Complete", description: `Task placed in ${validatedQuadrant || 'Q4'}. Reasoning: ${reasoning}` });
+      
+      // Dispatch completion event (ensure taskId is string)
+      if (taskId) {
+        dispatchAIEvent('aiAnalysisComplete', { 
+          taskId: taskId.toString(), 
+          message: "AI analysis completed successfully.",
+          targetQuadrant: validatedQuadrant,
+          taskType: validatedTaskType,
+          reasoning: reasoning
+        });
+      }
+
+    } catch (error) {
+      console.error("Error in addTaskWithAIAnalysis:", error); // <-- Add log 10
+      toast({ title: "Error", description: `Failed to add or analyze task: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
+      
+      // If task was created but analysis failed, maybe update it to reflect the error?
+      if (taskId) {
+        try {
+          const taskIdStr = taskId.toString();
+          await updateTaskMutation({
+            id: taskId,
+            needsReflection: true, // Keep reflection needed
+            reflection: {
+              ...(tasks.find(t => t.id === taskIdStr)?.reflection || {}), // Preserve existing reflection if any
+              justification: "AI analysis failed.",
+              aiAnalysis: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              finalQuadrant: 'q4', // Revert to Q4
+              reflectedAt: new Date().toISOString(),
+            },
+            updatedAt: new Date().toISOString()
+          });
+        } catch (updateError) {
+          console.error("Error updating task after analysis failure:", updateError);
+        }
+      }
+      
+      // Dispatch error event (ensure taskId is string if available)
+      dispatchAIEvent('aiAnalysisError', { 
+        error: error instanceof Error ? error.message : String(error), 
+        message: "An error occurred during AI analysis.",
+        // taskId: taskId?.toString() // Conditionally add taskId
+      });
+
+      newTask = null; // Ensure null is returned on error
+      isAnalyzing = false; // Reset analyzing state
+
+    } finally {
+      if (isAnalyzing) { // Only dispatch if analysis was started
+          console.log("[DEBUG] Dispatching aiThinkingChanged(false) in finally block"); // <-- Add log 11
+          dispatchThinkingState(false); // Ensure thinking state is always turned off
+      }
+    }
+    
+    console.log("[DEBUG] addTaskWithAIAnalysis returning:", { task: newTask, isAnalyzing }); // <-- Add log 12
+    // The returned 'task' might be null if retrieved task data wasn't assigned back to newTask
+    // The caller might need to rely on the main 'tasks' state being updated by the Convex query
+    return { task: newTask, isAnalyzing }; 
+  }, [userId, addTaskMutation, updateTaskMutation, toast, tasks]); // Dependencies remain the same for now
 
   /**
    * Update an existing task in the database
@@ -564,12 +380,21 @@ export function useTaskManagement() {
    * @param updates The fields to update on the task
    * @returns Object with success status and error information if applicable
    */
-  const updateTask = useCallback(async (taskId: Id<"tasks">, updates: TaskUpdate) => {
+  const updateTask = useCallback(async (taskId: Id<"tasks">, updates: {
+    text?: string;
+    quadrant?: QuadrantKeys;
+    taskType?: TaskType;
+    needsReflection?: boolean;
+    status?: TaskStatus;
+    description?: string;
+    goalId?: Id<"goals"> | undefined; // Explicitly include optional goalId
+  }): Promise<{ success: boolean, error?: string }> => {
     try {
       // Ensure goalId is included correctly, even if undefined
       const updatePayload = { ...updates, id: taskId };
       await updateTaskMutation(updatePayload);
       console.log(`Task ${taskId} updated successfully with:`, updates);
+      return { success: true };
     } catch (error) {
       console.error(`Error updating task ${taskId}:`, error);
       return {
@@ -596,7 +421,7 @@ export function useTaskManagement() {
       });
 
       // Clean up any stored reasoning logs for this task
-      ReasoningLogService.deleteLog(id);
+      // ReasoningLogService.deleteLog(id);
 
       return {
         success: true,
