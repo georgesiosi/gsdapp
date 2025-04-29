@@ -116,7 +116,8 @@ function Quadrant({
     <div 
       className={cn(
         "quadrant rounded-lg border shadow-sm hover:shadow-md transition-all", 
-        className
+        className,
+        quadrantId === 'q4' && isAIThinking && 'animate-q4-analyzing'
       )}
       onDragOver={(e: DragEvent) => handleDragOver(e)}
       onDragLeave={(e: DragEvent) => {
@@ -139,12 +140,6 @@ function Quadrant({
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground/80">
             {tasks.length} {quadrantId === "q1" ? "tasks to do now" : quadrantId === "q2" ? "tasks to schedule" : quadrantId === "q3" ? "tasks to delegate" : "tasks to avoid"}
-            {quadrantId === "q4" && isAIThinking && (
-              <span className="inline-flex items-center gap-1 ml-2">
-                <AIThinkingIndicator isThinking={true} className="h-3 w-3" />
-                <span className="text-blue-500">AI thinking</span>
-              </span>
-            )}
           </span>
         </div>
       </div>
