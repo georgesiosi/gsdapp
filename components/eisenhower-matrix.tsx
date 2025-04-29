@@ -8,7 +8,7 @@ import { TaskTypeIndicator } from "@/components/ui/task-type-indicator"
 import { InlineTaskEditor } from "@/components/ui/inline-task-editor"
 import { QuadrantInfoTooltip } from "@/components/ui/quadrant-info-tooltip"
 import { Task, QuadrantKeys } from "@/types/task"
-import { Id } from "@/convex/_generated/dataModel"; 
+import { Id } from "@/convex/_generated/dataModel";
 import { DragEvent } from "react"
 import { Edit2 } from "lucide-react"
 
@@ -17,7 +17,7 @@ type FrontendGoal = {
   _id: Id<"goals">;
   title: string;
   // Add other potential fields if needed for type safety
-}; 
+};
 
 interface QuadrantProps {
   title: string
@@ -32,27 +32,27 @@ interface QuadrantProps {
   onTaskClick?: (task: Task) => void
   className?: string
   isAIThinking?: boolean
-  goals?: FrontendGoal[]; 
+  goals?: FrontendGoal[];
 }
 
-function Quadrant({ 
-  title, 
-  quadrantId, 
-  tasks, 
-  onToggleTask, 
-  onDeleteTask, 
-  onReflectionRequested, 
-  onMoveTask, 
-  onEditTask, 
+function Quadrant({
+  title,
+  quadrantId,
+  tasks,
+  onToggleTask,
+  onDeleteTask,
+  onReflectionRequested,
+  onMoveTask,
+  onEditTask,
   onReorderTasks,
   onTaskClick,
   className,
   isAIThinking,
-  goals, 
+  goals,
 }: QuadrantProps) {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
-  
+
   // Sort tasks by status (active first) and then by order
   const sortedTasks = [...tasks].sort((a, b) => {
     if (a.status !== b.status) {
@@ -60,7 +60,7 @@ function Quadrant({
     }
     return (a.order || 0) - (b.order || 0);
   });
-  
+
   // Drag and drop handlers
   const handleDragStart = (e: DragEvent, taskId: string) => {
     e.stopPropagation();
@@ -68,31 +68,31 @@ function Quadrant({
     e.dataTransfer.setData('application/json', JSON.stringify({ taskId, sourceQuadrant: quadrantId }));
     e.dataTransfer.effectAllowed = 'move';
   };
-  
+
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     try {
       const { sourceQuadrant } = JSON.parse(e.dataTransfer.getData('application/json'));
       e.currentTarget.classList.add(sourceQuadrant === quadrantId ? 'reorder-target' : 'move-target');
       e.dataTransfer.dropEffect = 'move';
     } catch {}
   };
-  
+
   const handleDrop = (e: DragEvent, targetTaskId?: string) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     try {
       const { taskId: draggedId, sourceQuadrant } = JSON.parse(e.dataTransfer.getData('application/json'));
-      
+
       if (!draggedId) return;
-      
+
       if (sourceQuadrant === quadrantId && targetTaskId) {
         const sourceIndex = sortedTasks.findIndex(t => t.id === draggedId);
         const targetIndex = sortedTasks.findIndex(t => t.id === targetTaskId);
-        
+
         if (sourceIndex !== -1 && targetIndex !== -1 && sourceIndex !== targetIndex) {
           onReorderTasks(quadrantId, sourceIndex, targetIndex);
         }
@@ -102,21 +102,22 @@ function Quadrant({
     } catch (error) {
       console.error('Error handling drop:', error);
     }
-    
+
     setDraggedTaskId(null);
     e.currentTarget.classList.remove('reorder-target', 'move-target');
   };
-  
+
   const handleDragEnd = () => {
     setDraggedTaskId(null);
     document.querySelectorAll('.reorder-target, .move-target')
       .forEach(el => el.classList.remove('reorder-target', 'move-target'));
   };
   return (
-    <div 
+    <div
       className={cn(
-        "quadrant rounded-lg border shadow-sm hover:shadow-md transition-all", 
-        className
+        "quadrant rounded-lg border shadow-sm hover:shadow-md transition-all",
+        className,
+        quadrantId === 'q4' && isAIThinking && 'animate-q4-analyzing'
       )}
       onDragOver={(e: DragEvent) => handleDragOver(e)}
       onDragLeave={(e: DragEvent) => {
@@ -139,12 +140,6 @@ function Quadrant({
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground/80">
             {tasks.length} {quadrantId === "q1" ? "tasks to do now" : quadrantId === "q2" ? "tasks to schedule" : quadrantId === "q3" ? "tasks to delegate" : "tasks to avoid"}
-            {quadrantId === "q4" && isAIThinking && (
-              <span className="inline-flex items-center gap-1 ml-2">
-                <AIThinkingIndicator isThinking={true} className="h-3 w-3" />
-                <span className="text-blue-500">AI thinking</span>
-              </span>
-            )}
           </span>
         </div>
       </div>
@@ -164,8 +159,8 @@ function Quadrant({
         ) : (
           <ul className="space-y-2">
             {sortedTasks.map((task) => (
-              <li 
-                key={task.id} 
+              <li
+                key={task.id}
                 className={cn(
                   "task-item flex items-center justify-between p-2 rounded-md transition-colors duration-150 ease-in-out",
                   "group", // Add group for hover effects
@@ -202,7 +197,7 @@ function Quadrant({
                 }}
               >
                 {editingTaskId === task.id ? (
-                  <InlineTaskEditor 
+                  <InlineTaskEditor
                     task={task}
                     onSave={(id, newText) => {
                       onEditTask(id, newText);
@@ -223,8 +218,8 @@ function Quadrant({
                       className="task-checkbox rounded-sm"
                     />
                     <div className="flex items-center space-x-2 flex-grow min-w-0 mr-2">
-                      {/* Task Text and Goal Link */} 
-                      <span 
+                      {/* Task Text and Goal Link */}
+                      <span
                         className={cn(
                           "task-text text-sm transition-colors",
                           task.status === 'completed' ? "line-through text-muted-foreground" : "text-foreground/90 group-hover:text-accent-foreground"
@@ -232,7 +227,7 @@ function Quadrant({
                       >
                         {task.text}
                       </span>
-                      {/* Display Goal Title if linked */} 
+                      {/* Display Goal Title if linked */}
                       {task.goalId && goals && (
                         (() => {
                           const linkedGoal = goals.find(g => g._id.toString() === task.goalId?.toString());
@@ -245,7 +240,7 @@ function Quadrant({
                       )}
                     </div>
 
-                    {/* Badges and Actions */} 
+                    {/* Badges and Actions */}
                     <div className="flex items-center space-x-2 ml-auto flex-shrink-0">
                       <div className="task-actions">
                         <div className="task-action-hover">
@@ -278,11 +273,12 @@ function Quadrant({
                         </button>
                       </div>
                       {task.needsReflection && onReflectionRequested && (
-                        <ReflectionBadge 
+                        <ReflectionBadge
                           onClick={(e) => {
                             e.stopPropagation();
                             onReflectionRequested(task);
                           }}
+                          isThinking={Boolean(isAIThinking && quadrantId === 'q4')}
                         />
                       )}
                     </div>
@@ -299,7 +295,7 @@ function Quadrant({
 
 interface EisenhowerMatrixProps {
   tasks: Task[]
-  goals?: FrontendGoal[]; 
+  goals?: FrontendGoal[];
   onToggleTask: (id: string) => void
   onDeleteTask: (id: string) => void
   onReflectionRequested?: (task: Task) => void
@@ -310,13 +306,13 @@ interface EisenhowerMatrixProps {
   isAIThinking?: boolean
 }
 
-export function EisenhowerMatrix({ 
-  tasks, 
-  goals, 
-  onToggleTask, 
-  onDeleteTask, 
-  onReflectionRequested, 
-  onMoveTask, 
+export function EisenhowerMatrix({
+  tasks,
+  goals,
+  onToggleTask,
+  onDeleteTask,
+  onReflectionRequested,
+  onMoveTask,
   onEditTask,
   onReorderTasks,
   onTaskClick,
@@ -332,7 +328,7 @@ export function EisenhowerMatrix({
       q4: tasks.filter(t => t.quadrant === 'q4')
     };
   }, [tasks]); // Only recalculate when tasks change
-  
+
   // Listen for task updates and force re-renders
   useEffect(() => {
     const handleTaskUpdate = (event: Event) => {
@@ -342,7 +338,7 @@ export function EisenhowerMatrix({
         // The tasksByQuadrant memo will automatically update when tasks prop changes
       }
     };
-    
+
     window.addEventListener('taskUpdated', handleTaskUpdate);
     return () => window.removeEventListener('taskUpdated', handleTaskUpdate);
   }, []);
@@ -362,7 +358,7 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-urgent-important border-destructive/30"
-          goals={goals} 
+          goals={goals}
         />
         <Quadrant
           title="Not Urgent but Important"
@@ -376,7 +372,7 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-not-urgent-important border-blue-500/30"
-          goals={goals} 
+          goals={goals}
         />
         <Quadrant
           title="Urgent but Not Important"
@@ -390,7 +386,7 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-urgent-not-important border-yellow-500/30"
-          goals={goals} 
+          goals={goals}
         />
         <Quadrant
           title="Not Urgent & Not Important"
@@ -404,7 +400,7 @@ export function EisenhowerMatrix({
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-not-urgent-not-important border-muted-foreground/30"
-          goals={goals} 
+          goals={goals}
           isAIThinking={isAIThinking}
         />
       </div>

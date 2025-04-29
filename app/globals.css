@@ -554,3 +554,17 @@ body {
 .velocity-meter.pulse {
   animation: pulse-meter 1s ease-in-out;
 }
+
+@keyframes pulse-border {
+  0%, 100% {
+    border-color: hsl(var(--primary) / 0.5);
+  }
+  50% {
+    border-color: hsl(var(--primary) / 0.9);
+  }
+}
+
+.animate-q4-analyzing {
+  animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  border-style: solid;
+}
