@@ -117,3 +117,8 @@
 - Started with custom components
 - Switched to Shadcn UI (built on Radix UI) for accessibility and consistency
 - Added custom styling and animations for better user experience
+
+### Data Management
+- ✅ Convex Backend Setup
+- ✅ Local Storage to Convex Migration
+- ✅ Task and Reflection Data Models
