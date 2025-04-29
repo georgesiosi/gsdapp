@@ -24,10 +24,9 @@ import { api } from "../convex/_generated/api"
 import { useMutation, useQuery } from "convex/react"
 
 interface TaskManagerProps {
-  tasks: Task[];
 }
 
-export const TaskManager: React.FC<TaskManagerProps> = ({ tasks }) => {
+export const TaskManager: React.FC<TaskManagerProps> = () => {
   const router = useRouter();
   const { toast } = useToast();
   const [taskModalOpen, setTaskModalOpen] = useState(false);
@@ -116,9 +115,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks }) => {
   // Handle AI thinking state changes
   const handleAIThinkingChanged = useCallback((event: Event) => {
     const { detail } = event as CustomEvent;
-    console.log('[DEBUG] AI thinking changed event received:', detail);
     if (detail?.thinking !== undefined) {
-      console.log('[DEBUG] Setting isAIThinking state to:', detail.thinking);
       setIsAIThinking(detail.thinking);
       if (detail.message) {
         toast({
@@ -134,7 +131,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks }) => {
   // Handle AI analysis errors
   const handleAIAnalysisError = useCallback((event: Event) => {
     const { detail } = event as CustomEvent;
-    console.log('[DEBUG] AI analysis error event received:', detail);
     
     // Set AI error state to true
     setAiError(true);
@@ -159,8 +155,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks }) => {
   const handleAIAnalysisComplete = useCallback((event: Event) => {
     const customEvent = event as CustomEvent;
     const detail = customEvent.detail;
-
-    console.log('[DEBUG] AI analysis complete event detail:', detail);
 
     if (detail && detail.taskId && detail.targetQuadrant && detail.taskType) {
       const { taskId, targetQuadrant, taskType, reasoning, message } = detail;
@@ -328,6 +322,40 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks }) => {
       handleUpdateTaskStatus(taskId, task.status === 'completed' ? 'active' : 'completed');
     }
   };
+
+  // Fetch tasks using useQuery
+  const rawTasks = useQuery(api.tasks.getTasks);
+
+  // Map Convex tasks to local Task interface
+  const tasks = useMemo(() => {
+    return (rawTasks ?? []).map((task): Task => {
+      return {
+        ...task,
+        id: task._id.toString(), // Map _id
+        quadrant: task.quadrant as QuadrantKeys, // Cast quadrant
+        taskType: task.taskType as TaskType | undefined, // Cast taskType
+        status: task.status as TaskStatus, // Cast status
+        needsReflection: task.needsReflection ?? false, // Provide default
+        goalId: task.goalId?.toString(), // Map optional goalId
+        // Handle reflection object mapping if necessary
+        reflection: task.reflection ? {
+          ...task.reflection,
+          suggestedQuadrant: task.reflection.suggestedQuadrant as QuadrantKeys | undefined,
+          finalQuadrant: task.reflection.finalQuadrant as QuadrantKeys, // Cast finalQuadrant
+          // Add other reflection properties if needed
+        } : undefined,
+      };
+    });
+  }, [rawTasks]);
+
+  // Handle loading state
+  if (rawTasks === undefined) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <p className="text-muted-foreground">Loading tasks...</p>
+      </div>
+    );
+  }
 
   return (
     <div>

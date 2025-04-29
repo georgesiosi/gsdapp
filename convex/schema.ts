@@ -43,6 +43,7 @@ export default defineSchema({
     showCompletedTasks: v.optional(v.boolean()),
     autoAnalyze: v.optional(v.boolean()),
     syncApiKey: v.optional(v.boolean()),
+    hasCompletedOnboarding: v.optional(v.boolean()), // Added for onboarding status
     taskSettings: v.optional(v.object({
       endOfDayTime: v.string(),
       autoArchiveDelay: v.float64(),

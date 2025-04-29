@@ -181,6 +181,36 @@ export const saveUserPreferences = mutation({
   },
 });
 
+// Mark onboarding as complete for the current user
+export const markOnboardingComplete = mutation({
+  handler: async (ctx) => {
+    const userId = await getAuthenticatedUser(ctx);
+
+    // Get existing preferences
+    const existingPreferences = await ctx.db
+      .query("userPreferences")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+
+    if (existingPreferences) {
+      // Patch the document to set the flag
+      await ctx.db.patch(existingPreferences._id, {
+        hasCompletedOnboarding: true,
+      });
+      console.log(`[DEBUG] Marked onboarding complete for user: ${userId}`);
+      return { success: true };
+    } else {
+      // This case should ideally not happen if a user exists and triggers this,
+      // but logging it helps diagnose issues.
+      console.warn(`[WARN] Tried to mark onboarding complete, but no preferences found for user: ${userId}`);
+      // Optionally, create preferences here if needed, though typically they'd exist.
+      // For now, just return failure or throw error
+      return { success: false, error: "User preferences not found." };
+      // throw new Error("User preferences not found."); 
+    }
+  },
+});
+
 // Delete user preferences
 export const deleteUserPreferences = mutation({
   handler: async (ctx) => {
