@@ -18,7 +18,6 @@ import { ChevronLeft, Download, History, CheckCircle, AlertCircle } from 'lucide
 import Link from 'next/link'
 import { SettingsNav } from '@/components/settings/settings-nav'
 import { recoverFromBackup } from '@/lib/storage'
-import { ConvexTest } from '@/components/convex-test'
 import { api } from '@/convex/_generated/api'
 import {
   Select,
@@ -750,15 +749,6 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">
                     Restore your tasks from a previous backup
                   </p>
-                </div>
-                
-                <div className="flex flex-col gap-4 pt-4 border-t">
-                  <Label>Convex Database Integration Test</Label>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Test the connection to Convex database and verify user authentication.
-                    This will create a test task and verify your user account is properly synced.
-                  </p>
-                  <ConvexTest />
                 </div>
               </div>
             </Card>
