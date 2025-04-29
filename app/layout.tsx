@@ -4,6 +4,7 @@ import Providers from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { DataMigrationDialog } from "@/components/auth/data-migration-dialog";
 import { ClerkProvider } from "@clerk/nextjs";
+import { SmoothScrollHandler } from '@/components/smooth-scroll-handler';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -58,6 +59,7 @@ export default async function RootLayout({
           }}
         >
           <Providers>
+            <SmoothScrollHandler />
             {children}
             <DataMigrationDialog />
             <Toaster />
