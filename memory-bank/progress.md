@@ -38,6 +38,11 @@
 - ✅ Accessibility considerations with Radix UI primitives
 - ✅ Loading states and error handling
 
+### Communication
+- ✅ Email sending capabilities via custom MCP server
+- ✅ Configured with branded sender name "GSDapp"
+- ✅ Integration with Resend API for reliable delivery
+
 ## In Progress Features
 
 ### Ideas Bank

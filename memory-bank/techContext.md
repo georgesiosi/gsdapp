@@ -40,6 +40,11 @@ This document outlines the core technologies, frameworks, and configurations use
 *   `react-confetti`: For visual effects.
 *   `sonner`: For toast notifications.
 *   `chart.js`: For rendering charts.
+*   `resend`: For email sending capabilities via MCP server.
+
+## MCP Servers
+
+*   **Email Sending**: Custom MCP server using Resend API for sending emails. Located at `/Users/georgesiosi/Documents/Cline/MCP/mcp-send-email`. Configured with sender name "GSDapp" and email address "noreply@mail.usegsd.com".
 
 ## Potential Features/Configurations
 
