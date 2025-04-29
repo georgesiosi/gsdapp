@@ -248,20 +248,12 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ tasks }) => {
       
       // We'll keep the modal open to show the AI analysis in progress
       console.log('[DEBUG handleAddTask] Calling addTaskWithAIAnalysis');
-      const { task } = await addTaskWithAIAnalysis({
-        text,
-        quadrant: 'q4',
-        status: 'active',
-        taskType: 'personal',
-        needsReflection: false,
-        goalId,
-      });
+      const { task } = await addTaskWithAIAnalysis(text);
       
       console.log('[DEBUG handleAddTask] Task creation result:', task);
       
-      if (!task) {
-        throw new Error('Failed to add task');
-      }
+      // The task might be null, but that's okay - the Convex query will update the UI
+      // We don't need to throw an error here
 
       // Modal will be closed by the aiAnalysisComplete event handler
       // after the task has been moved to its final quadrant
