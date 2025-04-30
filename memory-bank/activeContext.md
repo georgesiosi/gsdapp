@@ -32,6 +32,11 @@ The GSDApp is currently focused on enhancing the task management experience with
    - Set up Convex for backend data storage and real-time updates
    - Implemented data migration utilities for local storage to Convex
 
+5. **Email Capabilities**:
+   - Set up custom MCP server using Resend API for email sending
+   - Configured with "GSDapp" sender name and verified domain
+   - Enables programmatic email sending directly from the application
+
 ## Next Steps
 
 1. **Ideas Bank Enhancement**:

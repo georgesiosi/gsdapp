@@ -159,7 +159,8 @@ export function useTaskManagement() {
   // Add a new task with AI analysis
   const addTaskWithAIAnalysis = useCallback(async (
     text: string, 
-    initialQuadrant: QuadrantKeys = 'q4' // Default to Q4 if not provided
+    initialQuadrant: QuadrantKeys = 'q4', // Default to Q4 if not provided
+    goalId?: Id<"goals"> // Optional goal ID parameter
   ): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
     
     // Avoid using .trim() directly on text
@@ -191,14 +192,19 @@ export function useTaskManagement() {
       
       console.log("[DEBUG] Calling addTaskMutation with text:", safeText); // <-- Add log 2
       
-      taskId = await addTaskMutation({
+      // Create the task with basic properties
+      const taskData = {
         text: safeText,
-        quadrant: 'q4', // Initially place in Q4
-        status: 'active',
+        quadrant: 'q4' as const, // Explicitly type as 'q4'
+        status: 'active' as const, // Explicitly type as 'active'
         needsReflection: true, // Mark for AI analysis
         createdAt: now,
-        updatedAt: now
-      });
+        updatedAt: now,
+        ...(goalId ? { goalId } : {}) // Include goalId if provided
+      };
+      
+      console.log("[DEBUG] Creating task with data:", taskData, "goalId provided:", !!goalId);
+      taskId = await addTaskMutation(taskData);
 
       if (!taskId) {
         throw new Error("Failed to create task ID.");
@@ -224,23 +230,108 @@ export function useTaskManagement() {
       toast({ title: "Analyzing Task", description: "AI analyzing task placement..." });
 
       console.log("[DEBUG] Calling /api/analyze-reflection"); // <-- Add log 5
-      const response = await fetch("/api/analyze-reflection", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          task: typeof text === 'string' ? text : String(text), // Convert to string safely
-        }),
-      });
+      
+      // Get OpenAI API key from localStorage
+      const apiKey = localStorage.getItem('openai-api-key');
+      console.log("[DEBUG] API Key available?", !!apiKey, apiKey ? apiKey.substring(0, 5) + '...' : 'none');
+      
+      // Prepare request body with all context
+      const requestBody = { 
+        task: typeof text === 'string' ? text : String(text), // Convert to string safely
+        justification: "", // No user justification for initial analysis
+        goal: localStorage.getItem('userGoal') || '',
+        priority: localStorage.getItem('userPriority') || '',
+        currentQuadrant: 'q4', // Default quadrant
+        personalContext: localStorage.getItem('personalContext') || ''
+      };
+      console.log("[DEBUG] Request body:", requestBody);
+      
+      let analysis;
+      try {
+        const response = await fetch("/api/analyze-reflection", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "x-openai-key": apiKey || ''
+          },
+          body: JSON.stringify(requestBody),
+        });
+        
+        // Check response status immediately
+        console.log("[DEBUG] Response status:", response.status, response.statusText);
 
-      console.log("[DEBUG] /api/analyze-reflection response status:", response.status); // <-- Add log 6
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: "Unknown fetch error" }));
+          console.log("[DEBUG] API Error details:", errorData);
+          throw new Error(`API Error (${response.status}): ${errorData.message || response.statusText}`);
+        }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Unknown fetch error" }));
-        throw new Error(`API Error (${response.status}): ${errorData.message || response.statusText}`);
+        // Clone the response for debugging (since response.json() can only be called once)
+        const responseClone = response.clone();
+        const responseText = await responseClone.text();
+        console.log("[DEBUG] Raw response text:", responseText);
+        
+        try {
+          analysis = await response.json();
+          console.log("[DEBUG] AI Analysis Result:", analysis);
+          
+          // Validate required fields
+          if (!analysis) {
+            console.error("[DEBUG] Analysis is null or undefined");
+            throw new Error("Analysis response is empty");
+          }
+          
+          console.log("[DEBUG] Analysis has suggestedQuadrant:", !!analysis.suggestedQuadrant, analysis.suggestedQuadrant);
+          console.log("[DEBUG] Analysis has taskType:", !!analysis.taskType, analysis.taskType);
+          console.log("[DEBUG] Analysis has reasoning:", !!analysis.reasoning, analysis.reasoning?.substring(0, 50));
+          
+          // If we don't have a suggestedQuadrant, use a default
+          if (!analysis.suggestedQuadrant) {
+            console.warn("[DEBUG] No suggestedQuadrant in response, using default q4");
+            analysis.suggestedQuadrant = 'q4';
+          }
+          
+          // If we don't have a taskType, use a default
+          if (!analysis.taskType) {
+            console.warn("[DEBUG] No taskType in response, using default 'personal'");
+            analysis.taskType = 'personal';
+          }
+          
+          // If we don't have reasoning, add a default
+          if (!analysis.reasoning) {
+            console.warn("[DEBUG] No reasoning in response, using default message");
+            analysis.reasoning = "AI analysis completed without detailed reasoning.";
+          }
+          
+        } catch (parseError) {
+          console.error("[DEBUG] Error parsing JSON response:", parseError);
+          console.error("[DEBUG] Response text that failed to parse:", responseText);
+          
+          // Try to recover by parsing the text directly
+          try {
+            analysis = JSON.parse(responseText);
+            console.log("[DEBUG] Successfully parsed response text manually");
+          } catch (secondError) {
+            console.error("[DEBUG] Failed to parse response text manually:", secondError);
+            // Create a fallback analysis object
+            analysis = {
+              suggestedQuadrant: 'q4',
+              taskType: 'personal',
+              reasoning: "Failed to parse AI response. Using default values."
+            };
+          }
+        }
+      } catch (error) {
+        // Handle the error with proper type checking
+        const fetchError = error as Error;
+        console.error("[DEBUG] Fetch error:", fetchError);
+        // Create a fallback analysis object
+        analysis = {
+          suggestedQuadrant: 'q4',
+          taskType: 'personal',
+          reasoning: `API request failed: ${fetchError.message || 'Unknown error'}`
+        };
       }
-
-      const analysis = await response.json();
-      console.log("[DEBUG] AI Analysis Result:", analysis); // <-- Add log 7
 
       // --- Update Task --- 
       const updateTime = new Date().toISOString();
@@ -302,6 +393,7 @@ export function useTaskManagement() {
           createdAt: updateTime,
           updatedAt: updateTime,
           taskType: validatedTaskType, // Include the task type from AI analysis
+          goalId: goalId?.toString(), // Include the goalId if provided
           reflection: {  // Include the reflection with AI reasoning
             justification: "Initial AI analysis.",
             aiAnalysis: reasoning,

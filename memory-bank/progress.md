@@ -38,6 +38,11 @@
 - ✅ Accessibility considerations with Radix UI primitives
 - ✅ Loading states and error handling
 
+### Communication
+- ✅ Email sending capabilities via custom MCP server
+- ✅ Configured with branded sender name "GSDapp"
+- ✅ Integration with Resend API for reliable delivery
+
 ## In Progress Features
 
 ### Ideas Bank
@@ -112,3 +117,8 @@
 - Started with custom components
 - Switched to Shadcn UI (built on Radix UI) for accessibility and consistency
 - Added custom styling and animations for better user experience
+
+### Data Management
+- ✅ Convex Backend Setup
+- ✅ Local Storage to Convex Migration
+- ✅ Task and Reflection Data Models

@@ -4,8 +4,13 @@
 // const getEnvVar = (name: string) => 
 //   process.env[name] || process.env[`CONTEXT_STAGING_${name}`] || process.env[`CONTEXT_PRODUCTION_${name}`];
 
-// Get Clerk issuer URL directly from expected production environment variable
-const clerkIssuerUrl = process.env.CLERK_JWT_ISSUER_DOMAIN;
+// Use environment variable for production/staging, fallback to dev URL for local
+const clerkIssuerUrl = process.env.CLERK_JWT_ISSUER_DOMAIN || "https://live-glider-97.clerk.accounts.dev";
+
+if (!clerkIssuerUrl) {
+  // This should technically not happen with the fallback, but good practice
+  throw new Error("Clerk Issuer URL is missing. Set CLERK_JWT_ISSUER_DOMAIN in your Convex deployment environment variables.");
+}
 
 export default {
   providers: [{

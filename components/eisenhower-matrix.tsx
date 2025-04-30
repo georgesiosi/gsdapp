@@ -230,7 +230,18 @@ function Quadrant({
                       {/* Display Goal Title if linked */}
                       {task.goalId && goals && (
                         (() => {
+                          console.log('[DEBUG] Task goalId:', task.goalId, 'typeof:', typeof task.goalId);
+                          console.log('[DEBUG] Available goals:', goals);
                           const linkedGoal = goals.find(g => g._id.toString() === task.goalId?.toString());
+                          if (!linkedGoal) {
+                            console.log('[DEBUG] No matching goal found for task:', task.text, 'goalId:', task.goalId);
+                            // Try a more lenient comparison
+                            const lenientGoal = goals.find(g => 
+                              String(g._id).includes(String(task.goalId)) || 
+                              String(task.goalId).includes(String(g._id))
+                            );
+                            console.log('[DEBUG] Lenient match found?', !!lenientGoal, lenientGoal?._id);
+                          }
                           return linkedGoal ? (
                             <span className="ml-2 text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded">
                               🎯 {linkedGoal.title}

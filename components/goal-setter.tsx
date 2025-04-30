@@ -118,8 +118,9 @@ export function GoalSetter() {
     localStorage.setItem("goalSectionCollapsed", JSON.stringify(newState));
   };
 
+  // Function to render a single goal item with adjusted styling for inverted parent
   const renderGoalItem = (goal: NonNullable<typeof activeGoalsData>[number]) => (
-    <div key={goal._id.toString()} className="flex items-center justify-between p-3 bg-card rounded-lg shadow-sm border border-border mb-2">
+    <div key={goal._id.toString()} className="flex items-center justify-between p-3 mb-2 relative"> {/* Removed card styles, added relative for potential absolute positioning needs like delete confirm */}
       {editingGoalId === goal._id ? (
         // Editing View
         <div className="flex-grow flex items-center space-x-2 mr-2">
@@ -197,11 +198,12 @@ export function GoalSetter() {
           </div>
         </>
       )}
-      {/* Delete Confirmation */} 
-      {confirmDeleteId === goal._id && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center rounded-lg p-2 z-50">
-           <div className="flex flex-col items-center space-y-2">
-             <p className="text-sm font-medium text-center">Delete this goal?</p>
+      {/* Delete Confirmation - Styles might need review after parent inversion */} 
+      {/* Adjusting delete confirmation appearance slightly */}
+      {confirmDeleteId === goal._id && ( 
+        <div className="absolute inset-0 bg-black/70 dark:bg-white/70 backdrop-blur-sm flex items-center justify-center rounded-lg p-2 z-50">
+           <div className="flex flex-col items-center space-y-2 p-4 bg-card rounded-md shadow-lg"> {/* Re-introduce card background for contrast here */} 
+             <p className="text-sm font-medium text-center text-card-foreground">Delete this goal?</p>
              <div className="flex space-x-2">
                <Button size="sm" variant="destructive" onClick={() => handleDeleteGoal(goal._id)}>Confirm</Button>
                <Button size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
@@ -213,7 +215,7 @@ export function GoalSetter() {
   );
 
   return (
-    <div className="border rounded-lg shadow-sm mb-6 bg-card text-card-foreground">
+    <div className="border rounded-lg shadow-sm mb-6 bg-black text-gray-100 dark:bg-white dark:text-gray-900">
       <div className="flex justify-between items-center p-4 cursor-pointer" onClick={toggleCollapse}>
         <h2 className="text-lg font-semibold">Current Goals</h2>
         <div className="flex items-center space-x-1">

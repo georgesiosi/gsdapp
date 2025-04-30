@@ -1,17 +1,16 @@
+"use client";
+
 import React, { useState } from 'react';
 import { AppSidebar } from './app-sidebar';
-import { AppHeader } from './app-header'; // Import AppHeader
-import { cn } from '@/lib/utils'; // Correct import for cn utility
-import { Task } from '@/types/task'; // Import Task type
+import { AppHeader } from './app-header'; 
+import { cn } from '@/lib/utils'; 
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  tasks: Task[];
 }
 
 export function DashboardLayout({ 
-  children,
-  tasks
+  children
 }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -36,10 +35,10 @@ export function DashboardLayout({
         <AppHeader
           isSidebarOpen={isSidebarOpen} // Pass state down
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} // Toggle function
-          tasks={tasks} // Pass tasks down
         />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        {/* Apply smooth scroll to the main content area */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 scroll-smooth">
           {children}
         </main>
       </div>

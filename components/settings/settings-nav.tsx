@@ -12,6 +12,11 @@ const sections = [
     hash: "#user-preferences"
   },
   {
+    id: "display-preferences",
+    label: "Display Preferences",
+    hash: "#display-preferences"
+  },
+  {
     id: "ai-integration",
     label: "AI Integration",
     hash: "#ai-integration"
