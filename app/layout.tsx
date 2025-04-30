@@ -40,7 +40,7 @@ export default async function RootLayout({
         <script
           defer
           data-website-id="681196f4a5f02013a88952dc"
-          data-domain="usegsd.com"
+          data-domain="app.usegsd.com"
           src="https://datafa.st/js/script.js">
         </script>
       </head>
