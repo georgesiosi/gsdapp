@@ -133,6 +133,8 @@ export default function SettingsPage() {
 
   const [showSidebars, setShowSidebars] = useLocalStorage<boolean>('showEisenhowerSidebars', true);
 
+  const [showGoalsSection, setShowGoalsSection] = useLocalStorage<boolean>('showGoalsSection', true);
+
   useEffect(() => {
     setMounted(true)
     // Initialize local personal context from profile if available
@@ -455,10 +457,18 @@ export default function SettingsPage() {
                 </Button>
               </div>
 
+            </div>
+          </Card>
+
+          <Card className="p-6 mb-6" id="display-preferences">
+            <h2 className="text-xl font-semibold mb-4">Display Preferences</h2>
+            <div className="space-y-6">
+              {/* Moved Eisenhower Matrix Sidebars Toggle */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <Label>Eisenhower Matrix Sidebars</Label>
+                  <Label htmlFor="showSidebarsSwitch">Eisenhower Matrix Sidebars</Label>
                   <Switch
+                    id="showSidebarsSwitch"
                     checked={showSidebars}
                     onCheckedChange={setShowSidebars}
                   />
@@ -468,6 +478,20 @@ export default function SettingsPage() {
                 </p>
               </div>
 
+              {/* New Show Current Goals Section Toggle */}
+              <div className="flex flex-col gap-2 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="showGoalsSwitch">Show Current Goals Section</Label>
+                  <Switch
+                    id="showGoalsSwitch"
+                    checked={showGoalsSection} 
+                    onCheckedChange={setShowGoalsSection} // Updates localStorage directly
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Show or hide the 'Current Goals' section above the Eisenhower Matrix.
+                </p>
+              </div>
             </div>
           </Card>
 

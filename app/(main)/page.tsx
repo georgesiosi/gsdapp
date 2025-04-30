@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useMemo } from "react"
+import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import useLocalStorage from "@/hooks/useLocalStorage"
@@ -10,10 +10,12 @@ import { GoalSetter } from "@/components/goal-setter"
 export default function HomePage() {
   const { isLoaded, isSignedIn, user } = useUser()
   const userId = user?.id;
-  const [showEisenhowerSidebars] = useLocalStorage<boolean>('showEisenhowerSidebars', true);
   const router = useRouter()
+  const [isClient, setIsClient] = useState(false);
+  const [showGoalsSectionSetting] = useLocalStorage<boolean>('showGoalsSection', true);
 
   useEffect(() => {
+    setIsClient(true);
     // Only run this check after Clerk has loaded the user state
     if (isLoaded && !isSignedIn) {
       router.push('/sign-in')
@@ -37,7 +39,8 @@ export default function HomePage() {
   // Show the full app UI once authenticated or in dev mode
   return (
     <div className="space-y-6">
-      <GoalSetter />
+      {/* Conditionally render GoalSetter based on setting and client mount */}
+      {isClient && showGoalsSectionSetting && <GoalSetter />}
       {/* TaskManager now fetches its own data if needed, or refactor it */}
       <TaskManager />
     </div>
