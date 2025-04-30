@@ -1,21 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Target, Settings, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
-import { toast } from "sonner";
-import { useUser } from "@clerk/clerk-react";
-import { OnboardingModal } from "./onboarding-modal";
 
 interface AppSidebarProps {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  isAdmin: boolean | undefined;
+  isDevelopment: boolean;
+  openDevModal: () => void;
 }
 
 const navItems = [
@@ -24,47 +21,18 @@ const navItems = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
+export function AppSidebar({ 
+  isOpen, 
+  setIsOpen, 
+  isAdmin, 
+  isDevelopment, 
+  openDevModal 
+}: AppSidebarProps) {
   const pathname = usePathname();
-  const { user } = useUser();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const preferences = useQuery(api.userPreferences.getUserPreferences);
-  const markOnboardingComplete = useMutation(api.userPreferences.markOnboardingComplete);
-
-  const [showInitialOnboarding, setShowInitialOnboarding] = useState(false);
-
-  const adminEmails = ["georges@siosism.com", "george@faiacorp.com"];
-  const isAdmin = user?.primaryEmailAddress?.emailAddress && adminEmails.includes(user.primaryEmailAddress.emailAddress);
-  const isDevelopment = process.env.NODE_ENV === 'development';
-
-  useEffect(() => {
-    if (preferences !== undefined && !showInitialOnboarding && !isModalOpen) {
-      if (!preferences?.hasCompletedOnboarding) {
-        console.log('[DEBUG] User needs onboarding, showing modal.');
-        setShowInitialOnboarding(true);
-      }
-    }
-  }, [preferences, showInitialOnboarding, isModalOpen]);
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    if (showInitialOnboarding) {
-      setShowInitialOnboarding(false);
-      markOnboardingComplete()
-        .then(() => {
-          console.log('[DEBUG] Successfully marked onboarding complete via mutation.');
-        })
-        .catch((error) => {
-          console.error('Failed to mark onboarding complete:', error);
-          toast.error('Failed to save onboarding status. Please try again.');
-        });
-    }
-  };
 
   const handleGenerateScorecard = async () => {
     // TODO: Implement the actual logic using addScorecard if needed
-    toast.info("Generate Scorecard clicked (logic pending)");
+    // toast.info("Generate Scorecard clicked (logic pending)");
   };
 
   return (
@@ -110,21 +78,16 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
         </ul>
       </nav>
       <div className="mt-auto flex flex-col space-y-2">
-        {/* Admin Only Button to Trigger Onboarding Modal in Dev */}
         {isAdmin && isDevelopment && (
           <Button 
             variant="outline" 
             className="w-full justify-start gap-2" 
-            onClick={() => setIsModalOpen(true)} 
+            onClick={openDevModal} 
           >
             <span>Show Onboarding (Dev)</span> 
           </Button>
         )}
       </div>
-      <OnboardingModal 
-        isOpen={isModalOpen || showInitialOnboarding} 
-        onClose={handleCloseModal} 
-      />
     </aside>
   );
 }
