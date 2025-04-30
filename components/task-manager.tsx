@@ -233,7 +233,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   const handleAddTask = async (text: string, goalId?: Id<"goals">) => {
     if (!text.trim()) return;
     
-    console.log('[DEBUG handleAddTask] Starting task creation:', text);
+    console.log('[DEBUG handleAddTask] Starting task creation:', text, 'with goalId:', goalId);
     
     try {
       // Keep modal open while AI is thinking
@@ -242,9 +242,10 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       
       // We'll keep the modal open to show the AI analysis in progress
       console.log('[DEBUG handleAddTask] Calling addTaskWithAIAnalysis');
-      const { task } = await addTaskWithAIAnalysis(text);
+      // Pass the goalId parameter to addTaskWithAIAnalysis
+      const { task } = await addTaskWithAIAnalysis(text, 'q4', goalId);
       
-      console.log('[DEBUG handleAddTask] Task creation result:', task);
+      console.log('[DEBUG handleAddTask] Task creation result:', task, 'goalId included:', !!goalId);
       
       // The task might be null, but that's okay - the Convex query will update the UI
       // We don't need to throw an error here
