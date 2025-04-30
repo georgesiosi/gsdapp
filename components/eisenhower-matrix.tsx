@@ -356,7 +356,8 @@ export function EisenhowerMatrix({
 
   return (
     <div className="eisenhower-matrix">
-      <div className="grid grid-cols-2 gap-4">
+      {/* Change grid layout to be responsive */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Quadrant
           title="Urgent & Important"
           quadrantId="q1"

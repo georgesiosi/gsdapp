@@ -381,7 +381,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         </Button>
       </div>
 
-      <div className="mt-4 relative">
+      <div className="mt-4 relative pb-10">
         <EisenhowerMatrix
           tasks={tasks
             .filter(t => t.status === 'active' || 
@@ -433,9 +433,11 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       </div>
 
       {/* Velocity Meters */}
-      <VelocityMeters 
-        tasks={tasks.filter(t => t.status === 'active' || t.status === 'completed')} 
-      />
+      <div className="mt-6"> 
+        <VelocityMeters 
+          tasks={tasks.filter(t => t.status === 'active' || t.status === 'completed')} 
+        />
+      </div>
     </div>
   );
 }

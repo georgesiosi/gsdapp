@@ -143,8 +143,8 @@ export const VelocityMeter = memo(({
   return (
     <div 
       className={cn(
-        "velocity-meter fixed top-0 bottom-0 w-5 flex flex-col items-center justify-end transition-all duration-300 z-10",
-        position === "left" ? "left-0 rounded-r-md" : "right-0 rounded-l-md",
+        "velocity-meter fixed top-14 bottom-0 w-5 flex flex-col items-center justify-end transition-all duration-300 z-10",
+        position === "left" ? "left-0" : "right-0",
         isExpanded ? "w-16" : "hover:w-8",
         isPulsing && "pulse",
         colorScheme.muted,
