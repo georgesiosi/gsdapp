@@ -23,6 +23,7 @@ export function DashboardLayout({
   const preferences = useQuery(api.userPreferences.getUserPreferences);
   const markOnboardingComplete = useMutation(api.userPreferences.markOnboardingComplete);
   const [showInitialOnboarding, setShowInitialOnboarding] = useState(false);
+  const [hasAttemptedInitialClose, setHasAttemptedInitialClose] = useState(false);
   
   const adminEmails = ["georges@siosism.com", "george@faiacorp.com"];
   // Ensure isAdmin is always boolean or undefined (!! handles '', null, undefined correctly)
@@ -30,19 +31,20 @@ export function DashboardLayout({
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   useEffect(() => {
-    if (preferences !== undefined && !showInitialOnboarding && !isModalOpen) {
+    if (preferences !== undefined && !showInitialOnboarding && !isModalOpen && !hasAttemptedInitialClose) {
       if (!preferences?.hasCompletedOnboarding) {
         console.log('[DEBUG] User needs onboarding, showing modal.');
         setShowInitialOnboarding(true);
       }
     }
-  }, [preferences, showInitialOnboarding, isModalOpen]);
+  }, [preferences, showInitialOnboarding, isModalOpen, hasAttemptedInitialClose]);
 
   const handleCloseModal = () => {
     console.log("[DEBUG] handleCloseModal triggered in DashboardLayout!"); 
     setIsModalOpen(false);
     if (showInitialOnboarding) {
       setShowInitialOnboarding(false);
+      setHasAttemptedInitialClose(true);
       markOnboardingComplete()
         .then(() => {
           console.log('[DEBUG] Successfully marked onboarding complete via mutation.');
@@ -89,7 +91,7 @@ export function DashboardLayout({
       )}
 
       <OnboardingModal 
-        isOpen={isModalOpen || showInitialOnboarding} 
+        isOpen={isModalOpen || (showInitialOnboarding && !hasAttemptedInitialClose)} 
         onClose={handleCloseModal} 
       />
     </div>
