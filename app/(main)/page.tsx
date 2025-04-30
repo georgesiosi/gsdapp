@@ -38,7 +38,7 @@ export default function HomePage() {
 
   // Show the full app UI once authenticated or in dev mode
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-6">
       {/* Conditionally render GoalSetter based on setting and client mount */}
       {isClient && showGoalsSectionSetting && <GoalSetter />}
       {/* TaskManager now fetches its own data if needed, or refactor it */}
