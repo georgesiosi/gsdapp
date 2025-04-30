@@ -35,6 +35,15 @@ export default async function RootLayout({
   
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Add datafa.st analytics script */}
+        <script
+          defer
+          data-website-id="681196f4a5f02013a88952dc"
+          data-domain="usegsd.com"
+          src="https://datafa.st/js/script.js">
+        </script>
+      </head>
       <body className={inter.className}>
         {/* Staging environment indicator */}
         {isStaging && (
