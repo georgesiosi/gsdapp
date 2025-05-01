@@ -193,20 +193,36 @@ export const markOnboardingComplete = mutation({
       .first();
 
     if (existingPreferences) {
-      // Patch the document to set the flag
+      // Preferences exist, patch the document
+      if (existingPreferences.hasCompletedOnboarding) {
+        console.log(`[DEBUG] Onboarding already marked complete for user: ${userId}`);
+        return { success: true }; // Already done, no need to patch again
+      }
       await ctx.db.patch(existingPreferences._id, {
         hasCompletedOnboarding: true,
       });
-      console.log(`[DEBUG] Marked onboarding complete for user: ${userId}`);
+      console.log(`[DEBUG] Marked onboarding complete for existing user: ${userId}`);
       return { success: true };
     } else {
-      // This case should ideally not happen if a user exists and triggers this,
-      // but logging it helps diagnose issues.
-      console.warn(`[WARN] Tried to mark onboarding complete, but no preferences found for user: ${userId}`);
-      // Optionally, create preferences here if needed, though typically they'd exist.
-      // For now, just return failure or throw error
-      return { success: false, error: "User preferences not found." };
-      // throw new Error("User preferences not found."); 
+      // Preferences do not exist, create them
+      console.log(`[DEBUG] No preferences found for user: ${userId}. Creating new preferences with onboarding complete.`);
+      await ctx.db.insert("userPreferences", {
+        userId: userId,
+        hasCompletedOnboarding: true,
+        // Add default values for other essential fields if necessary
+        // theme: 'system', // Example default
+        // showCompletedTasks: true, // Example default
+        // autoAnalyze: false, // Example default
+        // syncApiKey: true, // Example default
+        // taskSettings: { // Example defaults
+        //   endOfDayTime: "17:00",
+        //   autoArchiveDelay: 7,
+        //   gracePeriod: 2,
+        //   retainRecurringTasks: true,
+        // }
+      });
+      console.log(`[DEBUG] Created preferences and marked onboarding complete for new user: ${userId}`);
+      return { success: true };
     }
   },
 });
