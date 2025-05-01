@@ -222,8 +222,9 @@ export default function TaskDetailPage() {
     <div className="container mx-auto p-4 md:p-6">
       {/* Header: Back Button & Action Buttons */}
       <div className="flex justify-between items-center mb-4 md:mb-6">
-        <Link href="/tasks" title="Back to Task List">
-          <Button variant="outline" size="icon"> 
+        {/* Changed href to '/' */}
+        <Link href="/" title="Back to Task List">
+          <Button variant="outline" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
