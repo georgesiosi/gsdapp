@@ -81,6 +81,7 @@ export const addTask = mutation({
     createdAt: v.string(),
     updatedAt: v.string(),
     goalId: v.optional(v.id("goals")), // Add goalId argument
+    dueDate: v.optional(v.string()), // Add dueDate argument
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -104,7 +105,8 @@ export const addTask = mutation({
       createdAt,
       updatedAt,
       needsReflection: args.needsReflection ?? false,
-      goalId: args.goalId // Include goalId in the insert
+      goalId: args.goalId, // Include goalId in the insert
+      dueDate: args.dueDate // Include dueDate in the insert
     });
   },
 });
@@ -137,6 +139,7 @@ export const updateTask = mutation({
     createdAt: v.optional(v.string()),
     updatedAt: v.optional(v.string()),
     goalId: v.optional(v.id("goals")), // Add goalId argument
+    dueDate: v.optional(v.string()), // Add dueDate argument
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -151,31 +154,32 @@ export const updateTask = mutation({
       throw new Error("Not authorized to update this task");
     }
 
-    // Construct the update object dynamically
-    const updates: any = {};
-    if (args.text !== undefined) updates.text = args.text;
-    if (args.quadrant !== undefined) updates.quadrant = args.quadrant;
-    if (args.taskType !== undefined) updates.taskType = args.taskType;
-    if (args.needsReflection !== undefined) updates.needsReflection = args.needsReflection;
-    if (args.status !== undefined) updates.status = args.status;
-    if (args.description !== undefined) updates.description = args.description;
-    if (args.reflection !== undefined) updates.reflection = args.reflection;
-    if (args.completedAt !== undefined) updates.completedAt = args.completedAt;
-    if (args.order !== undefined) updates.order = args.order;
-    if (args.createdAt !== undefined) updates.createdAt = args.createdAt;
-    if (args.goalId !== undefined) updates.goalId = args.goalId; // Include goalId if provided
+    // Prepare the update data object selectively
+    const updateData: any = {};
+    if (args.text !== undefined) updateData.text = args.text;
+    if (args.quadrant !== undefined) updateData.quadrant = args.quadrant;
+    if (args.taskType !== undefined) updateData.taskType = args.taskType;
+    if (args.needsReflection !== undefined) updateData.needsReflection = args.needsReflection;
+    if (args.status !== undefined) updateData.status = args.status;
+    if (args.description !== undefined) updateData.description = args.description;
+    if (args.reflection !== undefined) updateData.reflection = args.reflection;
+    if (args.completedAt !== undefined) updateData.completedAt = args.completedAt;
+    if (args.order !== undefined) updateData.order = args.order;
+    if (args.createdAt !== undefined) updateData.createdAt = args.createdAt;
+    if (args.goalId !== undefined) updateData.goalId = args.goalId; // Include goalId in update
+    if (args.dueDate !== undefined) updateData.dueDate = args.dueDate; // Include dueDate in update
 
-    // Always update the 'updatedAt' timestamp
-    updates.updatedAt = new Date().toISOString();
+    // Always update the updatedAt timestamp
+    updateData.updatedAt = new Date().toISOString();
 
     // Perform the patch operation
-    await ctx.db.patch(args.id, updates);
+    await ctx.db.patch(args.id, updateData);
 
     return { 
       success: true,
       message: "Task updated successfully",
       id: args.id.toString(),
-      timestamp: updates.updatedAt
+      timestamp: updateData.updatedAt
     };
   },
 });

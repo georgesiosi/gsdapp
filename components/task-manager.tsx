@@ -230,10 +230,10 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     }
   };
 
-  const handleAddTask = async (text: string, goalId?: Id<"goals">) => {
+  const handleAddTask = async (text: string, goalId?: Id<"goals">, dueDate?: string) => {
     if (!text.trim()) return;
     
-    console.log('[DEBUG handleAddTask] Starting task creation:', text, 'with goalId:', goalId);
+    console.log('[DEBUG handleAddTask] Starting task creation:', text, 'with goalId:', goalId, 'dueDate:', dueDate);
     
     try {
       // Keep modal open while AI is thinking
@@ -242,8 +242,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       
       // We'll keep the modal open to show the AI analysis in progress
       console.log('[DEBUG handleAddTask] Calling addTaskWithAIAnalysis');
-      // Pass the goalId parameter to addTaskWithAIAnalysis
-      const { task } = await addTaskWithAIAnalysis(text, 'q4', goalId);
+      // Pass dueDate to the hook function
+      const { task } = await addTaskWithAIAnalysis(text, undefined, goalId, dueDate);
       
       console.log('[DEBUG handleAddTask] Task creation result:', task, 'goalId included:', !!goalId);
       

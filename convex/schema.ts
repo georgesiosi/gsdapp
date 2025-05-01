@@ -25,6 +25,7 @@ export default defineSchema({
     createdAt: v.string(), // ISO string of when the task was created
     updatedAt: v.string(), // ISO string of when the task was last updated
     goalId: v.optional(v.id("goals")), // Add optional link to goals table
+    dueDate: v.optional(v.string()), // ISO string for the task deadline
   }).index("by_user", ["userId"]),
   
   // Ideas table

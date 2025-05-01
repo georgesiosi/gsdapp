@@ -1,4 +1,4 @@
-import { Id } from "../convex/_generated/dataModel";
+import { Id } from "@/convex/_generated/dataModel";
 
 // Task quadrant types
 export type QuadrantKeys = 'q1' | 'q2' | 'q3' | 'q4';
@@ -25,7 +25,7 @@ export type TaskStatus = 'active' | 'completed';
  */
 export interface Task {
   /** Unique identifier for the task */
-  id: string;
+  id: Id<"tasks">;
   /** Task title or short description */
   text: string;
   /** Detailed description of the task */
@@ -54,6 +54,8 @@ export interface Task {
   createdAt: string;
   /** ISO string of when the task was last updated */
   updatedAt: string;
+  /** Optional due date as ISO string */
+  dueDate?: string;
 }
 
 /**

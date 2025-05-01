@@ -31,8 +31,8 @@ export type NewTask = {
 const adaptConvexTask = (convexTask: ConvexTask): Task => {
   return {
     ...convexTask,
-    id: convexTask._id.toString(), // Convert Convex Id to string
-    goalId: convexTask.goalId?.toString(), // Convert optional Convex Id to string
+    id: convexTask._id, // Keep as Id<"tasks">
+    goalId: convexTask.goalId, // Keep as Id<"goals"> | undefined
     // Ensure quadrant, taskType, status are correctly typed if needed
     quadrant: convexTask.quadrant as QuadrantKeys,
     taskType: convexTask.taskType as TaskOrIdeaType, // Use TaskOrIdeaType if applicable
@@ -160,7 +160,8 @@ export function useTaskManagement() {
   const addTaskWithAIAnalysis = useCallback(async (
     text: string, 
     initialQuadrant: QuadrantKeys = 'q4', // Default to Q4 if not provided
-    goalId?: Id<"goals"> // Optional goal ID parameter
+    goalId?: Id<"goals">, // Optional goal ID parameter
+    dueDate?: string // Optional due date parameter
   ): Promise<{ task: Task | null, isAnalyzing: boolean }> => {
     
     // Avoid using .trim() directly on text
@@ -200,7 +201,8 @@ export function useTaskManagement() {
         needsReflection: true, // Mark for AI analysis
         createdAt: now,
         updatedAt: now,
-        ...(goalId ? { goalId } : {}) // Include goalId if provided
+        ...(goalId ? { goalId } : {}), // Include goalId if provided
+        ...(dueDate ? { dueDate } : {}) // Include dueDate if provided
       };
       
       console.log("[DEBUG] Creating task with data:", taskData, "goalId provided:", !!goalId);
@@ -383,17 +385,17 @@ export function useTaskManagement() {
       // Create a basic task object to return with all necessary properties
       if (taskId) {
         newTask = {
-          id: taskId.toString(),
+          id: taskId, // Keep as Id<"tasks">
           text: safeText,
           quadrant: validatedQuadrant || 'q4',
           status: 'active',
           needsReflection: false,
-          userId: userId || '',
-          _creationTime: Date.now(),
+          userId: userId || '', // Ensure userId is handled (assuming it's part of ConvexTask or available)
+          _creationTime: Date.now(), // Assuming _creationTime is part of ConvexTask
           createdAt: updateTime,
           updatedAt: updateTime,
           taskType: validatedTaskType, // Include the task type from AI analysis
-          goalId: goalId?.toString(), // Include the goalId if provided
+          goalId: goalId, // Keep as Id<"goals"> | undefined
           reflection: {  // Include the reflection with AI reasoning
             justification: "Initial AI analysis.",
             aiAnalysis: reasoning,
@@ -480,12 +482,19 @@ export function useTaskManagement() {
     status?: TaskStatus;
     description?: string;
     goalId?: Id<"goals"> | undefined; // Explicitly include optional goalId
+    dueDate?: string | null; // Add dueDate here
   }): Promise<{ success: boolean, error?: string }> => {
+    console.log(`[DEBUG] updateTask hook called for ${taskId} with updates:`, updates);
     try {
-      // Ensure goalId is included correctly, even if undefined
-      const updatePayload = { ...updates, id: taskId };
-      await updateTaskMutation(updatePayload);
-      console.log(`Task ${taskId} updated successfully with:`, updates);
+      // Ensure dueDate is undefined if null
+      const finalUpdates = {
+        ...updates,
+        dueDate: updates.dueDate === null ? undefined : updates.dueDate,
+      };
+      await updateTaskMutation({ id: taskId, ...finalUpdates }); // <-- Use finalUpdates
+      console.log(`[DEBUG] Task ${taskId} updated successfully via hook.`);
+      // Optionally trigger a manual refresh or rely on Convex reactivity
+      // refreshTasks(); // Consider if needed
       return { success: true };
     } catch (error) {
       console.error(`Error updating task ${taskId}:`, error);

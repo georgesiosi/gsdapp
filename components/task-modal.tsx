@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { format } from "date-fns"
 import { 
   Dialog, 
   DialogContent, 
@@ -23,11 +24,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface TaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddTask: (text: string, goalId?: Id<"goals">) => void
+  onAddTask: (text: string, goalId?: Id<"goals">, dueDate?: string) => void
   onDeleteTask?: (taskId: Id<"tasks">) => void
   aiReasoning?: string
   targetQuadrant?: string
@@ -38,6 +40,7 @@ interface TaskModalProps {
 export function TaskModal({ open, onOpenChange, onAddTask, onDeleteTask, aiReasoning, targetQuadrant, aiError = false, availableGoals }: TaskModalProps) {
   const [newTask, setNewTask] = useState("")
   const [selectedGoalId, setSelectedGoalId] = useState<string>("none");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const activeGoals = useQuery(api.goals.getActiveGoals);
@@ -57,6 +60,7 @@ export function TaskModal({ open, onOpenChange, onAddTask, onDeleteTask, aiReaso
     if (open) {
       setNewTask("")
       setSelectedGoalId("none");
+      setDueDate(undefined);
       setIsSubmitting(false)
     }
   }, [open])
@@ -67,7 +71,8 @@ export function TaskModal({ open, onOpenChange, onAddTask, onDeleteTask, aiReaso
       setIsSubmitting(true)
       console.log('[DEBUG] Submitting task:', newTask.trim());
       const goalIdToSubmit = selectedGoalId === "none" ? undefined : selectedGoalId as Id<"goals">;
-      onAddTask(newTask.trim(), goalIdToSubmit); 
+      const formattedDueDate = dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined;
+      onAddTask(newTask.trim(), goalIdToSubmit, formattedDueDate);
       onOpenChange(false)
       setNewTask("")
       setIsSubmitting(false)
@@ -127,6 +132,10 @@ export function TaskModal({ open, onOpenChange, onAddTask, onDeleteTask, aiReaso
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="due-date">Due Date (Optional)</Label>
+                <DatePicker date={dueDate} setDate={setDueDate} />
               </div>
               <TaskCreationSuggestions taskText={newTask} />
             </div>
