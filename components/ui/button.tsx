@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -57,13 +58,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={loading || props.disabled}
         {...props}
       >
-        <span className={cn("flex items-center gap-2", loading && "opacity-0")}>
-          {children}
-        </span>
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-foreground" />
-          </div>
+        {asChild ? (
+          children
+        ) : (
+          <span className={cn("flex items-center gap-2", loading && "opacity-0")}>
+            {children}
+          </span>
+        )}
+        {/* Only render internal spinner if NOT using asChild */}
+        {!asChild && loading && (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </span>
         )}
       </Comp>
     )
