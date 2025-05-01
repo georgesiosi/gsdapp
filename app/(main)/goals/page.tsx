@@ -35,7 +35,7 @@ export default function GoalsPage() {
 
       {rawGoalsList && rawGoalsList.length > 0 && (
         <div className="space-y-4">
-          {rawGoalsList.map((goal) => (
+          {rawGoalsList.map((goal: Doc<"goals">) => (
             <Card key={goal._id.toString()}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-lg font-medium">

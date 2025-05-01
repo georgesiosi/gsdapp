@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, ChangeEvent } from 'react'
 import { useSettings } from '@/hooks/use-settings'
 import { useProfile } from '@/hooks/use-profile'
 import useLocalStorage from '@/hooks/useLocalStorage';
@@ -373,7 +373,7 @@ export default function SettingsPage() {
                 <Label htmlFor="theme">Theme</Label>
                 <Select
                   value={settings.theme || 'system'}
-                  onValueChange={(value) => updateSettings({
+                  onValueChange={(value: string) => updateSettings({
                     ...settings,
                     theme: value as 'light' | 'dark' | 'system',
                   })}
@@ -399,7 +399,7 @@ export default function SettingsPage() {
                   placeholder="Share your context, priorities, and what makes tasks urgent or important to you..."
                   className="min-h-[160px] resize-y"
                   value={localPersonalContext}
-                  onChange={(e) => {
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                     const newValue = e.target.value;
                     setLocalPersonalContext(newValue);
                     
@@ -470,7 +470,7 @@ export default function SettingsPage() {
                   <Switch
                     id="showSidebarsSwitch"
                     checked={showSidebars}
-                    onCheckedChange={setShowSidebars}
+                    onCheckedChange={(checked: boolean) => setShowSidebars(checked)}
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -485,7 +485,7 @@ export default function SettingsPage() {
                   <Switch
                     id="showGoalsSwitch"
                     checked={showGoalsSection} 
-                    onCheckedChange={setShowGoalsSection} // Updates localStorage directly
+                    onCheckedChange={(checked: boolean) => setShowGoalsSection(checked)} // Updates localStorage directly
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -519,7 +519,7 @@ export default function SettingsPage() {
                     id="openAIKey"
                     type="password"
                     value={!mounted ? '' : (isEditingKey ? newApiKey : localKey)}
-                    onChange={handleKeyChange}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleKeyChange(e)}
                     placeholder="sk-..."
                     className={`font-mono ${(!localKey || !localKey.startsWith('sk-') || isEditingKey) ? 'border-yellow-500' : ''}`}
                     disabled={!!(localKey && localKey.startsWith('sk-') && !isEditingKey)}
@@ -584,7 +584,7 @@ export default function SettingsPage() {
                       <Switch
                         id="syncApiKey"
                         checked={settings.syncApiKey || false}
-                        onCheckedChange={(checked) => {
+                        onCheckedChange={(checked: boolean) => {
                           const updatedSettings = {
                             ...settings,
                             syncApiKey: checked,
@@ -619,7 +619,7 @@ export default function SettingsPage() {
                   id="endOfDayTime"
                   type="time"
                   value={taskSettings.endOfDayTime}
-                  onChange={(e) => setTaskSettings({ ...taskSettings, endOfDayTime: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTaskSettings({ ...taskSettings, endOfDayTime: e.target.value })}
                 />
                 <p className="text-sm text-muted-foreground">
                   Tasks will be reviewed at this time each day
@@ -634,7 +634,7 @@ export default function SettingsPage() {
                   min="1"
                   max="30"
                   value={taskSettings.autoArchiveDelay}
-                  onChange={(e) => setTaskSettings({ ...taskSettings, autoArchiveDelay: parseInt(e.target.value) })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTaskSettings({ ...taskSettings, autoArchiveDelay: parseInt(e.target.value) })}
                 />
                 <p className="text-sm text-muted-foreground">
                   Number of days to wait before auto-archiving completed tasks
@@ -649,7 +649,7 @@ export default function SettingsPage() {
                   min="1"
                   max="90"
                   value={taskSettings.gracePeriod}
-                  onChange={(e) => setTaskSettings({ ...taskSettings, gracePeriod: parseInt(e.target.value) })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTaskSettings({ ...taskSettings, gracePeriod: parseInt(e.target.value) })}
                 />
                 <p className="text-sm text-muted-foreground">
                   Days to keep archived tasks before permanent deletion
@@ -666,7 +666,7 @@ export default function SettingsPage() {
                 <Switch
                   id="retainRecurringTasks"
                   checked={taskSettings.retainRecurringTasks}
-                  onCheckedChange={(checked) => setTaskSettings({ ...taskSettings, retainRecurringTasks: checked })}
+                  onCheckedChange={(checked: boolean) => setTaskSettings({ ...taskSettings, retainRecurringTasks: checked })}
                 />
               </div>
 
