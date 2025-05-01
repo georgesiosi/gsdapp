@@ -71,6 +71,7 @@ export function DashboardLayout({
       <div
         className={cn(
           "flex-1 flex flex-col transition-all duration-300 ease-in-out",
+          isSidebarOpen && "md:ml-64"
         )}
       >
         <AppHeader 
