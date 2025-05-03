@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Target, Settings, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Home, Target, Settings, X, PanelLeftClose, PanelLeftOpen, BarChart2, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -18,6 +18,8 @@ interface AppSidebarProps {
 const navItems = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Goals', href: '/goals', icon: Target },
+  { name: 'Scorecards', href: '/scorecard-history', icon: BarChart2 },
+  { name: 'Ideas', href: '/ideas-bank', icon: Lightbulb },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

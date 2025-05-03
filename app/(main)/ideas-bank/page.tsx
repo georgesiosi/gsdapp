@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useIdeasManagement } from '../../components/ideas/hooks/useIdeasManagement'
-import { useTaskManagement } from '../../components/task/hooks/useTaskManagement'
+import { useIdeasManagement } from '@/components/ideas/hooks/useIdeasManagement'
+import { useTaskManagement } from '@/components/task/hooks/useTaskManagement'
 import { useRouter } from 'next/navigation'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
 import { formatDistanceToNow } from 'date-fns'
@@ -191,33 +191,42 @@ export default function IdeasBankPage() {
           taskType = 'personal';
         }
         
-        // First add it to Q4 temporarily
-        // Call addTaskWithAIAnalysis with only the parameters it expects
-        const result = await addTaskWithAIAnalysis({
-          text: ideaData.text,
-          quadrant: 'q4',
-          completed: false,
-          needsReflection: false,
-          status: 'active',
-          taskType
-        })
-        
-        if (result.task) {
-          // Show a toast notification
+        // Convert the idea to a task
+        try {
+          console.log('[DEBUG] Attempting to convert idea to task:', ideaData);
+          // Call addTaskWithAIAnalysis with just the text
+          const { task: newTask, isAnalyzing } = await addTaskWithAIAnalysis(ideaData.text);
+          
+          if (newTask) {
+            console.log('[DEBUG] Task created successfully:', newTask);
+            
+            // Show a toast notification
+            const event = new CustomEvent('showToast', {
+              detail: {
+                message: 'Idea successfully converted to task',
+                type: 'success'
+              }
+            })
+            window.dispatchEvent(event)
+            
+            // Navigate back to the main page after a short delay to ensure the task is visible
+            setTimeout(() => {
+              router.push('/')
+            }, 500)
+          } else {
+            throw new Error('Failed to create task')
+          }
+        } catch (error) {
+          console.error('Error converting idea to task:', error)
+          
+          // Show error toast
           const event = new CustomEvent('showToast', {
             detail: {
-              message: 'Idea successfully converted to task',
-              type: 'success'
+              message: 'Failed to convert idea to task. Please try again.',
+              type: 'error'
             }
           })
           window.dispatchEvent(event)
-          
-          // Navigate back to the main page after a short delay to ensure the task is visible
-          setTimeout(() => {
-            router.push('/')
-          }, 500)
-        } else {
-          throw new Error('Failed to create task')
         }
       } catch (error) {
         console.error('Error converting idea to task:', error)
