@@ -10,9 +10,9 @@ import { Loader2 } from "lucide-react"
 
 export function SubscriptionDetails() {
   const { user } = useUser()
-  const subscription = useQuery(api.subscription.getSubscription, {
-    userId: user?.id,
-  })
+  const subscription = useQuery(api.subscription.getSubscription, 
+    user?.id ? { userId: user.id } : "skip"
+  )
 
   if (!subscription) {
     return (

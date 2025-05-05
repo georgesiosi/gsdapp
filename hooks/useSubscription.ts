@@ -9,16 +9,16 @@ export function useSubscription() {
   const userId = user?.id;
 
   // Get current subscription and preferences
-  const subscription = useQuery(api.subscription.getCurrentSubscription, 
+  const subscription = useQuery(api.queries.subscription.getSubscription, 
     userId ? { userId } : "skip"
   );
-  const preferences = useQuery(api.userPreferences.getUserPreferences,
+  const preferences = useQuery(api.queries.userPreferences.getUserPreferences,
     userId ? { userId } : "skip"
   );
 
   // Get subscription status and features
   const status: SubscriptionStatus = userId 
-    ? getSubscriptionStatus(subscription, preferences)
+    ? getSubscriptionStatus(subscription || null, preferences || null)
     : "free";
   const features = getTierFeatures(status);
 

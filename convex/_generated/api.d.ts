@@ -21,6 +21,7 @@ import type * as mutations_subscription from "../mutations/subscription.js";
 import type * as queries_subscription from "../queries/subscription.js";
 import type * as queries_userPreferences from "../queries/userPreferences.js";
 import type * as scorecards from "../scorecards.js";
+import type * as subscription from "../subscription.js";
 import type * as tasks from "../tasks.js";
 import type * as userPreferences from "../userPreferences.js";
 import type * as utils_subscription from "../utils/subscription.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   "queries/subscription": typeof queries_subscription;
   "queries/userPreferences": typeof queries_userPreferences;
   scorecards: typeof scorecards;
+  subscription: typeof subscription;
   tasks: typeof tasks;
   userPreferences: typeof userPreferences;
   "utils/subscription": typeof utils_subscription;
