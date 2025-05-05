@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react"
 
 export function SubscriptionDetails() {
   const { user } = useUser()
-  const subscription = useQuery(api.subscription.getCurrentSubscription, {
+  const subscription = useQuery(api.subscription.getSubscription, {
     userId: user?.id,
   })
 

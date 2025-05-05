@@ -17,6 +17,7 @@ import { ChevronLeft, Download, History, CheckCircle, AlertCircle } from 'lucide
 import Link from 'next/link'
 import { SettingsNav } from '@/components/settings/settings-nav'
 import { recoverFromBackup } from '@/lib/storage'
+import { SubscriptionDetails } from '@/components/settings/subscription-details';
 import {
   Select,
   SelectContent,
@@ -24,86 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-// Subscription section component
-function SubscriptionSection() {
-  const { user } = useUser();
-  // Removed unused Convex imports and tasks variable assignment
-  // const subscription = useQuery(api.queries.subscription.getSubscription, 
-  //   user?.id ? { userId: user.id } : "skip"
-  // );
-  
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2">
-        <h3 className="text-lg font-medium">Current Plan</h3>
-        
-        {/* Loading state */}
-        {/* Removed unused subscription variable */}
-        {/* {!subscription && user?.id && (
-          <div className="animate-pulse">
-            <div className="h-5 bg-gray-200 rounded w-1/4 mb-2"></div>
-            <div className="h-4 bg-gray-100 rounded w-3/4"></div>
-          </div>
-        )} */}
-        
-        {/* Not signed in */}
-        {!user?.id && (
-          <div className="p-4 border rounded-md bg-yellow-50 border-yellow-200">
-            <p className="text-sm">Please sign in to view your subscription details.</p>
-          </div>
-        )}
-        
-        {/* Subscription data */}
-        {/* Removed unused subscription variable */}
-        {/* {subscription && (
-          <div className="p-4 border rounded-md bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-medium">
-                {subscription.tier === 'free' ? 'Free Plan' : 
-                 subscription.tier === 'pro' ? 'Pro Plan' : 
-                 subscription.tier === 'team' ? 'Team Plan' : 'Unknown Plan'}
-              </span>
-              <span className={`px-2 py-1 text-xs rounded-full ${subscription.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                {subscription.status === 'active' ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-            
-            {subscription.status === 'active' && subscription.validUntil && (
-              <p className="text-sm text-gray-600">
-                Valid until: {new Date(subscription.validUntil).toLocaleDateString()}
-              </p>
-            )}
-            
-            {subscription.tier === 'free' && (
-              <div className="mt-4">
-                <Button asChild size="sm" className="w-full">
-                  <a href="https://polar.sh/georgesiosi/subscriptions" target="_blank" rel="noopener noreferrer">
-                    Upgrade Plan
-                  </a>
-                </Button>
-              </div>
-            )}
-            
-            {subscription.tier !== 'free' && (
-              <div className="mt-4">
-                <Button asChild variant="outline" size="sm" className="w-full">
-                  <a href="https://polar.sh/georgesiosi/subscriptions" target="_blank" rel="noopener noreferrer">
-                    Manage Subscription
-                  </a>
-                </Button>
-              </div>
-            )}
-          </div>
-        )} */}
-        
-        <p className="text-sm text-muted-foreground mt-2">
-          Subscriptions are managed through Polar.sh. Click the button above to manage your subscription.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings() as { settings: UserSettings, updateSettings: (newSettings: UserSettings) => Promise<any> }
@@ -605,7 +526,7 @@ export default function SettingsPage() {
             <h2 className="text-xl font-semibold mb-4">Subscription</h2>
             <div className="space-y-6">
               {/* Subscription Status */}
-              <SubscriptionSection />
+              <SubscriptionDetails />
             </div>
           </Card>
 
