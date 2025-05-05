@@ -332,12 +332,12 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     return (rawTasks ?? []).map((task): Task => {
       return {
         ...task,
-        id: task._id.toString(), // Map _id
+        id: task._id, // Map _id directly
         quadrant: task.quadrant as QuadrantKeys, // Cast quadrant
         taskType: task.taskType as TaskType | undefined, // Cast taskType
         status: task.status as TaskStatus, // Cast status
         needsReflection: task.needsReflection ?? false, // Provide default
-        goalId: task.goalId?.toString(), // Map optional goalId
+        goalId: task.goalId, // Map optional goalId directly
         // Handle reflection object mapping if necessary
         reflection: task.reflection ? {
           ...task.reflection,
@@ -345,6 +345,9 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
           finalQuadrant: task.reflection.finalQuadrant as QuadrantKeys, // Cast finalQuadrant
           // Add other reflection properties if needed
         } : undefined,
+        // Ensure createdAt and updatedAt are strings if necessary (Convex _creationTime is number)
+        createdAt: new Date(task._creationTime).toISOString(), // Example conversion if needed
+        updatedAt: task.updatedAt, // Assuming updatedAt is already string or handled
       };
     });
   }, [rawTasks]);
