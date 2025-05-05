@@ -181,6 +181,40 @@ export const saveUserPreferences = mutation({
   },
 });
 
+// Update the master plan text for the current user
+export const updateMasterPlanText = mutation({
+  args: {
+    masterPlanText: v.string(), // Validate the input text
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUser(ctx);
+
+    // Find the user's preferences document
+    const preferences = await ctx.db
+      .query("userPreferences")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!preferences) {
+      // If preferences don't exist, create them with the master plan text
+      console.log(`[DEBUG] No preferences found for user ${userId}. Creating new preferences with master plan text.`);
+      return await ctx.db.insert("userPreferences", {
+        userId: userId,
+        masterPlanText: args.masterPlanText,
+        // Add other default fields if necessary
+        hasCompletedOnboarding: false, // Assume onboarding isn't complete if prefs didn't exist
+      });
+    } else {
+      // Preferences exist, patch the document with the new text
+      console.log(`[DEBUG] Updating master plan text for user ${userId}.`);
+      await ctx.db.patch(preferences._id, {
+        masterPlanText: args.masterPlanText,
+      });
+      return await ctx.db.get(preferences._id); // Return the updated document
+    }
+  },
+});
+
 // Mark onboarding as complete for the current user
 export const markOnboardingComplete = mutation({
   handler: async (ctx) => {

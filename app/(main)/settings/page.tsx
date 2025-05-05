@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select'
 
 export default function SettingsPage() {
-  const { settings, updateSettings } = useSettings() as { settings: UserSettings, updateSettings: (newSettings: UserSettings) => Promise<any> }
+  const { settings, updateSettings } = useSettings() as { settings: UserSettings, updateSettings: (newSettings: Partial<UserSettings>) => Promise<any> }
   const { profile, setProfile } = useProfile()
   const { user, isLoaded, isSignedIn } = useUser();
   const [localPersonalContext, setLocalPersonalContext] = useState('')
@@ -41,7 +41,12 @@ export default function SettingsPage() {
   const [taskSettingsSaveSuccess, setTaskSettingsSaveSuccess] = useState(false)
   const [apiKeySaveSuccess, setApiKeySaveSuccess] = useState(false)
   const [isProfileSaving, setIsProfileSaving] = useState(false)
+
+  const [showSidebars, setShowSidebars] = useLocalStorage<boolean>('showEisenhowerSidebars', true);
+  const [showGoalsSection, setShowGoalsSection] = useLocalStorage<boolean>('showGoalsSection', true);
+
   const defaultTaskSettings: TaskSettings = {
+    autoPrioritize: true,
     endOfDayTime: '23:59',
     autoArchiveDelay: 7,
     gracePeriod: 30,
@@ -49,12 +54,8 @@ export default function SettingsPage() {
   }
 
   const [taskSettings, setTaskSettings] = useState<TaskSettings>(
-    settings.taskSettings || defaultTaskSettings
+    settings.taskSettings ?? defaultTaskSettings
   )
-
-  const [showSidebars, setShowSidebars] = useLocalStorage<boolean>('showEisenhowerSidebars', true);
-
-  const [showGoalsSection, setShowGoalsSection] = useLocalStorage<boolean>('showGoalsSection', true);
 
   useEffect(() => {
     setMounted(true)
@@ -95,7 +96,9 @@ export default function SettingsPage() {
     }
   }, [mounted, settings.openAIKey])
 
-
+  useEffect(() => {
+    setTaskSettings(settings.taskSettings ?? defaultTaskSettings);
+  }, [settings.taskSettings]);
 
   const handleSave = async () => {
     if (isTaskSettingsSaving) {
@@ -111,7 +114,8 @@ export default function SettingsPage() {
       if (!taskSettings.endOfDayTime || 
           typeof taskSettings.autoArchiveDelay !== 'number' || 
           typeof taskSettings.gracePeriod !== 'number' || 
-          typeof taskSettings.retainRecurringTasks !== 'boolean') {
+          typeof taskSettings.retainRecurringTasks !== 'boolean' || 
+          typeof taskSettings.autoPrioritize !== 'boolean') {
         throw new Error('Invalid task settings')
       }
 
@@ -122,15 +126,20 @@ export default function SettingsPage() {
         openAIKey: localKey || settings.openAIKey,
         priority: settings.priority,
         theme: settings.theme as 'light' | 'dark' | 'system',
+        autoSave: settings.autoSave ?? true,
+        defaultDueDate: settings.defaultDueDate ?? 'none',
         showCompletedTasks: settings.showCompletedTasks ?? true,
+        taskSortOrder: settings.taskSortOrder ?? 'dueDate',
         autoAnalyze: settings.autoAnalyze ?? false,
         syncApiKey: settings.syncApiKey ?? false,
         taskSettings: {
+          autoPrioritize: taskSettings.autoPrioritize,
           endOfDayTime: taskSettings.endOfDayTime,
           autoArchiveDelay: taskSettings.autoArchiveDelay,
           gracePeriod: taskSettings.gracePeriod,
           retainRecurringTasks: taskSettings.retainRecurringTasks
-        }
+        },
+        showMasterPlan: settings.showMasterPlan ?? false, // Add showMasterPlan
       }
       
       console.log('[DEBUG-SETTINGS] Calling updateSettings...')
@@ -208,19 +217,26 @@ export default function SettingsPage() {
       // Preserve all existing settings and only update the openAIKey
       // Filter out Convex metadata fields and only include valid UserSettings fields
       const updatedSettings: UserSettings = {
-        goal: settings.goal,
+        goal: settings?.goal,
         openAIKey: keyToSave,
-        priority: settings.priority,
-        theme: settings.theme as 'light' | 'dark' | 'system',
-        showCompletedTasks: settings.showCompletedTasks ?? true,
-        autoAnalyze: settings.autoAnalyze ?? false,
-        syncApiKey: settings.syncApiKey ?? false,
-        taskSettings: settings.taskSettings ? {
-          endOfDayTime: settings.taskSettings.endOfDayTime,
-          autoArchiveDelay: settings.taskSettings.autoArchiveDelay,
-          gracePeriod: settings.taskSettings.gracePeriod,
-          retainRecurringTasks: settings.taskSettings.retainRecurringTasks
-        } : defaultTaskSettings
+        priority: settings?.priority,
+        theme: settings?.theme || 'system',
+        autoSave: settings?.autoSave ?? true,
+        defaultDueDate: settings?.defaultDueDate ?? 'none',
+        showCompletedTasks: settings?.showCompletedTasks || false,
+        taskSortOrder: settings?.taskSortOrder ?? 'dueDate',
+        autoAnalyze: settings?.autoAnalyze || false,
+        syncApiKey: settings?.syncApiKey || false,
+        taskSettings: settings?.taskSettings
+          ? {
+              autoPrioritize: settings.taskSettings.autoPrioritize,
+              endOfDayTime: settings.taskSettings.endOfDayTime,
+              autoArchiveDelay: settings.taskSettings.autoArchiveDelay,
+              gracePeriod: settings.taskSettings.gracePeriod,
+              retainRecurringTasks: settings.taskSettings.retainRecurringTasks
+            }
+          : defaultTaskSettings,
+        showMasterPlan: settings?.showMasterPlan || false, // Correctly placed inside
       }
       
       // Save to localStorage for API requests
@@ -269,6 +285,28 @@ export default function SettingsPage() {
     setNewApiKey('')
   }
 
+  const handleShowMasterPlanToggle = async (checked: boolean) => {
+    console.log('[DEBUG-SETTINGS] Toggling Master Plan visibility:', checked)
+    try {
+      // Use the updateSettings from the hook
+      await updateSettings({ showMasterPlan: checked })
+      toast({
+        title: "Setting Updated",
+        description: `Master Plan page will now be ${checked ? 'shown' : 'hidden'} in the sidebar.`,
+        duration: 3000
+      })
+    } catch (error) {
+      console.error('[DEBUG-SETTINGS] Error updating showMasterPlan:', error)
+      toast({
+        title: "Error Updating Setting",
+        description: error instanceof Error ? error.message : "Failed to update Master Plan visibility",
+        variant: "destructive",
+        duration: 4000
+      })
+      // Optionally revert the visual state if the update fails, though useSettings might handle this
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
@@ -287,6 +325,20 @@ export default function SettingsPage() {
         </div>
         
         <div className="flex-1 space-y-6">
+          <Card className="p-6 mb-6" id="design-system">
+            <CardHeader>
+              <CardTitle>Design System</CardTitle>
+              <CardDescription>
+                View and test the application's UI components and styles.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/settings/design-system">
+                <Button variant="outline">View Design System</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
           <Card className="p-6 mb-6" id="user-preferences">
             <h2 className="text-xl font-semibold mb-4">User Preferences</h2>
             <div className="space-y-6">
@@ -384,35 +436,57 @@ export default function SettingsPage() {
           <Card className="p-6 mb-6" id="display-preferences">
             <h2 className="text-xl font-semibold mb-4">Display Preferences</h2>
             <div className="space-y-6">
-              {/* Moved Eisenhower Matrix Sidebars Toggle */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showSidebarsSwitch">Eisenhower Matrix Sidebars</Label>
-                  <Switch
-                    id="showSidebarsSwitch"
-                    checked={showSidebars}
-                    onCheckedChange={(checked: boolean) => setShowSidebars(checked)}
-                  />
+            </div>
+          </Card>
+
+          <Card className="p-6 mb-6" id="feature-visibility">
+            <h2 className="text-xl font-semibold mb-4">Feature Visibility</h2>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="show-master-plan" className="text-base">Show Master Plan</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Display the Master Plan page link in the sidebar.
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Show or hide the vertical context bars on the sides of the matrix.
-                </p>
+                <Switch
+                  id="show-master-plan"
+                  checked={settings.showMasterPlan ?? false} 
+                  onCheckedChange={handleShowMasterPlanToggle}
+                  aria-label="Toggle Master Plan visibility in sidebar"
+                />
               </div>
 
-              {/* New Show Current Goals Section Toggle */}
-              <div className="flex flex-col gap-2 pt-4 border-t">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showGoalsSwitch">Show Current Goals Section</Label>
-                  <Switch
-                    id="showGoalsSwitch"
-                    checked={showGoalsSection} 
-                    onCheckedChange={(checked: boolean) => setShowGoalsSection(checked)} // Updates localStorage directly
-                  />
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="show-sidebars" className="text-base">Show Eisenhower Sidebars</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Show the sidebars in the Eisenhower Matrix view.
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Show or hide the 'Current Goals' section above the Eisenhower Matrix.
-                </p>
+                <Switch
+                  id="show-sidebars"
+                  checked={showSidebars}
+                  onCheckedChange={setShowSidebars}
+                  aria-label="Toggle Eisenhower sidebars visibility"
+                />
               </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="show-goals" className="text-base">Show Goals Section</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Display the Goals section on the dashboard.
+                  </p>
+                </div>
+                <Switch
+                  id="show-goals"
+                  checked={showGoalsSection}
+                  onCheckedChange={setShowGoalsSection}
+                  aria-label="Toggle Goals section visibility"
+                />
+              </div>
+
             </div>
           </Card>
 
@@ -588,6 +662,20 @@ export default function SettingsPage() {
                   id="retainRecurringTasks"
                   checked={taskSettings.retainRecurringTasks}
                   onCheckedChange={(checked: boolean) => setTaskSettings({ ...taskSettings, retainRecurringTasks: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="autoPrioritize">Auto-Prioritize Tasks</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Automatically prioritize tasks based on their urgency and importance
+                  </p>
+                </div>
+                <Switch
+                  id="autoPrioritize"
+                  checked={taskSettings.autoPrioritize}
+                  onCheckedChange={(checked: boolean) => setTaskSettings({ ...taskSettings, autoPrioritize: checked })}
                 />
               </div>
 

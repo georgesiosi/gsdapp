@@ -3,9 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Target, Settings, X, PanelLeftClose, PanelLeftOpen, BarChart2, Lightbulb } from 'lucide-react';
+import { Home, Target, Settings, X, PanelLeftClose, PanelLeftOpen, BarChart2, Lightbulb, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 interface AppSidebarProps {
   isOpen: boolean;
@@ -15,13 +17,16 @@ interface AppSidebarProps {
   openDevModal: () => void;
 }
 
-const navItems = [
+const baseNavItems = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Goals', href: '/goals', icon: Target },
   { name: 'Scorecards', href: '/scorecard-history', icon: BarChart2 },
   { name: 'Ideas', href: '/ideas-bank', icon: Lightbulb },
-  { name: 'Settings', href: '/settings', icon: Settings },
 ];
+
+const masterPlanItem = { name: 'Master Plan', href: '/master-plan', icon: ClipboardList };
+
+const settingsItem = { name: 'Settings', href: '/settings', icon: Settings };
 
 export function AppSidebar({ 
   isOpen, 
@@ -31,6 +36,13 @@ export function AppSidebar({
   openDevModal 
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const userPreferences = useQuery(api.userPreferences.getUserPreferences);
+
+  const navItems = [
+    ...baseNavItems,
+    ...(userPreferences?.showMasterPlan !== false ? [masterPlanItem] : []),
+    settingsItem,
+  ];
 
   const handleGenerateScorecard = async () => {
     // TODO: Implement the actual logic using addScorecard if needed

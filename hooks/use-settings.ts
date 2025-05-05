@@ -9,10 +9,15 @@ import { UserSettings, TaskSettings, ConvexUserPreferences } from "@/types/task"
 // Default settings when data is loading
 const DEFAULT_SETTINGS: UserSettings = {
   theme: "system",
+  autoSave: true, // Default autoSave to true
+  defaultDueDate: 'today', // Default due date to today
   showCompletedTasks: true,
+  taskSortOrder: 'dueDate', // Default sort order
   autoAnalyze: false,
-  syncApiKey: false,  // Default to not syncing API key to cloud
+  syncApiKey: false, // Default to not syncing API key to cloud
+  showMasterPlan: false, // Add default for showMasterPlan
   taskSettings: {
+    autoPrioritize: true,
     endOfDayTime: "17:00",
     autoArchiveDelay: 7,
     gracePeriod: 24,
@@ -95,6 +100,7 @@ export function useSettings() {
   }, [preferences])();
 
   const defaultTaskSettings: TaskSettings = {
+    autoPrioritize: true,
     endOfDayTime: "17:00",
     autoArchiveDelay: 7,
     gracePeriod: 24,

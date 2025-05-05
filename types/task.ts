@@ -49,7 +49,7 @@ export interface Task {
   /** Creation timestamp */
   _creationTime: number;
   /** Optional identifier linking the task to a specific goal */
-  goalId?: string; // Mapped from Convex _id
+  goalId?: Id<"goals">; // Mapped from Convex _id
   /** ISO string of when the task was created */
   createdAt: string;
   /** ISO string of when the task was last updated */
@@ -126,6 +126,7 @@ export interface TaskManagerContextType {
 
 // Task settings interface
 export interface TaskSettings {
+  autoPrioritize: boolean;
   endOfDayTime: string; // 24-hour format HH:mm
   autoArchiveDelay: number; // days after completion
   gracePeriod: number; // days before permanent deletion
@@ -142,7 +143,11 @@ export interface UserSettings {
   autoAnalyze?: boolean;
   syncApiKey?: boolean;
   isLegacyUser?: boolean; // Flag for users who existed before subscription system
+  autoSave: boolean;
+  defaultDueDate: string; // e.g., 'today', 'tomorrow', '+1d', 'none'
+  taskSortOrder: 'dueDate' | 'priority' | 'creationDate';
   taskSettings: TaskSettings;
+  showMasterPlan: boolean;
 }
 
 // Convex user preferences type
