@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useIdeasManagement } from '@/components/ideas/hooks/useIdeasManagement'
 import { useTaskManagement } from '@/components/task/hooks/useTaskManagement'
 import { useRouter } from 'next/navigation'
+import { PageIntro } from '@/components/page-intro'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
 import { formatDistanceToNow } from 'date-fns'
 import { Id } from '@/convex/_generated/dataModel'
@@ -272,18 +273,11 @@ export default function IdeasBankPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center mb-8">
-        <button
-          onClick={() => router.push('/')}
-          className="mr-4 p-2 rounded-full hover:bg-gray-200 transition-colors"
-          aria-label="Go back"
-        >
-          <ArrowLeftIcon className="h-5 w-5" />
-        </button>
-        <h1 className="text-3xl font-bold">Ideas Bank</h1>
-      </div>
-
+    <div>
+      <PageIntro showBackButton={true} />
+      <h1 className="text-3xl font-bold tracking-tight mb-2">Ideas Bank</h1>
+      <p className="text-sm text-muted-foreground mb-6">Capture and organize your brainstormed ideas and inspiration.</p>
+      
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>

@@ -9,6 +9,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { ScorecardHistoryChart } from "@/components/scorecard-history-chart"; 
 import { ScorecardHistoryList } from "@/components/scorecard-history-list"; 
+import { PageIntro } from '@/components/page-intro'; 
 
 export default function ScorecardHistoryPage() {
   const [scorecards, setScorecards] = useState<Scorecard[]>([]);
@@ -31,17 +32,11 @@ export default function ScorecardHistoryPage() {
   }, []);
 
   return (
-    <div className="container mx-auto py-6 max-w-4xl">
-      <div className="flex items-center mb-6">
-        <Link href="/">
-          <Button variant="ghost" size="sm" className="mr-2">
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Scorecard History</h1>
-      </div>
-
+    <div>
+      <PageIntro showBackButton={true} />
+      <h1 className="text-3xl font-bold tracking-tight mb-2">Scorecard History</h1>
+      <p className="text-sm text-muted-foreground mb-6">View your past performance scores and progress over time.</p>
+      
       {isLoading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>

@@ -9,6 +9,7 @@ import { Doc, Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge'; 
 import { LoadingSpinner } from '@/components/ui/loading-spinner'; 
+import { PageIntro } from '@/components/page-intro'; 
 
 export default function GoalsPage() {
   const { user } = useUser();
@@ -27,7 +28,9 @@ export default function GoalsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold pb-6 border-b-0">All Goals</h1>
+      <PageIntro showBackButton={true} />
+      <h1 className="text-3xl font-bold tracking-tight mb-2">All Goals</h1>
+      <p className="text-sm text-muted-foreground mb-6">View and manage all your defined objectives.</p>
 
       {rawGoalsList === undefined && <p>Loading goals...</p>} 
 

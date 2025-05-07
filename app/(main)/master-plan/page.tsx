@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast"; // Import useToast from hooks
 import { useEditor, EditorContent } from '@tiptap/react'; // Tiptap imports
 import StarterKit from '@tiptap/starter-kit'; // Tiptap basic extensions
+import { PageIntro } from '@/components/page-intro'; // Import PageIntro
 
 // Basic Toolbar Component (can be styled further or replaced with Shadcn components)
 const MenuBar = ({ editor }: { editor: any | null }) => {
@@ -149,17 +150,21 @@ export default function MasterPlanPage() {
     return <div className="container mx-auto p-4 md:p-8">Loading Master Plan...</div>;
   }
 
+  const pageDescription = "Use this space to outline your overarching goals and vision. This plan can help guide your daily focus and priorities.";
+
   return (
-    <div className="container mx-auto p-4 md:p-8">
-      <h1 className="text-2xl font-bold mb-4">My Master Plan</h1>
-      <p className="text-muted-foreground mb-6">
-        Use this space to outline your overarching goals and vision. This plan can help guide your daily focus and priorities.
-      </p>
-      <MenuBar editor={editor} />
-      <EditorContent editor={editor} />
-      <Button onClick={handleSave} disabled={isSaving || !editor} className="mt-4">
-        {isSaving ? "Saving..." : "Save Master Plan"}
-      </Button>
+    <div>
+      <PageIntro showBackButton={true} />
+      <h1 className="text-3xl font-bold tracking-tight mb-2">My Master Plan</h1>
+      <p className="text-sm text-muted-foreground mb-6">{pageDescription}</p>
+      
+      <div className="flex-1 overflow-y-auto">
+        <MenuBar editor={editor} />
+        <EditorContent editor={editor} />
+        <Button onClick={handleSave} disabled={isSaving || !editor} className="mt-4">
+          {isSaving ? "Saving..." : "Save Master Plan"}
+        </Button>
+      </div>
     </div>
   );
 }

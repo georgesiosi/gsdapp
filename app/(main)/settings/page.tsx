@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { PageIntro } from '@/components/page-intro';
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings() as { settings: UserSettings, updateSettings: (newSettings: Partial<UserSettings>) => Promise<any> }
@@ -308,17 +309,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/" className="-ml-2">
-          <Button variant="ghost" size="icon">
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Settings</h1>
-      </div>
-
+    <div>
+      <PageIntro showBackButton={true} />
+      <h1 className="text-3xl font-bold tracking-tight mb-6">Settings</h1>
+      
       <div className="flex flex-col lg:flex-row lg:gap-8">
         <div className="lg:w-1/4 sticky top-0 h-screen">
           <SettingsNav />
