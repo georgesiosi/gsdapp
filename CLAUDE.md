@@ -31,11 +31,12 @@ npm run migrate:dates # Run date migration script
 - **Testing**: Jest with React Testing Library
 
 ### Core Architecture
-The app follows a feature-based architecture with these key patterns:
+The app follows a simplified, streamlined architecture focused on core task management:
 
 1. **Data Layer**: Convex handles all data persistence with real-time updates
-   - Schema defined in `convex/schema.ts` with tables for tasks, ideas, goals, scorecards, and user preferences
+   - Schema defined in `convex/schema.ts` with tables for tasks, goals, scorecards, and user preferences
    - All mutations and queries go through Convex functions
+   - Intelligent task ordering based on due dates, goal priority, and creation time
 
 2. **Authentication Flow**: Clerk provides user authentication
    - Users can be legacy (localStorage) or authenticated (Convex)
@@ -43,26 +44,26 @@ The app follows a feature-based architecture with these key patterns:
 
 3. **AI-Powered Task Management**: 
    - Tasks are categorized using Eisenhower Matrix (Q1-Q4 quadrants)
-   - OpenAI API analyzes task text to suggest optimal quadrant placement
-   - Ideas vs tasks are automatically detected and routed appropriately
+   - OpenAI API analyzes task text to suggest optimal quadrant placement via `/api/categorize`
+   - AI reasoning stored in `aiReasoning` field for tooltip display
+   - Automatic task type detection (personal/business) based on keywords
 
 4. **Component Structure**:
-   - Feature-based organization under `/components`
-   - Custom hooks in `/components/*/hooks/` for business logic
+   - Simplified organization under `/components`
+   - Custom hooks in `/components/task/hooks/` for task management logic
    - UI components in `/components/ui/` following shadcn/ui patterns
 
 ### Key Features
 - **Eisenhower Matrix**: Tasks organized by urgency/importance (Q1-Q4)
-- **Ideas Bank**: Separate storage for ideas vs actionable tasks
-- **Goal Setting**: Users can set and track main goals
-- **Reflection System**: Tasks can include reflection and AI analysis
+- **AI Auto-Sorting**: Automatic task categorization with reasoning explanations
+- **Goal Setting**: Users can set and track main goals with task linking
+- **Task Type Detection**: Automatic personal/business classification
 - **Scorecard System**: Daily productivity metrics and insights
 - **Export Functionality**: CSV export for tasks and data
 
 ### Data Models (Convex Schema)
-- **tasks**: Core task entity with quadrant, status, reflection data
-- **ideas**: Separate from tasks, includes priority connection flag
-- **goals**: User-defined objectives with status tracking
+- **tasks**: Core task entity with quadrant, status, aiReasoning field, and goal linking
+- **goals**: User-defined objectives with status tracking and ordering
 - **userPreferences**: Settings, theme, onboarding status, master plan
 - **scorecards**: Daily productivity metrics and AI insights
 - **subscriptions**: User subscription status and tiers
@@ -85,14 +86,46 @@ The app follows a feature-based architecture with these key patterns:
 
 ### AI Integration Patterns
 - API routes in `/app/api/` handle OpenAI interactions
+- `/api/categorize` endpoint provides task quadrant suggestions
 - Task categorization uses structured prompts for quadrant assignment
-- Ideas detection separates actionable tasks from brainstorming content
-- Reflection analysis provides AI feedback on task placement decisions
+- AI reasoning stored directly in task records for tooltip display
+- Automatic task type detection using keyword-based classification
 
 ### Testing Strategy
 - Jest configured with React Testing Library
 - Tests focus on hooks and component behavior
 - Setup in `jest.setup.js` with path aliases matching tsconfig
+
+### Recent Simplification (Power Through Simplicity)
+The codebase underwent major simplification to focus on core functionality:
+
+**Removed Systems (~4,000 lines removed):**
+- Complex reflection system with nested task analysis
+- Separate ideas bank (consolidated into tasks)
+- Custom event systems for complex AI workflows
+- Multiple task interface adapters (ConvexTask, NewTask)
+- Complex reasoning log services
+
+**Simplified Architecture:**
+- Unified Task interface works for both Convex and client usage
+- Direct AI reasoning storage in `aiReasoning` field
+- Streamlined AI auto-sorting with specific task targeting
+- Keyword-based task type detection
+- Simplified tooltip system reading directly from task data
+
+**Key Improvements:**
+- "AI is thinking..." indicator targets specific tasks being processed
+- P/B labels automatically assigned based on content analysis
+- AI reasoning tooltips work directly from task data
+- Cleaner database schema without legacy reflection fields
+- Faster development with less complex abstractions
+
+### Task Management Workflow
+1. **Task Creation**: User adds task text
+2. **AI Analysis**: `/api/categorize` suggests quadrant placement
+3. **Auto-Classification**: Keywords determine personal vs business type
+4. **Reasoning Storage**: AI explanation saved in `aiReasoning` field
+5. **Smart Ordering**: Tasks ordered by due date > goal priority > creation time
 
 ### Subscription/Licensing
 - Polar.sh integration for subscription management
