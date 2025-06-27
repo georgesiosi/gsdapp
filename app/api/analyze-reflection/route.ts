@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
-import { QuadrantType, TaskType } from '@/types/task';
+import { QuadrantKeys, TaskType } from '@/types/task';
 
 interface AIResponse {
   isIdea: boolean;
-  suggestedQuadrant?: QuadrantType;
+  suggestedQuadrant?: QuadrantKeys;
   taskType?: TaskType | 'idea';
   connectedToPriority?: boolean;
   reasoning?: string;
