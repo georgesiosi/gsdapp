@@ -10,7 +10,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel"; 
 import type { Task, TaskStatus, QuadrantKeys, TaskType, NewTask } from "@/types/task"; 
-import { useToast } from "@/components/ui/use-toast"; 
+import { useToast } from "@/components/ui/use-toast";
+import { useErrorHandler } from "@/components/error-boundary"; 
 
 // --- Start: Local Definitions ---
 
@@ -100,6 +101,7 @@ export function useTaskManagement() {
   const userId = user?.id; // Get userId
   const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast(); // Get toast function
+  const { handleError } = useErrorHandler(); // Get error handler
   
   // Define quadrant names locally for toast messages
   const quadrantNames = useMemo<Record<QuadrantKeys, string>>(() => ({
@@ -178,6 +180,12 @@ export function useTaskManagement() {
       return { success: true, taskId: newTaskId };
     } catch (error) {
       console.error("Error adding task:", error);
+      
+      // Use the enhanced error handler for authentication/session issues
+      if (error instanceof Error) {
+        handleError(error);
+      }
+      
       toast({
         title: "Failed to add task",
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
@@ -188,7 +196,7 @@ export function useTaskManagement() {
         error: error instanceof Error ? error.message : "Failed to add task",
       };
     }
-  }, [addTaskMutation, toast, userId]);
+  }, [addTaskMutation, toast, userId, handleError]);
 
   /**
    * Add a new task with AI-powered analysis for quadrant and type suggestion
@@ -300,12 +308,18 @@ export function useTaskManagement() {
       dispatchThinkingState(false, undefined, undefined);
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during AI task processing.";
       console.error("[DEBUG] Error in addTaskWithAIAnalysis:", error);
+      
+      // Use the enhanced error handler for authentication/session issues
+      if (error instanceof Error) {
+        handleError(error);
+      }
+      
       dispatchAIEvent('aiAnalysisError', { error: "AI_PROCESSING_ERROR", message: errorMessage });
       toast({ title: "AI Error", description: errorMessage, variant: "destructive" });
       // If task was created but AI failed, it still exists. Client might want to know the ID.
       return { success: false, taskId, error: errorMessage }; 
     }
-  }, [addTaskMutation, updateTaskMutation, toast, quadrantNames, userId]);
+  }, [addTaskMutation, updateTaskMutation, toast, quadrantNames, userId, handleError]);
 
   /**
    * Update an existing task in the database

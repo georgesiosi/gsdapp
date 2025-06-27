@@ -7,6 +7,8 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient } from "convex/react";
 import { ThemeProvider } from "next-themes";
 import { ThemeSyncProvider } from "@/components/theme-sync-provider";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { ConvexErrorHandler } from "@/components/convex-error-handler";
 
 // ENVIRONMENT VARIABLES DEBUGGING - START
 // List all available environment variables for debugging
@@ -62,13 +64,8 @@ const convex = new ConvexReactClient(convexUrl, {
   unsavedChangesWarning: false // Disable unsaved changes warning
 });
 
-// Log any unhandled promise rejections which might be related to Convex
+// Add event listener for AI thinking state
 if (typeof window !== 'undefined') {
-  window.addEventListener('unhandledrejection', event => {
-    console.error('Unhandled promise rejection (possibly Convex-related):', event.reason);
-  });
-
-  // Add event listener for AI thinking state
   window.addEventListener('aiThinkingChanged', (event: Event) => {
     const customEvent = event as CustomEvent;
     if (customEvent.detail?.thinking !== undefined) {
@@ -141,12 +138,16 @@ function ConvexClientProvider({ children }: { children: React.ReactNode }) {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ConvexClientProvider>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <ThemeSyncProvider>
-          {children} 
-        </ThemeSyncProvider>
-      </ThemeProvider>
-    </ConvexClientProvider>
+    <ErrorBoundary>
+      <ConvexClientProvider>
+        <ConvexErrorHandler>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <ThemeSyncProvider>
+              {children} 
+            </ThemeSyncProvider>
+          </ThemeProvider>
+        </ConvexErrorHandler>
+      </ConvexClientProvider>
+    </ErrorBoundary>
   );
 }

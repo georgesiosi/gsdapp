@@ -15,12 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { LinkIcon, TrashIcon, CalendarIcon, SaveIcon, EditIcon, CheckIcon, RefreshCwIcon, BanIcon, ArrowLeftIcon, Loader2, Lightbulb, ArrowLeft } from "lucide-react" 
+import { LinkIcon, TrashIcon, Loader2, ArrowLeft } from "lucide-react" 
 import { DatePicker } from "@/components/ui/date-picker"
 import { format } from 'date-fns';
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { Id } from "@/convex/_generated/dataModel"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -117,39 +116,6 @@ export default function TaskDetailPage() {
     toast
   ])
 
-  // Convert to Idea handler
-  const handleConvertToIdea = useCallback(async () => {
-    if (!task?.id) return
-
-    window.dispatchEvent(new CustomEvent('addToIdeasBank', {
-      detail: { 
-        text: title.trim(),
-        description: description.trim(),
-        taskType: 'idea',
-        sourceTask: task.id
-      }
-    }))
-
-    try {
-      const result = await deleteTask(task.id)
-      if (result.success) {
-        router.push('/')
-      } else {
-        toast({
-          title: "Failed to convert task",
-          description: result.error || "Please try again",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Error converting task:", error);
-      toast({
-        title: "Failed to convert task",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
-      })
-    }
-  }, [task?.id, title, description, deleteTask, router, toast])
 
   // Delete handler
   const handleDelete = useCallback(async () => {
@@ -184,10 +150,15 @@ export default function TaskDetailPage() {
 
     switch (e.key) {
       case 'Escape': router.push('/'); break
-      case 'i': handleConvertToIdea(); break
       case 'Delete': handleDelete(); break
     }
-  }, [router, handleConvertToIdea, handleDelete])
+  }, [router, handleDelete])
+
+  // Set up keyboard shortcuts
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
 
   // Helper function to format dates
   const formatDate = (dateString: string | undefined | null) => {
@@ -230,17 +201,6 @@ export default function TaskDetailPage() {
         </Link>
         <div className="flex items-center gap-4">
           {isSaving && <span className="text-sm text-muted-foreground">Saving...</span>}
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={handleConvertToIdea}
-            disabled={isSaving}
-            title="Press 'i' to move to Ideas Bank"
-          >
-            <Lightbulb className="h-4 w-4" />
-            Move to Ideas
-          </Button>
           <Button
             variant="destructive"
             size="sm"

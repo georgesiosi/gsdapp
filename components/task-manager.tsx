@@ -98,18 +98,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     });
   }, [toast]);
 
-  // Memoized ideas bank handler
-  const handleAddToIdeasBank = useCallback((event: Event) => {
-    if ((event as CustomEvent).detail?.text) {
-      router.push("/ideas-bank");
-      toast({
-        title: "Redirecting",
-        description: "Taking you to the Ideas Bank",
-        duration: 3000,
-        className: "bg-card text-card-foreground",
-      });
-    }
-  }, [router, toast]);
   
   // Handle AI thinking state changes
   const handleAIThinkingChanged = useCallback((event: Event) => {
@@ -194,7 +182,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     // Add event listeners
     window.addEventListener('taskUpdated', handleTaskUpdated);
     window.addEventListener('exportTasks', handleExport);
-    window.addEventListener('addToIdeasBank', handleAddToIdeasBank);
     window.addEventListener('aiThinkingChanged', handleAIThinkingChanged);
     window.addEventListener('aiAnalysisError', handleAIAnalysisError);
     window.addEventListener('aiAnalysisComplete', handleAIAnalysisComplete);
@@ -203,12 +190,11 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     return () => {
       window.removeEventListener('taskUpdated', handleTaskUpdated);
       window.removeEventListener('exportTasks', handleExport);
-      window.removeEventListener('addToIdeasBank', handleAddToIdeasBank);
       window.removeEventListener('aiThinkingChanged', handleAIThinkingChanged);
       window.removeEventListener('aiAnalysisError', handleAIAnalysisError);
       window.removeEventListener('aiAnalysisComplete', handleAIAnalysisComplete);
     };
-  }, [handleTaskUpdated, handleExport, handleAddToIdeasBank, handleAIThinkingChanged, handleAIAnalysisError, handleAIAnalysisComplete]);
+  }, [handleTaskUpdated, handleExport, handleAIThinkingChanged, handleAIAnalysisError, handleAIAnalysisComplete]);
 
   // Reset AI analysis state when modal closes
   useEffect(() => {

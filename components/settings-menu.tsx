@@ -13,7 +13,6 @@ import {
   HelpCircle, 
   Github, 
   Menu, 
-  Lightbulb, 
   BarChart2, 
   Settings, 
   UserCircle, 
@@ -76,12 +75,6 @@ export function SettingsMenu() {
         <DropdownMenuLabel>Features</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem asChild>
-          <Link href="/ideas-bank" className="flex w-full cursor-pointer items-center">
-            <Lightbulb className="mr-2 h-4 w-4" />
-            <span>Ideas Bank</span>
-          </Link>
-        </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
           <Link href="/scorecard-history" className="flex w-full cursor-pointer items-center">

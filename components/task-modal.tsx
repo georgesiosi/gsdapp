@@ -103,15 +103,12 @@ export function TaskModal({ open, onOpenChange, onAddTask, onDeleteTask, aiReaso
               <div className="space-y-2">
                 <Input
                   id="task"
-                  placeholder="What needs to be done? (Start with 'idea:' to save to Ideas Bank)"
+                  placeholder="What needs to be done?"
                   value={newTask}
                   onChange={(e) => setNewTask(e.target.value)}
                   autoFocus
                   disabled={isSubmitting}
                 />
-                <p className="text-xs text-muted-foreground">
-                  💡 Prefix with "idea:" to save to Ideas Bank
-                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="goal-select">Link to Goal (Optional)</Label>

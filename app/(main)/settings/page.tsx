@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { PageIntro } from '@/components/page-intro';
+import { ErrorTest } from '@/components/error-test';
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings() as { settings: UserSettings, updateSettings: (newSettings: Partial<UserSettings>) => Promise<any> }
@@ -779,6 +780,9 @@ export default function SettingsPage() {
               </div>
             </div>
           </Card>
+
+          {/* Error Testing - Development Only */}
+          <ErrorTest />
         </div>
       </div>
     </div>
