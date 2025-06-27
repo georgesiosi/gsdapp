@@ -9,6 +9,7 @@ export default defineSchema({
     taskType: v.optional(v.string()), // "personal", "work", "business"
     status: v.string(), // "active", "completed"
     description: v.optional(v.string()),
+    aiReasoning: v.optional(v.string()), // AI reasoning for quadrant placement
     completedAt: v.optional(v.string()),
     order: v.optional(v.float64()),
     userId: v.string(),

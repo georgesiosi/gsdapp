@@ -26,6 +26,8 @@ export interface Task {
   text: string;
   /** Detailed description of the task */
   description?: string;
+  /** AI reasoning for quadrant placement */
+  aiReasoning?: string;
   /** Eisenhower quadrant classification */
   quadrant: QuadrantKeys;
   /** Optional categorization of the task */

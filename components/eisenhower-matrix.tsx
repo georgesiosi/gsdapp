@@ -38,6 +38,7 @@ interface QuadrantProps {
   onTaskClick?: (task: Task) => void
   className?: string
   isAIThinking?: boolean
+  aiProcessingTaskId?: Id<"tasks"> | null;
   goals?: FrontendGoal[];
   highlightTaskId?: Id<"tasks"> | null;
 }
@@ -54,6 +55,7 @@ function Quadrant({
   onTaskClick,
   className,
   isAIThinking,
+  aiProcessingTaskId,
   goals,
   highlightTaskId,
 }: QuadrantProps) {
@@ -237,6 +239,12 @@ function Quadrant({
                             )}
                           >
                             {task.text}
+                            {/* Show AI thinking indicator for the specific task being processed */}
+                            {quadrantId === 'q4' && isAIThinking && aiProcessingTaskId && task.id === aiProcessingTaskId && (
+                              <span className="text-xs text-yellow-600 dark:text-yellow-400 ml-2 animate-pulse">
+                                (AI is thinking...)
+                              </span>
+                            )}
                           </span>
                           {/* Display Goal Title if linked */}
                           {task.goalId && goals && (
@@ -266,9 +274,9 @@ function Quadrant({
                         <div className="flex items-center space-x-2 ml-auto flex-shrink-0">
                           <div className="task-actions">
                             <div className="task-action-hover">
-                              <TaskTypeIndicator taskId={task.id} className="mr-1" />
+                              <TaskTypeIndicator task={task} className="mr-1" />
                             </div>
-                            <AIReasoningTooltip taskId={task.id} className="mr-1" />
+                            <AIReasoningTooltip task={task} className="mr-1" />
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -331,6 +339,7 @@ interface EisenhowerMatrixProps {
   onReorderTasks: (quadrant: QuadrantKeys, sourceIndex: number, destinationIndex: number) => void
   onTaskClick?: (task: Task) => void
   isAIThinking?: boolean
+  aiProcessingTaskId?: Id<"tasks"> | null;
   highlightTaskId?: Id<"tasks"> | null;
 }
 
@@ -344,6 +353,7 @@ export function EisenhowerMatrix({
   onReorderTasks,
   onTaskClick,
   isAIThinking,
+  aiProcessingTaskId,
   highlightTaskId,
 }: EisenhowerMatrixProps) {
   // Memoize tasks by quadrant to prevent unnecessary recalculations
@@ -430,6 +440,7 @@ export function EisenhowerMatrix({
           className="quadrant-not-urgent-not-important border-muted-foreground/30"
           goals={goals}
           isAIThinking={isAIThinking}
+          aiProcessingTaskId={aiProcessingTaskId}
           highlightTaskId={highlightTaskId}
         />
       </div>

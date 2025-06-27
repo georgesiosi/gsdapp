@@ -22,7 +22,6 @@ export const testConnection = mutation({
         taskType: "personal",
         status: "active",
         userId,
-        needsReflection: false,  // Add explicit value for consistency
         order: 9999, // High order to appear at the bottom
         createdAt: now,
         updatedAt: now
@@ -188,17 +187,7 @@ export const updateTask = mutation({
     taskType: v.optional(v.union(v.literal("personal"), v.literal("work"), v.literal("business"))),
     status: v.optional(v.union(v.literal("active"), v.literal("completed"))),
     description: v.optional(v.string()),
-    reflection: v.optional(
-      v.object({
-        justification: v.string(),
-        aiAnalysis: v.optional(v.string()),
-        suggestedQuadrant: v.optional(v.string()),
-        finalQuadrant: v.string(),
-        feedback: v.optional(v.string()),
-        content: v.optional(v.string()),
-        reflectedAt: v.string(),
-      })
-    ),
+    aiReasoning: v.optional(v.string()),
     completedAt: v.optional(v.string()),
     order: v.optional(v.number()),
     createdAt: v.optional(v.string()),
@@ -224,10 +213,9 @@ export const updateTask = mutation({
     if (args.text !== undefined) updateData.text = args.text;
     if (args.quadrant !== undefined) updateData.quadrant = args.quadrant;
     if (args.taskType !== undefined) updateData.taskType = args.taskType;
-    if (args.needsReflection !== undefined) updateData.needsReflection = args.needsReflection;
     if (args.status !== undefined) updateData.status = args.status;
     if (args.description !== undefined) updateData.description = args.description;
-    if (args.reflection !== undefined) updateData.reflection = args.reflection;
+    if (args.aiReasoning !== undefined) updateData.aiReasoning = args.aiReasoning;
     if (args.completedAt !== undefined) updateData.completedAt = args.completedAt;
     if (args.order !== undefined) updateData.order = args.order;
     if (args.createdAt !== undefined) updateData.createdAt = args.createdAt;

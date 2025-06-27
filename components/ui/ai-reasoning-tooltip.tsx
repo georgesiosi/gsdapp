@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Info } from "lucide-react"
 import { 
   Tooltip,
@@ -8,49 +7,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ReasoningLogService } from "@/services/ai/reasoningLogService"
+import type { Task } from "@/types/task"
 
 interface AIReasoningTooltipProps {
-  taskId: string
+  task: Task
   className?: string
 }
 
-export function AIReasoningTooltip({ taskId, className }: AIReasoningTooltipProps) {
-  const [reasoning, setReasoning] = useState<string | null>(null)
-  const [scores, setScores] = useState<{
-    alignment?: number
-    urgency?: number
-    importance?: number
-  } | null>(null)
-  
-  // Load reasoning on hover
-  const handleMouseEnter = () => {
-    console.log('[DEBUG AIReasoningTooltip] Getting log for task ID:', taskId);
-    const log = ReasoningLogService.getLogForTask(taskId);
-    
-    if (log) {
-      console.log('[DEBUG AIReasoningTooltip] Found reasoning log:', log);
-      setReasoning(log.reasoning);
-      setScores({
-        alignment: log.alignmentScore,
-        urgency: log.urgencyScore,
-        importance: log.importanceScore
-      });
-    } else {
-      console.log('[DEBUG AIReasoningTooltip] No reasoning log found for task');
-      setReasoning("No AI reasoning available for this task.");
-      setScores(null);
-    }
-    
-    // Log all stored reasoning logs for debugging
-    const allLogs = ReasoningLogService.getLogs();
-    console.log('[DEBUG AIReasoningTooltip] All stored reasoning logs count:', allLogs.length);
-  }
+export function AIReasoningTooltip({ task, className }: AIReasoningTooltipProps) {
+  const reasoning = task.aiReasoning || "No AI reasoning available for this task."
   
   return (
     <TooltipProvider>
       <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild onMouseEnter={handleMouseEnter}>
+        <TooltipTrigger asChild>
           <button className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 ${className}`}>
             <Info className="h-3 w-3" />
             <span className="sr-only">View AI reasoning</span>
@@ -60,29 +30,6 @@ export function AIReasoningTooltip({ taskId, className }: AIReasoningTooltipProp
           <div className="space-y-2">
             <h4 className="font-medium text-sm">AI Reasoning</h4>
             <p className="text-xs text-muted-foreground">{reasoning}</p>
-            
-            {scores && (
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border mt-2">
-                {scores.alignment && (
-                  <div className="text-center">
-                    <div className="text-xs font-medium">Alignment</div>
-                    <div className="text-sm">{scores.alignment}/10</div>
-                  </div>
-                )}
-                {scores.urgency && (
-                  <div className="text-center">
-                    <div className="text-xs font-medium">Urgency</div>
-                    <div className="text-sm">{scores.urgency}/10</div>
-                  </div>
-                )}
-                {scores.importance && (
-                  <div className="text-center">
-                    <div className="text-xs font-medium">Importance</div>
-                    <div className="text-sm">{scores.importance}/10</div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </TooltipContent>
       </Tooltip>

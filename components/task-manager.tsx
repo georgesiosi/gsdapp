@@ -29,6 +29,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   const { toast } = useToast();
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [isAIThinking, setIsAIThinking] = useState(false);
+  const [aiProcessingTaskId, setAiProcessingTaskId] = useState<Id<"tasks"> | null>(null);
   const [aiReasoning, setAiReasoning] = useState<string>();
   const [targetQuadrant, setTargetQuadrant] = useState<QuadrantKeys>();
   const [aiError, setAiError] = useState(false);
@@ -115,6 +116,12 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     const { detail } = event as CustomEvent;
     if (detail?.thinking !== undefined) {
       setIsAIThinking(detail.thinking);
+      // Track which specific task is being processed
+      if (detail.thinking && detail.taskId) {
+        setAiProcessingTaskId(detail.taskId);
+      } else if (!detail.thinking) {
+        setAiProcessingTaskId(null);
+      }
       if (detail.message) {
         toast({
           description: detail.message,
@@ -234,8 +241,8 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       return;
     }
 
-    // Determine if AI analysis should be used based on user settings or other logic
-    const shouldUseAI = false; // Placeholder: make this dynamic if needed
+    // Always use AI analysis for auto-sorting - this is a core feature
+    const shouldUseAI = true;
     
     let result: { success: boolean; taskId?: Id<"tasks">; error?: string; message?: string };
 
@@ -384,6 +391,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
           onReorderTasks={reorderTasks}
           onTaskClick={handleTaskClick}
           isAIThinking={isAIThinking}
+          aiProcessingTaskId={aiProcessingTaskId} // Pass the specific task being processed
           goals={activeGoals} // Pass goals down
           highlightTaskId={highlightedTaskId} // Pass the ID of the task to highlight
         />

@@ -7,53 +7,24 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ReasoningLogService } from "@/services/ai/reasoningLogService"
-import { TaskType } from "@/types/task"
+import { TaskType, Task } from "@/types/task"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 
 interface TaskTypeIndicatorProps {
-  taskId: string
+  task: Task
   className?: string
 }
 
-export function TaskTypeIndicator({ taskId, className }: TaskTypeIndicatorProps) {
-  const [taskType, setTaskType] = useState<TaskType | undefined>(undefined)
+export function TaskTypeIndicator({ task, className }: TaskTypeIndicatorProps) {
+  const taskType = task.taskType || 'personal' // Default to personal if not set
   const { updateTask } = useTaskManagement()
   
-  // Load task type on mount and when taskId changes
-  useEffect(() => {
-    const log = ReasoningLogService.getLogForTask(taskId)
-    console.log(`[DEBUG] TaskTypeIndicator - Loading task type for task ${taskId}:`, log?.taskType);
-    
-    if (log && log.taskType) {
-      setTaskType(log.taskType)
-    } else {
-      setTaskType(undefined)
-    }
-  }, [taskId])
-  
-  // Toggle task type between personal and work
-  const toggleTaskType = () => {
-    const newType: TaskType = taskType === "personal" ? "work" : "personal";
-    setTaskType(newType);
-    updateTask(taskId, { taskType: newType });
-    
-    // Update the reasoning log
-    const log = ReasoningLogService.getLogForTask(taskId)
-    console.log(`[DEBUG] TaskTypeIndicator - Current reasoning log:`, log);
-    
-    if (log) {
-      const updatedLog = {
-        ...log,
-        taskType: newType
-      };
-      console.log(`[DEBUG] TaskTypeIndicator - Updating reasoning log to:`, updatedLog);
-      ReasoningLogService.storeLog(updatedLog)
-      console.log(`[DEBUG] TaskTypeIndicator - Updated reasoning log for task ${taskId} with type ${newType}`);
-    } else {
-      console.log(`[DEBUG] TaskTypeIndicator - No reasoning log found for task ${taskId}`);
-    }
+  // Handle task type toggle
+  const handleToggleTaskType = () => {
+    const newTaskType: TaskType = taskType === 'personal' ? 'business' : 'personal'
+    updateTask(task.id || task._id!, { taskType: newTaskType })
   }
+  
   
   const getBackgroundColor = () => {
     if (taskType === "personal") return "bg-purple-500"
@@ -73,7 +44,7 @@ export function TaskTypeIndicator({ taskId, className }: TaskTypeIndicatorProps)
         <TooltipTrigger asChild>
           <button 
             className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-white ${getBackgroundColor()} hover:opacity-90 ${className}`}
-            onClick={toggleTaskType}
+            onClick={handleToggleTaskType}
           >
             {getLabel()}
             <span className="sr-only">

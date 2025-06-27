@@ -22,15 +22,36 @@ const ensureTaskCompatibility = (convexTask: any): Task => {
   };
 };
 
+// Function to determine task type based on text content
+const determineTaskType = (taskText: string): TaskType => {
+  const text = taskText.toLowerCase();
+  
+  // Business/work keywords
+  const businessKeywords = [
+    'business', 'company', 'work', 'meeting', 'client', 'customer', 'project', 
+    'proposal', 'contract', 'invoice', 'revenue', 'marketing', 'sales', 
+    'employee', 'team', 'deadline', 'presentation', 'report', 'budget',
+    'strategy', 'launch', 'product', 'service', 'website', 'app'
+  ];
+  
+  // Check if text contains business keywords
+  if (businessKeywords.some(keyword => text.includes(keyword))) {
+    return 'business';
+  }
+  
+  // Default to personal
+  return 'personal';
+};
+
 // Locally defined event types and interfaces for AI functionality
 type AIEventDetail = {
-  aiThinkingChanged: { thinking: boolean; message?: string };
+  aiThinkingChanged: { thinking: boolean; message?: string; taskId?: Id<"tasks"> };
   aiAnalysisComplete: {
     taskId: string; // Added taskId
     message: string;
     result?: any; // Keep flexible for now
     targetQuadrant?: QuadrantKeys; // Use QuadrantKeys
-    taskType?: TaskOrIdeaType; // Use TaskOrIdeaType
+    taskType?: TaskType; // Use TaskType
     reasoning?: string;
   };
   aiAnalysisError: { 
@@ -50,8 +71,8 @@ const dispatchAIEvent = <T extends AIEventType>(eventType: T, detail: AIEventDet
 };
 
 // Locally defined helper function to dispatch AI thinking state
-const dispatchThinkingState = (thinking: boolean, message?: string) => {
-  dispatchAIEvent('aiThinkingChanged', { thinking, message });
+const dispatchThinkingState = (thinking: boolean, message?: string, taskId?: Id<"tasks">) => {
+  dispatchAIEvent('aiThinkingChanged', { thinking, message, taskId });
 };
 
 // Locally defined function to cast string ID to Convex ID
@@ -192,7 +213,6 @@ export function useTaskManagement() {
     }
 
     console.log(`[DEBUG] addTaskWithAIAnalysis called with text: "${taskText}", goalId: ${goalId}, dueDate: ${dueDate}`);
-    dispatchThinkingState(true, "Analyzing task...");
 
     let taskId: Id<"tasks"> | undefined = undefined; // Variable to store the task ID
 
@@ -213,12 +233,15 @@ export function useTaskManagement() {
       });
 
       if (!taskId) {
-        dispatchThinkingState(false);
+        dispatchThinkingState(false, undefined, undefined);
         console.error("[DEBUG] Task creation failed before AI analysis.");
         toast({ title: "Error", description: "Failed to create task (pre-AI).", variant: "destructive" });
         return { success: false, error: "Task creation failed before AI analysis." };
       }
       console.log(`[DEBUG] Task created with ID: ${taskId}. Proceeding with AI analysis.`);
+      
+      // Start AI thinking state now that we have the task ID
+      dispatchThinkingState(true, "Analyzing task...", taskId);
 
       // Step 2: Perform AI analysis by calling the Next.js API route
       let aiCategorizationResponse;
@@ -238,7 +261,7 @@ export function useTaskManagement() {
         aiCategorizationResponse = await apiResponse.json();
       } catch (e) {
         console.error("[DEBUG] AI categorization API call failed:", e);
-        dispatchThinkingState(false);
+        dispatchThinkingState(false, undefined, undefined);
         toast({ title: "AI Error", description: e instanceof Error ? e.message : "Failed to categorize task with AI.", variant: "destructive" });
         // Task was created, but AI failed. Return success false but with taskId so UI can still potentially handle the task.
         return { success: false, taskId, error: e instanceof Error ? e.message : "AI categorization failed" };
@@ -246,7 +269,7 @@ export function useTaskManagement() {
 
       const aiResponse = {
         suggestedQuadrant: aiCategorizationResponse.category as QuadrantKeys,
-        suggestedTaskType: undefined, // API does not provide taskType
+        suggestedTaskType: determineTaskType(taskText), // Determine task type from text
         reasoning: aiCategorizationResponse.reasoning || "Categorized by AI.",
       };
 
@@ -255,19 +278,13 @@ export function useTaskManagement() {
       await updateTaskMutation({
         id: taskId,
         quadrant: aiResponse.suggestedQuadrant,
-        // taskType is not updated by this AI, initial default will persist
-        reflection: {
-          aiAnalysis: aiResponse.reasoning,
-          suggestedQuadrant: aiResponse.suggestedQuadrant,
-          finalQuadrant: aiResponse.suggestedQuadrant, // Initially same as suggested
-          justification: "Initial AI analysis and placement.",
-          reflectedAt: new Date().toISOString(),
-        },
+        taskType: aiResponse.suggestedTaskType,
+        aiReasoning: aiResponse.reasoning,
         updatedAt: new Date().toISOString(),
       });
       console.log(`[DEBUG] Task ${taskId} updated with AI suggestions.`);
 
-      dispatchThinkingState(false);
+      dispatchThinkingState(false, undefined, undefined);
       dispatchAIEvent('aiAnalysisComplete', {
         taskId: taskId.toString(),
         message: "AI analysis complete.",
@@ -280,7 +297,7 @@ export function useTaskManagement() {
       return { success: true, taskId, message: "Task added and analyzed by AI." };
 
     } catch (error) { // This outer catch handles errors from addTaskMutation or updateTaskMutation primarily
-      dispatchThinkingState(false);
+      dispatchThinkingState(false, undefined, undefined);
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during AI task processing.";
       console.error("[DEBUG] Error in addTaskWithAIAnalysis:", error);
       dispatchAIEvent('aiAnalysisError', { error: "AI_PROCESSING_ERROR", message: errorMessage });
