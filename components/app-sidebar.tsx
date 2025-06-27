@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Target, Settings, X, PanelLeftClose, PanelLeftOpen, BarChart2, Lightbulb, ClipboardList } from 'lucide-react';
+import { Home, Target, Settings, X, PanelLeftClose, PanelLeftOpen, BarChart2, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useQuery } from 'convex/react';
@@ -21,7 +21,6 @@ const baseNavItems = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Goals', href: '/goals', icon: Target },
   { name: 'Scorecards', href: '/scorecard-history', icon: BarChart2 },
-  { name: 'Ideas', href: '/ideas-bank', icon: Lightbulb },
 ];
 
 const masterPlanItem = { name: 'Master Plan', href: '/master-plan', icon: ClipboardList };

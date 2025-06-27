@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useProfile } from "@/hooks/use-profile"
-import { useReflectionSystem } from "@/components/task/hooks/useReflectionSystem"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
-import { useIdeasManagement } from "@/components/ideas/hooks/useIdeasManagement"
 import useLocalStorage from '@/hooks/useLocalStorage';
-import type { Task, TaskStatus, QuadrantKeys, TaskType } from "@/types/task"
+import type { Task, TaskStatus, QuadrantKeys, TaskType, NewTask } from "@/types/task"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Plus, MessageCircle } from "lucide-react"
@@ -14,16 +12,16 @@ import { useRouter } from "next/navigation"
 import { exportTasksToCSV } from "@/lib/export-utils"
 import { EisenhowerMatrix } from "@/components/eisenhower-matrix"
 import { TaskModal } from "@/components/task-modal"
-import { ReflectionCard } from "@/components/ui/reflection-card"
 import { TaskCompletionConfetti } from "@/components/ui/task-completion-confetti"
 import { VelocityMeters } from "@/components/velocity-meters"
 import { EndDayScorecard } from "@/components/end-day-scorecard"
 import { ChatDialog } from "@/components/ui/chat-dialog"
 import { Id } from "../convex/_generated/dataModel"; // Import Id type
 import { api } from "../convex/_generated/api"
-import { useMutation, useQuery } from "convex/react"
+import { useQuery } from "convex/react"
 
 interface TaskManagerProps {
+  // Props can be added here as needed
 }
 
 export const TaskManager: React.FC<TaskManagerProps> = () => {
@@ -36,6 +34,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
   const [aiError, setAiError] = useState(false);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [highlightedTaskId, setHighlightedTaskId] = useState<Id<"tasks"> | null>(null);
 
   const { 
     addTask, 
@@ -47,7 +46,6 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     hideConfetti
   } = useTaskManagement();
 
-  const { reflectingTask, startReflection, submitReflection, cancelReflection } = useReflectionSystem();
 
   // Fetch active goals to pass down for display
   const activeGoals = useQuery(api.goals.getActiveGoals);
@@ -230,50 +228,47 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
     }
   };
 
-  const handleAddTask = async (text: string, goalId?: Id<"goals">, dueDate?: string) => {
-    if (!text.trim()) return;
-    
-    console.log('[DEBUG handleAddTask] Starting task creation:', text, 'with goalId:', goalId, 'dueDate:', dueDate);
-    
-    try {
-      // Keep modal open while AI is thinking
-      console.log('[DEBUG handleAddTask] Setting isAIThinking to true');
-      setIsAIThinking(true);
-      
-      // We'll keep the modal open to show the AI analysis in progress
-      console.log('[DEBUG handleAddTask] Calling addTaskWithAIAnalysis');
-      // Pass dueDate to the hook function
-      const { task } = await addTaskWithAIAnalysis(text, undefined, goalId, dueDate);
-      
-      console.log('[DEBUG handleAddTask] Task creation result:', task, 'goalId included:', !!goalId);
-      
-      // The task might be null, but that's okay - the Convex query will update the UI
-      // We don't need to throw an error here
-
-      // Modal will be closed by the aiAnalysisComplete event handler
-      // after the task has been moved to its final quadrant
-      console.log('[DEBUG handleAddTask] Current AI reasoning:', aiReasoning);
-      console.log('[DEBUG handleAddTask] Current target quadrant:', targetQuadrant);
-
-      // Show success message
-      toast({
-        description: 'Task added successfully',
-        className: 'bg-card text-card-foreground'
-      });
-    } catch (error) {
-      console.error('[DEBUG handleAddTask] Error adding task:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to add task',
-        variant: 'destructive'
-      });
-      // Close modal on error
-      setTaskModalOpen(false);
-    } finally {
-      // Don't reset AI thinking state here - let the event handlers handle it
-      console.log('[DEBUG handleAddTask] Task addition function completed');
+  const handleAddTask = useCallback(async (text: string, goalId?: Id<"goals">, dueDate?: string) => {
+    if (!text.trim()) {
+      toast({ title: "Error", description: "Task text cannot be empty.", variant: "destructive" });
+      return;
     }
-  };
+
+    // Determine if AI analysis should be used based on user settings or other logic
+    const shouldUseAI = false; // Placeholder: make this dynamic if needed
+    
+    let result: { success: boolean; taskId?: Id<"tasks">; error?: string; message?: string };
+
+    if (shouldUseAI) {
+      console.log("[TaskManager] Adding task with AI analysis...");
+      // Ensure addTaskWithAIAnalysis is called with correct arguments
+      // It expects: text: string, goalId?: Id<"goals">, dueDate?: string
+      result = await addTaskWithAIAnalysis(text, goalId, dueDate);
+    } else {
+      console.log("[TaskManager] Adding task directly...");
+      const taskData: NewTask = { 
+        text, 
+        quadrant: 'q4', // Default quadrant, backend will re-sort
+        goalId: goalId, // Pass goalId (type should be compatible or handled in `addTask`)
+        dueDate, 
+        status: 'active',
+        taskType: 'personal', // Default task type
+        // userId is handled by the backend
+        // createdAt and updatedAt are handled by the backend
+      };
+      result = await addTask(taskData);
+    }
+
+    if (result.success && result.taskId) {
+      toast({ title: "Task Added", description: result.message || "New task has been successfully added." });
+      setTaskModalOpen(false); // Close modal on success
+      setHighlightedTaskId(result.taskId); // Highlight the new task
+      // Clear highlight after a delay
+      setTimeout(() => setHighlightedTaskId(null), 3000); // Clear after 3 seconds
+    } else {
+      toast({ title: "Error", description: result.error || "Failed to add task.", variant: "destructive" });
+    }
+  }, [addTask, addTaskWithAIAnalysis, toast]);
 
   const handleMoveTask = async (taskId: string, newQuadrant: QuadrantKeys) => {
     try {
@@ -336,15 +331,7 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
         quadrant: task.quadrant as QuadrantKeys, // Cast quadrant
         taskType: task.taskType as TaskType | undefined, // Cast taskType
         status: task.status as TaskStatus, // Cast status
-        needsReflection: task.needsReflection ?? false, // Provide default
         goalId: task.goalId, // Map optional goalId directly
-        // Handle reflection object mapping if necessary
-        reflection: task.reflection ? {
-          ...task.reflection,
-          suggestedQuadrant: task.reflection.suggestedQuadrant as QuadrantKeys | undefined,
-          finalQuadrant: task.reflection.finalQuadrant as QuadrantKeys, // Cast finalQuadrant
-          // Add other reflection properties if needed
-        } : undefined,
         // Ensure createdAt and updatedAt are strings if necessary (Convex _creationTime is number)
         createdAt: new Date(task._creationTime).toISOString(), // Example conversion if needed
         updatedAt: task.updatedAt, // Assuming updatedAt is already string or handled
@@ -392,23 +379,16 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
                new Date(t.completedAt).toDateString() === new Date().toDateString()))}
           onToggleTask={handleToggleTask}
           onDeleteTask={handleDeleteTask}
-          onReflectionRequested={startReflection}
           onMoveTask={handleMoveTask}
           onEditTask={handleEditTask}
           onReorderTasks={reorderTasks}
           onTaskClick={handleTaskClick}
           isAIThinking={isAIThinking}
           goals={activeGoals} // Pass goals down
+          highlightTaskId={highlightedTaskId} // Pass the ID of the task to highlight
         />
       </div>
 
-      {reflectingTask && (
-        <ReflectionCard
-          task={reflectingTask}
-          onSubmit={submitReflection}
-          onCancel={cancelReflection}
-        />
-      )}
 
       <TaskModal 
         open={taskModalOpen}
@@ -443,4 +423,4 @@ export const TaskManager: React.FC<TaskManagerProps> = () => {
       </div>
     </div>
   );
-}
+};

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, ChangeEvent } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSettings } from '@/hooks/use-settings'
 import { useProfile } from '@/hooks/use-profile'
 import useLocalStorage from '@/hooks/useLocalStorage';
@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
-import { ChevronLeft, Download, History, CheckCircle, AlertCircle } from 'lucide-react'
+import { Download, History } from 'lucide-react'
 import Link from 'next/link'
 import { SettingsNav } from '@/components/settings/settings-nav'
 import { recoverFromBackup } from '@/lib/storage'
@@ -99,7 +99,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setTaskSettings(settings.taskSettings ?? defaultTaskSettings);
-  }, [settings.taskSettings]);
+  }, [settings.taskSettings, defaultTaskSettings]);
 
   const handleSave = async () => {
     if (isTaskSettingsSaving) {

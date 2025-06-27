@@ -8,9 +8,8 @@ import { EndDayScorecard } from "@/components/end-day-scorecard";
 import { BarChart2Icon } from "lucide-react";
 import type {
   QuadrantKeys,
-  TaskOrIdeaType,
+  TaskType,
   TaskStatus,
-  TaskReflection, // Import TaskReflection
 } from "@/types/task"; // Import necessary types
 
 interface ScorecardButtonProps {
@@ -28,7 +27,7 @@ export function ScorecardButton({ className }: ScorecardButtonProps) {
     ...task,
     id: task._id.toString(),           // Map _id to string id
     quadrant: task.quadrant as QuadrantKeys, // Cast quadrant
-    taskType: task.taskType as TaskOrIdeaType | undefined, // Cast taskType
+    taskType: task.taskType as TaskType | undefined, // Cast taskType
     goalId: task.goalId?.toString(), // Map optional goalId
     status: task.status as TaskStatus, // Cast status
     needsReflection: task.needsReflection ?? false, // Default needsReflection

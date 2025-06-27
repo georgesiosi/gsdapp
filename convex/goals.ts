@@ -3,6 +3,23 @@ import { v } from "convex/values";
 import { getAuthenticatedUser } from "./auth";
 import { Id } from "./_generated/dataModel";
 
+// Helper function to get the next order value for a goal
+async function getNextGoalOrderValue(ctx: any, userId: string): Promise<number> {
+  const existingGoals = await ctx.db
+    .query("goals")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .filter((q: any) => q.field("order") !== undefined) // Consider only goals that have an order
+    .collect();
+
+  if (existingGoals.length === 0) {
+    return 0; // First goal gets order 0
+  }
+
+  // Find the maximum order value among existing goals
+  const maxOrder = Math.max(...existingGoals.map((g: any) => g.order!)); // Non-null assertion as we filtered undefined
+  return maxOrder + 1;
+}
+
 // --- Queries ---
 
 /**
@@ -58,6 +75,7 @@ export const addGoal = mutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
+    order: v.optional(v.float64()), // Add order argument
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -67,12 +85,16 @@ export const addGoal = mutation({
       throw new Error("Goal title cannot be empty.");
     }
 
+    // Calculate the next order value for this goal if not provided
+    const order = args.order === undefined ? await getNextGoalOrderValue(ctx, userId) : args.order;
+
     const goalId = await ctx.db.insert("goals", {
       userId,
       title: args.title.trim(),
       description: args.description?.trim(),
       status: "active",
       updatedAt: now, 
+      order, // Include order in the insert
     });
 
     return goalId;
@@ -92,6 +114,7 @@ export const updateGoal = mutation({
       v.literal('achieved'), 
       v.literal('archived')
     )),
+    order: v.optional(v.float64()), // Add order argument
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
@@ -114,13 +137,19 @@ export const updateGoal = mutation({
     
     const now = new Date().toISOString();
 
-    await ctx.db.patch(id, {
-      ...updates,
-      // Trim title and description if present
-      ...(updates.title && { title: updates.title.trim() }),
-      ...(updates.description && { description: updates.description.trim() }),
-      updatedAt: now,
-    });
+    // Prepare the data to be patched, including the order if provided
+    const patchData: any = { ...updates };
+    if (args.order !== undefined) {
+      patchData.order = args.order;
+    }
+
+    // Trim title and description if present
+    if (patchData.title) patchData.title = patchData.title.trim();
+    if (patchData.description) patchData.description = patchData.description.trim();
+    
+    patchData.updatedAt = now;
+
+    await ctx.db.patch(id, patchData);
 
     return { success: true, id };
   },

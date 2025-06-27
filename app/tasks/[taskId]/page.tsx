@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import { useTaskManagement } from "@/components/task/hooks/useTaskManagement"
 import { useCallback, useEffect, useState } from "react"
-import { Task, TaskStatus, QuadrantKeys, TaskOrIdeaType } from "@/types/task"; 
+import { Task, TaskStatus, QuadrantKeys, TaskType } from "@/types/task"; 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"

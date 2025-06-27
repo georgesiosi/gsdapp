@@ -7,18 +7,8 @@ export default defineSchema({
     text: v.string(),
     quadrant: v.string(), // "q1", "q2", "q3", "q4"
     taskType: v.optional(v.string()), // "personal", "work", "business"
-    needsReflection: v.optional(v.boolean()),
     status: v.string(), // "active", "completed"
     description: v.optional(v.string()),
-    reflection: v.optional(v.object({
-      justification: v.string(),
-      aiAnalysis: v.optional(v.string()),
-      suggestedQuadrant: v.optional(v.string()),
-      finalQuadrant: v.string(),
-      feedback: v.optional(v.string()),
-      content: v.optional(v.string()),
-      reflectedAt: v.string(),
-    })),
     completedAt: v.optional(v.string()),
     order: v.optional(v.float64()),
     userId: v.string(),
@@ -26,14 +16,6 @@ export default defineSchema({
     updatedAt: v.string(), // ISO string of when the task was last updated
     goalId: v.optional(v.id("goals")), // Add optional link to goals table
     dueDate: v.optional(v.string()), // ISO string for the task deadline
-  }).index("by_user", ["userId"]),
-  
-  // Ideas table
-  ideas: defineTable({
-    text: v.string(),
-    taskType: v.string(),
-    connectedToPriority: v.boolean(),
-    userId: v.string(),
   }).index("by_user", ["userId"]),
   
   // User preferences table
@@ -66,6 +48,7 @@ export default defineSchema({
       v.literal('archived')
     ), // 'active', 'achieved', 'archived'
     updatedAt: v.optional(v.string()), // ISO string timestamp
+    order: v.optional(v.float64()), // Add new order field for goals
   }).index("by_user", ["userId"]),
   
   // Scorecards table

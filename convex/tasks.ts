@@ -73,41 +73,107 @@ export const addTask = mutation({
   args: {
     text: v.string(),
     quadrant: v.union(v.literal("q1"), v.literal("q2"), v.literal("q3"), v.literal("q4")),
-    taskType: v.optional(v.union(v.literal("personal"), v.literal("work"), v.literal("business"), v.literal("idea"))),
-    needsReflection: v.optional(v.boolean()),
+    taskType: v.optional(v.union(v.literal("personal"), v.literal("work"), v.literal("business"))),
     status: v.optional(v.union(v.literal("active"), v.literal("completed"))),
     description: v.optional(v.string()),
-    order: v.optional(v.float64()),
-    createdAt: v.string(),
-    updatedAt: v.string(),
-    goalId: v.optional(v.id("goals")), // Add goalId argument
-    dueDate: v.optional(v.string()), // Add dueDate argument
+    order: v.optional(v.float64()), // Will be ignored by the new logic but kept for arg consistency if needed elsewhere
+    createdAt: v.optional(v.string()), // Optional: server will generate if not provided
+    updatedAt: v.optional(v.string()), // Optional: server will generate if not provided
+    goalId: v.optional(v.id("goals")),
+    dueDate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUser(ctx);
-
-    // Calculate the next order value for this quadrant
-    const nextOrder = await getNextOrderValue(ctx, userId, args.quadrant);
-    
-    // Initialize dates - use the provided dates or generate new ones
     const now = new Date().toISOString();
-    const createdAt = args.createdAt || now;
-    const updatedAt = args.updatedAt || now;
-    
-    return await ctx.db.insert("tasks", {
+
+    // 1. Fetch user's active goals for their order
+    const userGoals = await ctx.db
+      .query("goals")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+    const goalOrderMap = new Map(userGoals.map(goal => [goal._id.toString(), goal.order ?? Infinity]));
+
+    // 2. Fetch existing tasks in the specified quadrant
+    const existingTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("quadrant"), args.quadrant))
+      .collect();
+
+    // 3. Define the new task for sorting comparison (as a temporary object)
+    const newTaskForComparison = {
+      _id: "temp_new_task_id", // Temporary ID for sorting logic
+      _creationTime: Date.now(), // Use current time for sorting new task
       text: args.text,
       quadrant: args.quadrant,
       taskType: args.taskType ?? "personal",
       status: args.status ?? "active",
       description: args.description,
       userId,
-      order: args.order ?? nextOrder,
-      createdAt,
-      updatedAt,
-      needsReflection: args.needsReflection ?? false,
-      goalId: args.goalId, // Include goalId in the insert
-      dueDate: args.dueDate // Include dueDate in the insert
+      createdAt: args.createdAt || now,
+      updatedAt: args.updatedAt || now,
+      goalId: args.goalId,
+      dueDate: args.dueDate,
+      // 'order' field is not needed here as it's determined by sort position
+    };
+
+    // 4. Combine new task candidate with existing tasks
+    // Type assertion to allow sorting on common properties including temp ones
+    const allTasksToConsider = [...existingTasks, newTaskForComparison] as any[]; 
+
+    // 5. Sort the combined list
+    allTasksToConsider.sort((a, b) => {
+      const aDueDate = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const bDueDate = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      if (aDueDate !== bDueDate) return aDueDate - bDueDate;
+
+      const aGoalOrder = a.goalId ? (goalOrderMap.get(a.goalId.toString()) ?? Infinity) : Infinity;
+      const bGoalOrder = b.goalId ? (goalOrderMap.get(b.goalId.toString()) ?? Infinity) : Infinity;
+      if (aGoalOrder !== bGoalOrder) return aGoalOrder - bGoalOrder;
+      
+      // For existing tasks, a._creationTime is a number (timestamp from Convex)
+      // For newTaskForComparison, we set _creationTime as Date.now()
+      const valA = typeof a._creationTime === 'string' ? parseInt(a._creationTime, 10) : a._creationTime;
+      const valB = typeof b._creationTime === 'string' ? parseInt(b._creationTime, 10) : b._creationTime;
+      return valA - valB;
     });
+
+    // 6. Insert the new task (order will be set in the patch loop)
+    const newTaskId = await ctx.db.insert("tasks", {
+      text: args.text,
+      quadrant: args.quadrant,
+      taskType: args.taskType ?? "personal",
+      status: args.status ?? "active",
+      description: args.description,
+      userId,
+      order: 0, // Placeholder, will be updated in the loop
+      createdAt: args.createdAt || now,
+      updatedAt: args.updatedAt || now, // Will be updated again by patch
+      goalId: args.goalId,
+      dueDate: args.dueDate,
+    });
+
+    // Update the temporary ID in the sorted list with the actual new Task ID
+    const newActualTaskIndexInSortedList = allTasksToConsider.findIndex(t => t._id === "temp_new_task_id");
+    if (newActualTaskIndexInSortedList !== -1) {
+        allTasksToConsider[newActualTaskIndexInSortedList]._id = newTaskId;
+    }
+    
+    // 7. Patch all tasks in the sorted list with their new order index and updatedAt
+    const updateOps = [];
+    for (let i = 0; i < allTasksToConsider.length; i++) {
+      const taskInSortedList = allTasksToConsider[i];
+      const existingTaskMatch = existingTasks.find(et => et._id.toString() === taskInSortedList._id.toString());
+      
+      // Patch if it's the new task, or if an existing task's order has changed
+      if (taskInSortedList._id.toString() === newTaskId.toString() || !existingTaskMatch || existingTaskMatch.order !== i) {
+        updateOps.push(ctx.db.patch(taskInSortedList._id, { order: i, updatedAt: now }));
+      }
+    }
+    await Promise.all(updateOps);
+
+    return newTaskId;
   },
 });
 
@@ -119,8 +185,7 @@ export const updateTask = mutation({
     id: v.id("tasks"),
     text: v.optional(v.string()),
     quadrant: v.optional(v.union(v.literal("q1"), v.literal("q2"), v.literal("q3"), v.literal("q4"))),
-    taskType: v.optional(v.union(v.literal("personal"), v.literal("work"), v.literal("business"), v.literal("idea"))),
-    needsReflection: v.optional(v.boolean()),
+    taskType: v.optional(v.union(v.literal("personal"), v.literal("work"), v.literal("business"))),
     status: v.optional(v.union(v.literal("active"), v.literal("completed"))),
     description: v.optional(v.string()),
     reflection: v.optional(
@@ -224,28 +289,6 @@ export const deleteTask = mutation({
 
 /**
  * Reorder tasks within a quadrant
- */
-/**
- * Helper function to get the next order value for a task in a quadrant
- */
-async function getNextOrderValue(ctx: any, userId: string, quadrant: string): Promise<number> {
-  const existingTasks = await ctx.db
-    .query("tasks")
-    .withIndex("by_user", (q: any) => q.eq("userId", userId))
-    .filter((q: any) => q.eq(q.field("quadrant"), quadrant))
-    .collect();
-
-  return existingTasks.length > 0
-    ? Math.max(...existingTasks.map((t: any) => t.order ?? 0)) + 1
-    : 0;
-}
-
-/**
- * Reorder tasks within a quadrant by moving a task from a source index to a destination index
- * and updating the order values of all affected tasks.
- * 
- * This is an optimized implementation that only updates tasks whose order has changed,
- * rather than updating all tasks in the quadrant.
  */
 export const reorderTasks = mutation({
   args: {

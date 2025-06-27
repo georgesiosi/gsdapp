@@ -5,7 +5,7 @@ import { useUser } from '@clerk/nextjs';
 import { useAuth } from '@clerk/nextjs';
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Doc, Id } from "@/convex/_generated/dataModel";
+import { Doc } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge'; 
 import { LoadingSpinner } from '@/components/ui/loading-spinner'; 

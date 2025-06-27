@@ -1,7 +1,7 @@
 "use client"
+import React from "react";
 import { useState, useEffect, useMemo } from "react"
 import { cn } from "@/lib/utils"
-import { ReflectionBadge } from "@/components/ui/reflection-badge"
 import { AIThinkingIndicator } from "@/components/ui/ai-thinking-indicator"
 import { AIReasoningTooltip } from "@/components/ui/ai-reasoning-tooltip"
 import { TaskTypeIndicator } from "@/components/ui/task-type-indicator"
@@ -32,7 +32,6 @@ interface QuadrantProps {
   tasks: Task[]
   onToggleTask: (id: string) => void
   onDeleteTask: (id: string) => void
-  onReflectionRequested?: (task: Task) => void
   onMoveTask: (taskId: string, newQuadrant: QuadrantKeys) => void
   onEditTask: (taskId: string, newText: string) => void
   onReorderTasks: (quadrant: QuadrantKeys, sourceIndex: number, destinationIndex: number) => void
@@ -40,6 +39,7 @@ interface QuadrantProps {
   className?: string
   isAIThinking?: boolean
   goals?: FrontendGoal[];
+  highlightTaskId?: Id<"tasks"> | null;
 }
 
 function Quadrant({
@@ -48,7 +48,6 @@ function Quadrant({
   tasks,
   onToggleTask,
   onDeleteTask,
-  onReflectionRequested,
   onMoveTask,
   onEditTask,
   onReorderTasks,
@@ -56,9 +55,11 @@ function Quadrant({
   className,
   isAIThinking,
   goals,
+  highlightTaskId,
 }: QuadrantProps) {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
+  const highlightedTaskRef = React.useRef<HTMLLIElement | null>(null);
 
   // Ensure tasks is always an array
   const safeTasks = Array.isArray(tasks) ? tasks : [];
@@ -70,6 +71,15 @@ function Quadrant({
     }
     return (a.order || 0) - (b.order || 0);
   });
+
+  useEffect(() => {
+    if (highlightedTaskRef.current) {
+      highlightedTaskRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }
+  }, [highlightTaskId]); // Run when highlightTaskId changes
 
   // Drag and drop handlers
   const handleDragStart = (e: DragEvent, taskId: string) => {
@@ -126,7 +136,7 @@ function Quadrant({
     <TooltipProvider>
       <div
         className={cn(
-          "quadrant rounded-lg border shadow-sm hover:shadow-md transition-all",
+          "quadrant rounded-lg shadow-sm hover:shadow-md transition-all",
           className,
           quadrantId === 'q4' && isAIThinking && 'animate-q4-analyzing'
         )}
@@ -169,158 +179,140 @@ function Quadrant({
             </div>
           ) : (
             <ul className="space-y-2">
-              {sortedTasks.map((task) => (
-                <li
-                  key={task.id}
-                  className={cn(
-                    "task-item flex items-center justify-between p-2 rounded-md transition-colors duration-150 ease-in-out",
-                    "group", // Add group for hover effects
-                    task.status === "completed" ? "bg-muted/50 text-muted-foreground line-through" : "hover:bg-accent",
-                    draggedTaskId === task.id ? "opacity-50" : ""
-                  )}
-                  draggable={editingTaskId !== task.id}
-                  onDragStart={(e) => handleDragStart(e, task.id)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, task.id)}
-                  onDragEnd={handleDragEnd}
-                  onClick={(e) => {
-                    // Ignore clicks if we're dragging
-                    if (draggedTaskId) return
+              {sortedTasks.map((task, index) => {
+                const isEditing = editingTaskId === task.id
+                const isCompleted = task.status === "completed"
+                const goalTitle = task.goalId ? goals?.find(g => g._id === task.goalId)?.title : undefined;
+                const isHighlighted = task.id === highlightTaskId;
 
-                    // Get the target element
-                    const target = e.target as HTMLElement
-
-                    // Ignore clicks on interactive elements
-                    if (
-                      target.closest('.task-checkbox') ||
-                      target.closest('.task-action-button') ||
-                      target.closest('.reflection-badge')
-                    ) {
-                      return
-                    }
-
-                    // Also ignore clicks if this task is currently being edited inline
-                    if (editingTaskId === task.id) {
-                      return;
-                    }
-
-                    onTaskClick?.(task)
-                  }}
-                >
-                  {editingTaskId === task.id ? (
-                    <InlineTaskEditor
-                      task={task}
-                      onSave={(id, newText) => {
-                        onEditTask(id, newText);
-                        setEditingTaskId(null);
-                      }}
-                      onCancel={() => setEditingTaskId(null)}
-                    />
-                  ) : (
-                    <>
-
-                      <input
-                        type="checkbox"
-                        checked={task.status === 'completed'}
-                        onChange={(e) => {
-                          e.stopPropagation()
-                          onToggleTask(task.id)
+                return (
+                  <li
+                    key={task.id}
+                    ref={isHighlighted ? highlightedTaskRef : null} // Assign ref if highlighted
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, task.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, task.id)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      "task-item group relative mb-2 cursor-pointer rounded-lg p-3 shadow-sm transition-all duration-150 ease-in-out",
+                      "hover:shadow-md",
+                      isCompleted 
+                        ? "bg-green-50 text-green-700 line-through dark:bg-green-900/30 dark:text-green-400/70" 
+                        : isHighlighted 
+                          ? "bg-yellow-100 dark:bg-yellow-700/30 ring-2 ring-yellow-400 dark:ring-yellow-500" 
+                          : "hover:bg-muted/50", // Default: no explicit bg, only hover effect
+                      draggedTaskId === task.id ? "opacity-50" : "",
+                      className
+                    )}
+                    onClick={() => onTaskClick && onTaskClick(task)}
+                  >
+                    {editingTaskId === task.id ? (
+                      <InlineTaskEditor
+                        task={task}
+                        onSave={(id, newText) => {
+                          onEditTask(id, newText);
+                          setEditingTaskId(null);
                         }}
-                        className="task-checkbox rounded-sm"
+                        onCancel={() => setEditingTaskId(null)}
                       />
-                      <div className="flex items-center space-x-2 flex-grow min-w-0 mr-2">
-                        {/* Task Text and Goal Link */}
-                        <span
-                          className={cn(
-                            "task-text text-sm transition-colors",
-                            task.status === 'completed' ? "line-through text-muted-foreground" : "text-foreground/90 group-hover:text-accent-foreground"
-                          )}
-                        >
-                          {task.text}
-                        </span>
-                        {/* Display Goal Title if linked */}
-                        {task.goalId && goals && (
-                          (() => {
-                            console.log('[DEBUG] Task goalId:', task.goalId, 'typeof:', typeof task.goalId);
-                            console.log('[DEBUG] Available goals:', goals);
-                            const linkedGoal = goals.find(g => g._id.toString() === task.goalId?.toString());
-                            if (!linkedGoal) {
-                              console.log('[DEBUG] No matching goal found for task:', task.text, 'goalId:', task.goalId);
-                              // Try a more lenient comparison
-                              const lenientGoal = goals.find(g => 
-                                String(g._id).includes(String(task.goalId)) || 
-                                String(task.goalId).includes(String(g._id))
-                              );
-                              console.log('[DEBUG] Lenient match found?', !!lenientGoal, lenientGoal?._id);
-                            }
-                            return linkedGoal ? (
-                              <span className="ml-2 text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded">
-                                🎯 {linkedGoal.title}
-                              </span>
-                            ) : null;
-                          })()
-                        )}
-                      </div>
+                    ) : (
+                      <>
 
-                      {/* Badges and Actions */}
-                      <div className="flex items-center space-x-2 ml-auto flex-shrink-0">
-                        <div className="task-actions">
-                          <div className="task-action-hover">
-                            <TaskTypeIndicator taskId={task.id} className="mr-1" />
-                          </div>
-                          <AIReasoningTooltip taskId={task.id} className="mr-1" />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setEditingTaskId(task.id)
-                            }}
-                            className="task-action-button edit-button mr-1"
-                            aria-label="Edit task"
+                        <input
+                          type="checkbox"
+                          checked={task.status === 'completed'}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            onToggleTask(task.id)
+                          }}
+                          className="task-checkbox rounded-sm"
+                        />
+                        <div className="flex items-center space-x-2 flex-grow min-w-0 mr-2">
+                          {/* Task Text and Goal Link */}
+                          <span
+                            className={cn(
+                              "task-text text-sm transition-colors",
+                              task.status === 'completed' ? "line-through text-muted-foreground" : "text-foreground/90 group-hover:text-accent-foreground"
+                            )}
                           >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onDeleteTask(task.id)
-                            }}
-                            className="task-action-button delete-button"
-                            aria-label="Delete task"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 6h18"></path>
-                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                            </svg>
-                          </button>
+                            {task.text}
+                          </span>
+                          {/* Display Goal Title if linked */}
+                          {task.goalId && goals && (
+                            (() => {
+                              console.log('[DEBUG] Task goalId:', task.goalId, 'typeof:', typeof task.goalId);
+                              console.log('[DEBUG] Available goals:', goals);
+                              const linkedGoal = goals.find(g => g._id.toString() === task.goalId?.toString());
+                              if (!linkedGoal) {
+                                console.log('[DEBUG] No matching goal found for task:', task.text, 'goalId:', task.goalId);
+                                // Try a more lenient comparison
+                                const lenientGoal = goals.find(g => 
+                                  String(g._id).includes(String(task.goalId)) || 
+                                  String(task.goalId).includes(String(g._id))
+                                );
+                                console.log('[DEBUG] Lenient match found?', !!lenientGoal, lenientGoal?._id);
+                              }
+                              return linkedGoal ? (
+                                <span className="ml-2 text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded">
+                                  🎯 {linkedGoal.title}
+                                </span>
+                              ) : null;
+                            })()
+                          )}
                         </div>
 
-                        {/* Due Date Tooltip Icon (Conditionally Rendered) */}
-                        {task.dueDate && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <CalendarDays size={14} className="text-muted-foreground mr-1" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Due: {format(new Date(task.dueDate), "PPP")}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+                        {/* Badges and Actions */}
+                        <div className="flex items-center space-x-2 ml-auto flex-shrink-0">
+                          <div className="task-actions">
+                            <div className="task-action-hover">
+                              <TaskTypeIndicator taskId={task.id} className="mr-1" />
+                            </div>
+                            <AIReasoningTooltip taskId={task.id} className="mr-1" />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingTaskId(task.id)
+                              }}
+                              className="task-action-button edit-button mr-1"
+                              aria-label="Edit task"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onDeleteTask(task.id)
+                              }}
+                              className="task-action-button delete-button"
+                              aria-label="Delete task"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          </div>
 
-                        {task.needsReflection && onReflectionRequested && (
-                          <ReflectionBadge
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onReflectionRequested(task);
-                            }}
-                            isThinking={Boolean(isAIThinking && quadrantId === 'q4')}
-                          />
-                        )}
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
+                          {/* Due Date Tooltip Icon (Conditionally Rendered) */}
+                          {task.dueDate && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <CalendarDays size={14} className="text-muted-foreground mr-1" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Due: {format(new Date(task.dueDate), "PPP")}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+
+                        </div>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -334,12 +326,12 @@ interface EisenhowerMatrixProps {
   goals?: FrontendGoal[];
   onToggleTask: (id: string) => void
   onDeleteTask: (id: string) => void
-  onReflectionRequested?: (task: Task) => void
   onMoveTask: (taskId: string, newQuadrant: QuadrantKeys) => void
   onEditTask: (taskId: string, newText: string) => void
   onReorderTasks: (quadrant: QuadrantKeys, sourceIndex: number, destinationIndex: number) => void
   onTaskClick?: (task: Task) => void
   isAIThinking?: boolean
+  highlightTaskId?: Id<"tasks"> | null;
 }
 
 export function EisenhowerMatrix({
@@ -347,12 +339,12 @@ export function EisenhowerMatrix({
   goals,
   onToggleTask,
   onDeleteTask,
-  onReflectionRequested,
   onMoveTask,
   onEditTask,
   onReorderTasks,
   onTaskClick,
-  isAIThinking
+  isAIThinking,
+  highlightTaskId,
 }: EisenhowerMatrixProps) {
   // Memoize tasks by quadrant to prevent unnecessary recalculations
   const tasksByQuadrant = useMemo(() => {
@@ -389,13 +381,13 @@ export function EisenhowerMatrix({
           tasks={tasksByQuadrant.q1}
           onToggleTask={onToggleTask}
           onDeleteTask={onDeleteTask}
-          onReflectionRequested={onReflectionRequested}
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-urgent-important border-destructive/30"
           goals={goals}
+          highlightTaskId={highlightTaskId}
         />
         <Quadrant
           title="Not Urgent but Important"
@@ -403,13 +395,13 @@ export function EisenhowerMatrix({
           tasks={tasksByQuadrant.q2}
           onToggleTask={onToggleTask}
           onDeleteTask={onDeleteTask}
-          onReflectionRequested={onReflectionRequested}
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-not-urgent-important border-blue-500/30"
           goals={goals}
+          highlightTaskId={highlightTaskId}
         />
         <Quadrant
           title="Urgent but Not Important"
@@ -417,13 +409,13 @@ export function EisenhowerMatrix({
           tasks={tasksByQuadrant.q3}
           onToggleTask={onToggleTask}
           onDeleteTask={onDeleteTask}
-          onReflectionRequested={onReflectionRequested}
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
           onTaskClick={onTaskClick}
           className="quadrant-urgent-not-important border-yellow-500/30"
           goals={goals}
+          highlightTaskId={highlightTaskId}
         />
         <Quadrant
           title="Not Urgent & Not Important"
@@ -431,7 +423,6 @@ export function EisenhowerMatrix({
           tasks={tasksByQuadrant.q4}
           onToggleTask={onToggleTask}
           onDeleteTask={onDeleteTask}
-          onReflectionRequested={onReflectionRequested}
           onMoveTask={onMoveTask}
           onEditTask={onEditTask}
           onReorderTasks={onReorderTasks}
@@ -439,6 +430,7 @@ export function EisenhowerMatrix({
           className="quadrant-not-urgent-not-important border-muted-foreground/30"
           goals={goals}
           isAIThinking={isAIThinking}
+          highlightTaskId={highlightTaskId}
         />
       </div>
     </div>

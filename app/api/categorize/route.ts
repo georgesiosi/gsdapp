@@ -24,18 +24,7 @@ export async function POST(req: Request) {
       messages: [
         {
           role: "system",
-          content: `You are an AI task categorizer for an Eisenhower Matrix.
-          ${goal ? `The user's main goal is: "${goal}"` : ""}
-          ${priority ? `Their #1 priority for today is: "${priority}"` : ""}
-          
-          Analyze the task and categorize it into one of four quadrants:
-          q1: Urgent & Important (directly relates to goal/priority and time-sensitive)
-          q2: Important, Not Urgent (relates to goal but not time-sensitive)
-          q3: Urgent, Not Important (time-sensitive but doesn't relate to goal)
-          q4: Not Urgent & Not Important (neither time-sensitive nor related to goal)
-          
-          Consider how well the task aligns with the user's goal and priority when determining importance.
-          Respond only with the quadrant identifier (q1, q2, q3, or q4).`,
+          content: `You are an AI assistant for an Eisenhower Matrix productivity app.\n\n${goal ? `The user's main goal is: "${goal}"` : ""}\n${priority ? `Their #1 priority for today is: "${priority}"` : ""}\n\nAnalyze the following task and respond in strict JSON format as follows:\n{\n  \"category\": \"qX\",\n  \"reasoning\": \"your concise explanation of why you chose this quadrant\"\n}\n\nQuadrant options:\nq1: Urgent & Important (directly relates to goal/priority and time-sensitive)\nq2: Important, Not Urgent (relates to goal but not time-sensitive)\nq3: Urgent, Not Important (time-sensitive but doesn't relate to goal)\nq4: Not Urgent & Not Important (neither time-sensitive nor related to goal)\n\nBe brief and clear in your reasoning. Respond with only valid JSON, no extra text.`,
         },
         {
           role: "user",
@@ -43,16 +32,30 @@ export async function POST(req: Request) {
         },
       ],
       temperature: 0.3,
-      max_tokens: 10,
+      max_tokens: 120, // allow enough for reasoning
+
     })
 
-    const category = response.choices[0]?.message?.content?.trim().toLowerCase();
-
-    if (!category || !["q1", "q2", "q3", "q4"].includes(category)) {
-      return NextResponse.json({ category: "q4" })
+    const aiRaw = response.choices[0]?.message?.content?.trim();
+    let category = "q4";
+    let reasoning = "No reasoning provided.";
+    if (aiRaw) {
+      try {
+        const parsed = JSON.parse(aiRaw);
+        if (["q1", "q2", "q3", "q4"].includes(parsed.category)) {
+          category = parsed.category;
+        }
+        if (parsed.reasoning && typeof parsed.reasoning === "string") {
+          reasoning = parsed.reasoning;
+        }
+      } catch (e) {
+        // fallback: try to extract category if possible
+        const match = aiRaw.match(/q[1-4]/);
+        if (match) category = match[0];
+        reasoning = "AI did not return valid JSON. Raw: " + aiRaw;
+      }
     }
-
-    return NextResponse.json({ category })
+    return NextResponse.json({ category, reasoning });
   } catch (error) {
     console.error("Error in categorize route:", error)
     return NextResponse.json({ error: "Failed to categorize task", category: "q4" }, { status: 500 })
