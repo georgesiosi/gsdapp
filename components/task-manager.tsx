@@ -20,11 +20,7 @@ import { Id } from "../convex/_generated/dataModel"; // Import Id type
 import { api } from "../convex/_generated/api"
 import { useQuery } from "convex/react"
 
-interface TaskManagerProps {
-  // Props can be added here as needed
-}
-
-export const TaskManager: React.FC<TaskManagerProps> = () => {
+export const TaskManager: React.FC = () => {
   const router = useRouter();
   const { toast } = useToast();
   const [taskModalOpen, setTaskModalOpen] = useState(false);
