@@ -45,14 +45,14 @@ function calculateMetrics(tasks: Task[], goal: string, priority: string): Scorec
   
   // Filter tasks for today
   const todaysTasks = tasks.filter(task => {
-    const createdDate = new Date(task.createdAt);
+    const createdDate = task.createdAt ? new Date(task.createdAt) : null;
     const completedDate = task.completedAt ? new Date(task.completedAt) : null;
     
     // Include tasks that were:
     // 1. Created today, or
     // 2. Completed today
     return (
-      (createdDate >= startOfDay && createdDate < endOfDay) ||
+      (createdDate && createdDate >= startOfDay && createdDate < endOfDay) ||
       (completedDate && completedDate >= startOfDay && completedDate < endOfDay)
     );
   });
