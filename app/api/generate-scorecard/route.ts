@@ -207,7 +207,7 @@ QUADRANT BREAKDOWN:
 - Q4 (Not Urgent & Not Important): ${metrics.quadrantMetrics.q4.completed}/${metrics.quadrantMetrics.q4.total} completed (${(metrics.quadrantMetrics.q4.completionRate * 100).toFixed(1)}%)
 
 TASK DETAILS:
-${tasks.map(task => `- ${task.completed ? '✓' : '○'} [${task.quadrant.toUpperCase()}] ${task.text}`).join('\n')}
+${tasks.map(task => `- ${task.completedAt ? '✓' : '○'} [${task.quadrant.toUpperCase()}] ${task.text}`).join('\n')}
 
 Based on this information, please provide:
 1. A brief analysis of the user's productivity today (2-3 sentences)

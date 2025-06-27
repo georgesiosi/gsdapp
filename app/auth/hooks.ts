@@ -24,9 +24,10 @@ export function useAuthState(): AuthState {
       // If user is signed in with Clerk, migrate the license
       if (isSignedIn && user) {
         // Store the association between Clerk user and legacy license
-        const userData = { ...(user as any) };
+        const userData = user as any;
+        const currentPrefs = StorageManager.get('USER_PREFERENCES') || {};
         StorageManager.set('USER_PREFERENCES', {
-          ...StorageManager.get('USER_PREFERENCES'),
+          ...currentPrefs,
           legacyLicense,
           userId: userData.id
         });
