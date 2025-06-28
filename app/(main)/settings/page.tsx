@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useSettings } from '@/hooks/use-settings'
 import { useProfile } from '@/hooks/use-profile'
 import useLocalStorage from '@/hooks/useLocalStorage';
@@ -47,13 +47,13 @@ export default function SettingsPage() {
   const [showSidebars, setShowSidebars] = useLocalStorage<boolean>('showEisenhowerSidebars', true);
   const [showGoalsSection, setShowGoalsSection] = useLocalStorage<boolean>('showGoalsSection', true);
 
-  const defaultTaskSettings: TaskSettings = {
+  const defaultTaskSettings: TaskSettings = useMemo(() => ({
     autoPrioritize: true,
     endOfDayTime: '23:59',
     autoArchiveDelay: 7,
     gracePeriod: 30,
     retainRecurringTasks: true,
-  }
+  }), [])
 
   const [taskSettings, setTaskSettings] = useState<TaskSettings>(
     settings.taskSettings ?? defaultTaskSettings
@@ -113,6 +113,20 @@ export default function SettingsPage() {
     
     try {
       // Validate taskSettings before saving
+      console.log('[DEBUG-SETTINGS] Validating taskSettings:', taskSettings)
+      console.log('[DEBUG-SETTINGS] Validation checks:', {
+        endOfDayTime: taskSettings.endOfDayTime,
+        endOfDayTimeValid: !!taskSettings.endOfDayTime,
+        autoArchiveDelay: taskSettings.autoArchiveDelay,
+        autoArchiveDelayType: typeof taskSettings.autoArchiveDelay,
+        gracePeriod: taskSettings.gracePeriod,
+        gracePeriodType: typeof taskSettings.gracePeriod,
+        retainRecurringTasks: taskSettings.retainRecurringTasks,
+        retainRecurringTasksType: typeof taskSettings.retainRecurringTasks,
+        autoPrioritize: taskSettings.autoPrioritize,
+        autoPrioritizeType: typeof taskSettings.autoPrioritize
+      })
+      
       if (!taskSettings.endOfDayTime || 
           typeof taskSettings.autoArchiveDelay !== 'number' || 
           typeof taskSettings.gracePeriod !== 'number' || 

@@ -30,6 +30,7 @@ export default defineSchema({
     hasCompletedOnboarding: v.optional(v.boolean()), // Added for onboarding status
     masterPlanText: v.optional(v.string()),
     taskSettings: v.optional(v.object({
+      autoPrioritize: v.optional(v.boolean()),
       endOfDayTime: v.string(),
       autoArchiveDelay: v.float64(),
       gracePeriod: v.float64(),

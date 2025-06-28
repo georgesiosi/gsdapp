@@ -18,6 +18,7 @@ export const getUserPreferences = query({
 // Define shared schema for theme and taskSettings
 const themeSchema = v.union(v.literal('light'), v.literal('dark'), v.literal('system'));
 const taskSettingsSchema = v.object({
+  autoPrioritize: v.optional(v.boolean()),
   endOfDayTime: v.string(),
   autoArchiveDelay: v.float64(),
   gracePeriod: v.float64(),
@@ -64,6 +65,7 @@ export const saveUserPreferences = mutation({
 
     // Start with default task settings
     const defaultTaskSettings = {
+      autoPrioritize: true,
       endOfDayTime: "17:00",
       autoArchiveDelay: 7,
       gracePeriod: 24,
@@ -77,7 +79,7 @@ export const saveUserPreferences = mutation({
     };
 
     // Validate taskSettings fields
-    const { endOfDayTime, autoArchiveDelay, gracePeriod, retainRecurringTasks } = taskSettings;
+    const { autoPrioritize, endOfDayTime, autoArchiveDelay, gracePeriod, retainRecurringTasks } = taskSettings;
     
     if (!endOfDayTime || typeof endOfDayTime !== 'string') {
       console.error('Invalid endOfDayTime:', endOfDayTime);
@@ -97,6 +99,11 @@ export const saveUserPreferences = mutation({
     if (typeof retainRecurringTasks !== 'boolean') {
       console.error('Invalid retainRecurringTasks:', retainRecurringTasks);
       throw new Error('retainRecurringTasks must be true or false');
+    }
+    
+    if (autoPrioritize !== undefined && typeof autoPrioritize !== 'boolean') {
+      console.error('Invalid autoPrioritize:', autoPrioritize);
+      throw new Error('autoPrioritize must be true or false');
     }
 
     // Update args.taskSettings with validated values
@@ -122,6 +129,7 @@ export const saveUserPreferences = mutation({
       autoAnalyze: args.autoAnalyze ?? false,
       syncApiKey: args.syncApiKey ?? false,
       taskSettings: args.taskSettings ? {
+        autoPrioritize: args.taskSettings.autoPrioritize ?? true,
         endOfDayTime: args.taskSettings.endOfDayTime,
         autoArchiveDelay: args.taskSettings.autoArchiveDelay,
         gracePeriod: args.taskSettings.gracePeriod,
